@@ -162,7 +162,7 @@ containers:
 
       ## Specify the repository of image.
       ##
-      repository: gmehta3/harvester
+      repository: rancher/harvester
 
       ## Specify the tag of image.
       ##
@@ -348,17 +348,17 @@ harvester-network-controller:
   ## defaults to "false".
   enabled: true
   image:
-    repository: gmehta3/harvester-network-controller
+    repository: rancher/harvester-network-controller
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: master-head
   helper:
     image:
-      repository: gmehta3/harvester-network-helper
+      repository: rancher/harvester-network-helper
       tag: master-head
   webhook:
     image:
-      repository: gmehta3/harvester-network-webhook
+      repository: rancher/harvester-network-webhook
       pullPolicy: IfNotPresent
       tag: master-head
 
@@ -371,7 +371,7 @@ harvester-node-disk-manager:
   longhornNamespace: longhorn-system
 
   image:
-    repository: gmehta3/harvester-node-disk-manager
+    repository: rancher/harvester-node-disk-manager
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: master-head
@@ -420,7 +420,7 @@ webhook:
 
     ## Specify the repository of image.
     ##
-    repository: gmehta3/harvester-webhook
+    repository: rancher/harvester-webhook
 
     ## Specify the tag of image.
     ##
@@ -430,19 +430,19 @@ webhook:
 
 upgrade:
   image:
-    repository: gmehta3/harvester-upgrade
+    repository: rancher/harvester-upgrade
     tag: master-head
 
 harvester-load-balancer:
   enabled: false
   image:
     imagePullPolicy: Always
-    repository: gmehta3/harvester-load-balancer
+    repository: rancher/harvester-load-balancer
     tag: master-head
   webhook:
     image:
       imagePullPolicy: IfNotPresent
-      repository: gmehta3/harvester-load-balancer-webhook
+      repository: rancher/harvester-load-balancer-webhook
       tag: master-head
 
 kube-vip:
@@ -489,7 +489,7 @@ whereabouts:
 harvester-node-manager:
   image:
     imagePullPolicy: IfNotPresent
-    repository: gmehta3/harvester-node-manager
+    repository: rancher/harvester-node-manager
     tag: master-head
 
 snapshot-validation-webhook:
