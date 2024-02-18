@@ -10,10 +10,17 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+	"kubevirt.io/kubevirt/pkg/network/namescheme"
+	"kubevirt.io/kubevirt/pkg/virt-controller/services"
+
+	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	"github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
+	v1 "github.com/harvester/harvester/pkg/generated/controllers/kubevirt.io/v1"
 	"github.com/harvester/harvester/pkg/util"
 	"github.com/harvester/harvester/pkg/webhook/types"
+
+	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 var matchingLabels = []labels.Set{
@@ -29,9 +36,16 @@ var matchingLabels = []labels.Set{
 	},
 }
 
-func NewMutator(settingCache v1beta1.SettingCache) types.Mutator {
+var vmMatchingLabels = []labels.Set{
+	{
+		"kubevirt.io": "virt-launcher",
+	},
+}
+
+func NewMutator(settingCache v1beta1.SettingCache, vmiCache v1.VirtualMachineInstanceCache) types.Mutator {
 	return &podMutator{
 		setttingCache: settingCache,
+		vmiCache:      vmiCache,
 	}
 }
 
@@ -40,6 +54,7 @@ func NewMutator(settingCache v1beta1.SettingCache) types.Mutator {
 type podMutator struct {
 	types.DefaultMutator
 	setttingCache v1beta1.SettingCache
+	vmiCache      v1.VirtualMachineInstanceCache
 }
 
 func newResource(ops []admissionregv1.OperationType) types.Resource {
@@ -62,6 +77,35 @@ func (m *podMutator) Resource() types.Resource {
 func (m *podMutator) Create(_ *types.Request, newObj runtime.Object) (types.PatchOps, error) {
 	pod := newObj.(*corev1.Pod)
 
+	if IsHarvesterCorePod(pod) {
+		var patchOps types.PatchOps
+		httpProxyPatches, err := m.httpProxyPatches(pod)
+		if err != nil {
+			return nil, err
+		}
+		patchOps = append(patchOps, httpProxyPatches...)
+		additionalCAPatches, err := m.additionalCAPatches(pod)
+		if err != nil {
+			return nil, err
+		}
+		patchOps = append(patchOps, additionalCAPatches...)
+
+		return patchOps, nil
+	}
+
+	if IsKubevirtLauncherPod(pod) {
+		multusPatch, err := m.multusAnnotationPatch(pod)
+		if err != nil {
+			return nil, err
+		}
+		return multusPatch, nil
+	}
+
+	return nil, nil
+
+}
+
+func IsHarvesterCorePod(pod *corev1.Pod) bool {
 	podLabels := labels.Set(pod.Labels)
 	var match bool
 	for _, v := range matchingLabels {
@@ -70,23 +114,19 @@ func (m *podMutator) Create(_ *types.Request, newObj runtime.Object) (types.Patc
 			break
 		}
 	}
-	if !match {
-		return nil, nil
-	}
+	return match
+}
 
-	var patchOps types.PatchOps
-	httpProxyPatches, err := m.httpProxyPatches(pod)
-	if err != nil {
-		return nil, err
+func IsKubevirtLauncherPod(pod *corev1.Pod) bool {
+	podLabels := labels.Set(pod.Labels)
+	var match bool
+	for _, v := range vmMatchingLabels {
+		if v.AsSelector().Matches(podLabels) {
+			match = true
+			break
+		}
 	}
-	patchOps = append(patchOps, httpProxyPatches...)
-	additionalCAPatches, err := m.additionalCAPatches(pod)
-	if err != nil {
-		return nil, err
-	}
-	patchOps = append(patchOps, additionalCAPatches...)
-
-	return patchOps, nil
+	return match
 }
 
 func (m *podMutator) httpProxyPatches(pod *corev1.Pod) (types.PatchOps, error) {
@@ -234,4 +274,68 @@ func volumeMountPatch(target []corev1.VolumeMount, path string, volumeMount core
 		return "", err
 	}
 	return fmt.Sprintf(`{"op": "add", "path": "%s", "value": %s}`, path, valueStr), nil
+}
+
+func (m *podMutator) multusAnnotationPatch(pod *corev1.Pod) (types.PatchOps, error) {
+	// check if pod has multus annotation for non default multus networks with ordinal interface names
+	// patch is only needed in such cases to convert interfaces from ordinal to hashed interface names
+	// if pod already has a hashed interface name then no further action is needed
+	if namescheme.PodHasOrdinalInterfaceName(services.NonDefaultMultusNetworksIndexedByIfaceName(pod)) {
+		owned, vmiName := podOwnedByVMI(pod)
+		if owned {
+			vmi, err := m.vmiCache.Get(pod.Namespace, vmiName)
+			if err != nil {
+				return nil, err
+			}
+			return generateMultusAnnotationPatch(vmi, pod)
+		}
+	}
+	return nil, nil
+}
+
+func podOwnedByVMI(pod *corev1.Pod) (bool, string) {
+	for _, v := range pod.OwnerReferences {
+		if v.APIVersion == "kubevirt.io/v1" && v.Kind == "VirtualMachineInstance" {
+			return true, v.Name
+		}
+	}
+	return false, ""
+}
+
+func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *corev1.Pod) (types.PatchOps, error) {
+	var patchOps types.PatchOps
+	networkMap := namescheme.CreateHashedNetworkNameScheme(vmi.Spec.Networks)
+	// networkMap contains a map of vmi network name and generated pod name
+	// this needs to be mapped to multus network name as well to ensure patch
+	// can be generated
+	vmiNetworkPodMap := make(map[string]string)
+	for _, v := range vmi.Spec.Networks {
+		podIfName, ok := networkMap[v.Name]
+		if ok {
+			vmiNetworkPodMap[v.Multus.NetworkName] = podIfName
+		}
+	}
+
+	currentNetworkRequest := pod.Annotations[networkv1.NetworkAttachmentAnnot]
+	networkDefs := []networkv1.NetworkSelectionElement{}
+	err := json.Unmarshal([]byte(currentNetworkRequest), &networkDefs)
+	if err != nil {
+		return patchOps, err
+	}
+	// rename network interfaces if needed
+	for i := range networkDefs {
+		podIfName, ok := vmiNetworkPodMap[fmt.Sprintf("%s/%s", networkDefs[i].Namespace, networkDefs[i].Name)]
+		if ok {
+			networkDefs[i].InterfaceRequest = podIfName
+		}
+	}
+
+	networkDefByte, err := json.Marshal(networkDefs)
+	if err != nil {
+		return patchOps, err
+	}
+	fmt.Println(string(networkDefByte))
+	annotationPath := fmt.Sprintf("/metadata/annotations/%s", networkv1.NetworkAttachmentAnnot)
+	patchOps = append(patchOps, fmt.Sprintf(`{"op": "replace", "path": "%s", "value": %s}`, annotationPath, networkDefByte))
+	return patchOps, nil
 }
