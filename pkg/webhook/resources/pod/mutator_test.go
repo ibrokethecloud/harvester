@@ -212,9 +212,7 @@ func Test_generateMultusAnnotationPatch(t *testing.T) {
 				"cni.projectcalico.org/podIP": "10.52.2.16/32",
 				"cni.projectcalico.org/podIPs": "10.52.2.16/32",
 				"harvesterhci.io/sshNames": "[]",
-				"k8s.v1.cni.cncf.io/network-status": "[{\n    \"name\": \"k8s-pod-network\",\n    \"ips\": [\n        \"10.52.2.16\"\n    ],\n    \"default\": true,\n    \"dns\": {}\n},{\n    \"name\": \"default/workload\",\n    \"interface\": \"net1\",\n    \"mac\": \"7e:0e:80:20:19:f5\",\n    \"dns\": {}\n}]",
 				"k8s.v1.cni.cncf.io/networks": "[{\"interface\":\"net1\",\"name\":\"workload\",\"namespace\":\"default\"}]",
-				"k8s.v1.cni.cncf.io/networks-status": "[{\n    \"name\": \"k8s-pod-network\",\n    \"ips\": [\n        \"10.52.2.16\"\n    ],\n    \"default\": true,\n    \"dns\": {}\n},{\n    \"name\": \"default/workload\",\n    \"interface\": \"net1\",\n    \"mac\": \"7e:0e:80:20:19:f5\",\n    \"dns\": {}\n}]",
 				"kubectl.kubernetes.io/default-container": "compute",
 				"kubevirt.io/domain": "vm2",
 				"kubevirt.io/migrationTransportUnix": "true",
@@ -832,7 +830,11 @@ func Test_generateMultusAnnotationPatch(t *testing.T) {
 	err = json.Unmarshal(vmiJSONBytes, vmi)
 	assert.NoError(err)
 	assert.True(IsKubevirtLauncherPod(pod))
+	ok, vm := podOwnedByVMI(pod)
+	assert.True(ok)
+	assert.Equal(vm, vmi.Name)
 	patchOps, err := generateMultusAnnotationPatch(vmi, pod)
+	t.Log(patchOps)
 	assert.NoError(err)
 	assert.Len(patchOps, 1)
 }

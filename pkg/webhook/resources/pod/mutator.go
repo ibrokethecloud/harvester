@@ -11,9 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"kubevirt.io/kubevirt/pkg/network/namescheme"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 
 	kubevirtv1 "kubevirt.io/api/core/v1"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
 	v1 "github.com/harvester/harvester/pkg/generated/controllers/kubevirt.io/v1"
@@ -94,6 +95,7 @@ func (m *podMutator) Create(_ *types.Request, newObj runtime.Object) (types.Patc
 	}
 
 	if IsKubevirtLauncherPod(pod) {
+		logrus.Debugf("found virt-launcher pod %s/%s", pod.Namespace, pod.GenerateName)
 		multusPatch, err := m.multusAnnotationPatch(pod)
 		if err != nil {
 			return nil, err
@@ -280,16 +282,16 @@ func (m *podMutator) multusAnnotationPatch(pod *corev1.Pod) (types.PatchOps, err
 	// check if pod has multus annotation for non default multus networks with ordinal interface names
 	// patch is only needed in such cases to convert interfaces from ordinal to hashed interface names
 	// if pod already has a hashed interface name then no further action is needed
-	if namescheme.PodHasOrdinalInterfaceName(services.NonDefaultMultusNetworksIndexedByIfaceName(pod)) {
-		owned, vmiName := podOwnedByVMI(pod)
-		if owned {
-			vmi, err := m.vmiCache.Get(pod.Namespace, vmiName)
-			if err != nil {
-				return nil, err
-			}
-			return generateMultusAnnotationPatch(vmi, pod)
+	logrus.Info(pod.Annotations)
+	owned, vmiName := podOwnedByVMI(pod)
+	if owned {
+		vmi, err := m.vmiCache.Get(pod.Namespace, vmiName)
+		if err != nil {
+			return nil, err
 		}
+		return generateMultusAnnotationPatch(vmi, pod)
 	}
+	logrus.Debugf("no ordinal interface names found, skipping pod %s/%s", pod.Namespace, pod.GenerateName)
 	return nil, nil
 }
 
@@ -304,7 +306,16 @@ func podOwnedByVMI(pod *corev1.Pod) (bool, string) {
 
 func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *corev1.Pod) (types.PatchOps, error) {
 	var patchOps types.PatchOps
+	logrus.Debugf("checking if pod for vmi %s/%s needs mutation", vmi.Namespace, vmi.Name)
 	networkMap := namescheme.CreateHashedNetworkNameScheme(vmi.Spec.Networks)
+
+	currentNetworkRequest := pod.Annotations[networkv1.NetworkAttachmentAnnot]
+	networkDefs := []networkv1.NetworkSelectionElement{}
+	err := json.Unmarshal([]byte(currentNetworkRequest), &networkDefs)
+	if err != nil {
+		return patchOps, err
+	}
+
 	// networkMap contains a map of vmi network name and generated pod name
 	// this needs to be mapped to multus network name as well to ensure patch
 	// can be generated
@@ -316,16 +327,10 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 		}
 	}
 
-	currentNetworkRequest := pod.Annotations[networkv1.NetworkAttachmentAnnot]
-	networkDefs := []networkv1.NetworkSelectionElement{}
-	err := json.Unmarshal([]byte(currentNetworkRequest), &networkDefs)
-	if err != nil {
-		return patchOps, err
-	}
 	// rename network interfaces if needed
 	for i := range networkDefs {
 		podIfName, ok := vmiNetworkPodMap[fmt.Sprintf("%s/%s", networkDefs[i].Namespace, networkDefs[i].Name)]
-		if ok {
+		if ok && namescheme.OrdinalSecondaryInterfaceName(networkDefs[i].InterfaceRequest) {
 			networkDefs[i].InterfaceRequest = podIfName
 		}
 	}
@@ -334,8 +339,18 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 	if err != nil {
 		return patchOps, err
 	}
-	fmt.Println(string(networkDefByte))
-	annotationPath := fmt.Sprintf("/metadata/annotations/%s", networkv1.NetworkAttachmentAnnot)
-	patchOps = append(patchOps, fmt.Sprintf(`{"op": "replace", "path": "%s", "value": %s}`, annotationPath, networkDefByte))
+
+	pod.Annotations[networkv1.NetworkAttachmentAnnot] = string(networkDefByte)
+
+	annotationBytes, err := json.Marshal(pod.Annotations)
+	if err != nil {
+		return patchOps, err
+	}
+	logrus.Debugf("multus annotation patch: %s\n", networkDefByte)
+	fmt.Println(pod.Annotations)
+	//"k8s.v1.cni.cncf.io/networks": "[{\"interface\":\"net1\",\"name\":\"workload\",\"namespace\":\"default\"}]",
+	annotationPath := fmt.Sprintf("/metadata/annotations")
+
+	patchOps = append(patchOps, fmt.Sprintf(`{"op": "replace", "path": "%s", "value": %s}`, annotationPath, string(annotationBytes)))
 	return patchOps, nil
 }
