@@ -25,6 +25,7 @@ import (
 	"github.com/harvester/harvester/pkg/webhook/resources/virtualmachine"
 	"github.com/harvester/harvester/pkg/webhook/resources/virtualmachinebackup"
 	"github.com/harvester/harvester/pkg/webhook/resources/virtualmachineimage"
+	"github.com/harvester/harvester/pkg/webhook/resources/virtualmachineinstancemigration"
 	"github.com/harvester/harvester/pkg/webhook/resources/virtualmachinerestore"
 	"github.com/harvester/harvester/pkg/webhook/types"
 	"github.com/harvester/harvester/pkg/webhook/util"
@@ -117,6 +118,7 @@ func Validation(clients *clients.Clients, options *config.Options) (http.Handler
 		namespace.NewValidator(clients.HarvesterCoreFactory.Core().V1().ResourceQuota().Cache()),
 		addon.NewValidator(clients.HarvesterFactory.Harvesterhci().V1beta1().Addon().Cache()),
 		version.NewValidator(),
+		virtualmachineinstancemigration.NewValidator(clients.Core.Pod().Cache(), clients.Core.Pod(), clients.KubevirtFactory.Kubevirt().V1().VirtualMachineInstance().Cache()),
 	}
 
 	router := webhook.NewRouter()

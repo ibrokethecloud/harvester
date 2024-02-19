@@ -94,14 +94,14 @@ func (m *podMutator) Create(_ *types.Request, newObj runtime.Object) (types.Patc
 		return patchOps, nil
 	}
 
-	if IsKubevirtLauncherPod(pod) {
+	/*if IsKubevirtLauncherPod(pod) {
 		logrus.Debugf("found virt-launcher pod %s/%s", pod.Namespace, pod.GenerateName)
 		multusPatch, err := m.multusAnnotationPatch(pod)
 		if err != nil {
 			return nil, err
 		}
 		return multusPatch, nil
-	}
+	}*/
 
 	return nil, nil
 
