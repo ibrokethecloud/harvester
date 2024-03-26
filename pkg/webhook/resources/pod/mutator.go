@@ -94,14 +94,14 @@ func (m *podMutator) Create(_ *types.Request, newObj runtime.Object) (types.Patc
 		return patchOps, nil
 	}
 
-	/*if IsKubevirtLauncherPod(pod) {
+	if IsKubevirtLauncherPod(pod) {
 		logrus.Debugf("found virt-launcher pod %s/%s", pod.Namespace, pod.GenerateName)
 		multusPatch, err := m.multusAnnotationPatch(pod)
 		if err != nil {
 			return nil, err
 		}
 		return multusPatch, nil
-	}*/
+	}
 
 	return nil, nil
 
@@ -316,6 +316,7 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 		return patchOps, err
 	}
 
+	macDetails := generateNetworkMacMap(vmi)
 	// networkMap contains a map of vmi network name and generated pod name
 	// this needs to be mapped to multus network name as well to ensure patch
 	// can be generated
@@ -329,9 +330,14 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 
 	// rename network interfaces if needed
 	for i := range networkDefs {
-		podIfName, ok := vmiNetworkPodMap[fmt.Sprintf("%s/%s", networkDefs[i].Namespace, networkDefs[i].Name)]
+		networkName := fmt.Sprintf("%s/%s", networkDefs[i].Namespace, networkDefs[i].Name)
+		podIfName, ok := vmiNetworkPodMap[networkName]
 		if ok && namescheme.OrdinalSecondaryInterfaceName(networkDefs[i].InterfaceRequest) {
 			networkDefs[i].InterfaceRequest = podIfName
+			mac, ok := macDetails[networkName]
+			if ok {
+				networkDefs[i].MacRequest = mac
+			}
 		}
 	}
 
@@ -353,4 +359,21 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 
 	patchOps = append(patchOps, fmt.Sprintf(`{"op": "replace", "path": "%s", "value": %s}`, annotationPath, string(annotationBytes)))
 	return patchOps, nil
+}
+
+// generateNetworkMacMap parses vmi status to generate a map
+// of the form multus NAD definition name to associated MAC address
+// eg: "default/workload": "96:c4:41:35:f9:2d"
+func generateNetworkMacMap(vmi *kubevirtv1.VirtualMachineInstance) map[string]string {
+	networkMacMapping := make(map[string]string)
+	for _, v := range vmi.Status.Interfaces {
+		networkMacMapping[v.Name] = v.MAC
+	}
+	result := make(map[string]string)
+	for _, v := range vmi.Spec.Networks {
+		if v.Multus != nil {
+			result[v.Multus.NetworkName] = networkMacMapping[v.Name]
+		}
+	}
+	return result
 }

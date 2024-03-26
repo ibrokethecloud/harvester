@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/kubevirt/pkg/network/namescheme"
 
 	"github.com/harvester/harvester/pkg/util"
 	"github.com/harvester/harvester/pkg/webhook/types"
@@ -837,4 +838,21 @@ func Test_generateMultusAnnotationPatch(t *testing.T) {
 	t.Log(patchOps)
 	assert.NoError(err)
 	assert.Len(patchOps, 1)
+}
+
+func Test_PodMutation(t *testing.T) {
+
+	defaultMultusNetwork := &kubevirtv1.MultusNetwork{
+		NetworkName: "default/workload",
+	}
+
+	defaultNetwork := kubevirtv1.Network{
+		Name: "default",
+	}
+	defaultNetwork.Multus = defaultMultusNetwork
+
+	// make fake change
+	networkMap := namescheme.CreateHashedNetworkNameScheme([]kubevirtv1.Network{defaultNetwork})
+	t.Log(networkMap)
+
 }
