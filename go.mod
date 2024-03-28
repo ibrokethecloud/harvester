@@ -94,6 +94,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.9.3
 	github.com/urfave/cli v1.22.13
+	github.com/vishvananda/netlink v1.2.1-beta.2
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.18.0
 	golang.org/x/exp v0.0.0-20230725012225-302865e7556b
@@ -275,6 +276,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190809123943-df4f5c81cb3b // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect

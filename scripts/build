@@ -36,3 +36,4 @@ build_binary () {
 build_binary "harvester" "."
 build_binary "harvester-webhook" "./cmd/webhook"
 build_binary "upgrade-helper" "./cmd/upgradehelper"
+build_binary "harvester-network-migration-helper" "./cmd/network-migration-helper"

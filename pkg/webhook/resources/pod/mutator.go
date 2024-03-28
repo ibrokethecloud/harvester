@@ -16,12 +16,13 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	networkhelperapi "github.com/harvester/harvester/cmd/network-migration-helper/api"
 	"github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
 	v1 "github.com/harvester/harvester/pkg/generated/controllers/kubevirt.io/v1"
 	"github.com/harvester/harvester/pkg/util"
 	"github.com/harvester/harvester/pkg/webhook/types"
-
-	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 var matchingLabels = []labels.Set{
@@ -328,11 +329,16 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 		}
 	}
 
+	var aliasRequest []networkhelperapi.NetworkMappingRequest
 	// rename network interfaces if needed
 	for i := range networkDefs {
 		networkName := fmt.Sprintf("%s/%s", networkDefs[i].Namespace, networkDefs[i].Name)
 		podIfName, ok := vmiNetworkPodMap[networkName]
 		if ok && namescheme.OrdinalSecondaryInterfaceName(networkDefs[i].InterfaceRequest) {
+			aliasRequest = append(aliasRequest, networkhelperapi.NetworkMappingRequest{
+				SourceInterface: fmt.Sprintf("tap%s", podIfName[3:]),
+				AliasName:       fmt.Sprintf("tap%s", networkDefs[i].InterfaceRequest[3:]),
+			})
 			networkDefs[i].InterfaceRequest = podIfName
 			mac, ok := macDetails[networkName]
 			if ok {
@@ -357,7 +363,13 @@ func generateMultusAnnotationPatch(vmi *kubevirtv1.VirtualMachineInstance, pod *
 	//"k8s.v1.cni.cncf.io/networks": "[{\"interface\":\"net1\",\"name\":\"workload\",\"namespace\":\"default\"}]",
 	annotationPath := fmt.Sprintf("/metadata/annotations")
 
+	containerBytes, err := generateHelperPatch(aliasRequest)
+	if err != nil {
+		return patchOps, err
+	}
+	containerPath := fmt.Sprintf("/spec/containers/-")
 	patchOps = append(patchOps, fmt.Sprintf(`{"op": "replace", "path": "%s", "value": %s}`, annotationPath, string(annotationBytes)))
+	patchOps = append(patchOps, fmt.Sprintf(`{"op": "add", "path": "%s", "value": %s}`, containerPath, string(containerBytes)))
 	return patchOps, nil
 }
 
@@ -376,4 +388,29 @@ func generateNetworkMacMap(vmi *kubevirtv1.VirtualMachineInstance) map[string]st
 		}
 	}
 	return result
+}
+
+func generateHelperPatch(aliasRequest []networkhelperapi.NetworkMappingRequest) ([]byte, error) {
+	args, err := json.Marshal(aliasRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling mapping request to json: %v", err)
+	}
+	container := corev1.Container{
+		Name:            "harvester-network-migration-helper",
+		Image:           "gmehta3/harvester-network-migration-helper:dev",
+		ImagePullPolicy: corev1.PullAlways,
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Add: []corev1.Capability{
+					"NET_ADMIN",
+				},
+			},
+		},
+		Args: []string{
+			"--network-mapping-request",
+			string(args),
+		},
+	}
+
+	return json.Marshal(container)
 }
