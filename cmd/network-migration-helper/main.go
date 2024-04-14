@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -49,14 +50,43 @@ func run(mappingRequestString string) error {
 		return fmt.Errorf("error parsing mappingRequest string: %v", err)
 	}
 
-	if err := reconcileInterfaces(mappingRequest); err != nil {
-		return fmt.Errorf("error reconcilling network mapping requests: %v", err)
+	watch, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("error setting up watcher: %v", err)
 	}
+
+	defer watch.Close()
+
+	go func() {
+		for {
+			select {
+			case _, ok := <-watch.Events:
+				if !ok {
+					return
+				}
+				if err := reconcileInterfaces(mappingRequest); err != nil {
+					logrus.Errorf("error reconcilling network mapping requests: %v", err)
+				}
+			case err, ok := <-watch.Errors:
+				if !ok {
+					return
+				}
+				logrus.Errorf("error: %v", err)
+			}
+
+		}
+	}()
+
+	if err := watch.Add("/sys/devices/virtual/net"); err != nil {
+		return err
+	}
+
 	<-ctx.Done()
 	return nil
 }
 
 func reconcileInterfaces(mappingRequest []api.NetworkMappingRequest) error {
+	logrus.Info("reconcilling network mapping requests")
 	links, err := netlink.LinkList()
 	if err != nil {
 		return fmt.Errorf("error listing link info: %v", err)
