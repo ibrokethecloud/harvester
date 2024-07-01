@@ -83,7 +83,7 @@ func (s *Store) List(apiOp *types.APIRequest, schema *types.APISchema) (types.AP
 		Lister: func(ctx context.Context, partition Partition, cont string, revision string, limit int) (types.APIObjectList, error) {
 			return s.listPartition(ctx, apiOp, schema, partition, cont, revision, limit)
 		},
-		Concurrency: 3,
+		Concurrency: 10,
 		Partitions:  paritions,
 	}
 

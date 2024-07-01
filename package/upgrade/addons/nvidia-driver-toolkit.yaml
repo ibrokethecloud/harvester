@@ -1,0 +1,12 @@
+apiVersion: harvesterhci.io/v1beta1
+kind: Addon
+metadata:
+  name: nvidia-driver-toolkit
+  namespace: harvester-system
+spec:
+  chart: nvidia-driver-runtime
+  enabled: false
+  repo: http://harvester-cluster-repo.cattle-system.svc/charts
+  valuesContent: "image:\n  tag: sle-micro-head\n  repo: rancher/harvester-nvidia-driver-toolkit\ndriverLocation:
+    \ \"HTTPENDPOINT/NVIDIA-Linux-x86_64-vgpu-kvm.run\" \nfullnameOverride: nvidia-driver-runtime\n"
+  version: 0.1.1
