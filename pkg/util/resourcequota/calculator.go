@@ -378,6 +378,7 @@ func CalculateScaleResourceQuotaWithVMI(
 	if !vmiLimits.Memory().IsZero() && memOK {
 		mem := vmiLimits[corev1.ResourceMemory]
 		mem.Add(kubevirtservices.GetMemoryOverhead(vmi, runtime.GOARCH, ratio))
+		mem.Add(*resource.NewQuantity(AdditionalCompensationMemory, resource.BinarySI))
 		rl[corev1.ResourceLimitsMemory] = mem
 	}
 

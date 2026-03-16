@@ -10,6 +10,12 @@ import (
 	"github.com/harvester/harvester/pkg/util"
 )
 
+const (
+	// even kubevirt can't 100% precisely calculate the exact memory a vmi POD will consume
+	// we add an additional 128Mi when compensating RQ, to ensure the vmi migration target pod can be created
+	AdditionalCompensationMemory = 128 << 20
+)
+
 func HasMigratingVM(rq *corev1.ResourceQuota) bool {
 	if rq.Annotations == nil {
 		return false

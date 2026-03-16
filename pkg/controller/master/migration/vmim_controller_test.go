@@ -18,6 +18,7 @@ import (
 	fakegenerated "github.com/harvester/harvester/pkg/generated/clientset/versioned/fake"
 	"github.com/harvester/harvester/pkg/util"
 	"github.com/harvester/harvester/pkg/util/fakeclients"
+	rqutils "github.com/harvester/harvester/pkg/util/resourcequota"
 )
 
 const (
@@ -36,6 +37,11 @@ const (
 	errMockTrackerAdd = "mock resource should add into fake controller tracker"
 	errMockTrackerGet = "mock resource should get into fake controller tracker"
 )
+
+func memoryWithOverHeadLimit(mem *resource.Quantity) resource.Quantity {
+	mem.Add(*resource.NewQuantity(rqutils.AdditionalCompensationMemory, resource.BinarySI))
+	return *mem
+}
 
 func TestHandler_OnVmimChanged_WithResourceQuota(t *testing.T) {
 	// compute the dynamic overhead per kubevirt
@@ -133,7 +139,7 @@ func TestHandler_OnVmimChanged_WithResourceQuota(t *testing.T) {
 				Spec: corev1.ResourceQuotaSpec{
 					Hard: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceLimitsCPU:    *resource.NewQuantity(1, resource.DecimalSI), // will be updated by rq controller later
-						corev1.ResourceLimitsMemory: *resource.NewQuantity(memory1Gi*2, resource.BinarySI),
+						corev1.ResourceLimitsMemory: memoryWithOverHeadLimit(resource.NewQuantity(memory1Gi*2, resource.BinarySI)),
 					},
 				},
 			},
@@ -200,7 +206,7 @@ func TestHandler_OnVmimChanged_WithResourceQuota(t *testing.T) {
 				Spec: corev1.ResourceQuotaSpec{
 					Hard: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceLimitsCPU:    *resource.NewQuantity(1, resource.DecimalSI), // will be updated by rq controller later
-						corev1.ResourceLimitsMemory: *resource.NewQuantity(memory1Gi*2, resource.BinarySI),
+						corev1.ResourceLimitsMemory: memoryWithOverHeadLimit(resource.NewQuantity(memory1Gi*2, resource.BinarySI)),
 					},
 				},
 			},
@@ -267,7 +273,7 @@ func TestHandler_OnVmimChanged_WithResourceQuota(t *testing.T) {
 				Spec: corev1.ResourceQuotaSpec{
 					Hard: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceLimitsCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-						corev1.ResourceLimitsMemory: *resource.NewQuantity(memory1Gi*2+getMemWithOverhead(memory1Gi), resource.BinarySI),
+						corev1.ResourceLimitsMemory: memoryWithOverHeadLimit(resource.NewQuantity(memory1Gi*2+getMemWithOverhead(memory1Gi), resource.BinarySI)),
 					},
 				},
 			},
@@ -335,7 +341,7 @@ func TestHandler_OnVmimChanged_WithResourceQuota(t *testing.T) {
 				Spec: corev1.ResourceQuotaSpec{
 					Hard: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceLimitsCPU:    *resource.NewQuantity(2, resource.DecimalSI),
-						corev1.ResourceLimitsMemory: *resource.NewQuantity(memory1Gi*2+getMemWithOverhead(memory1Gi), resource.BinarySI),
+						corev1.ResourceLimitsMemory: memoryWithOverHeadLimit(resource.NewQuantity(memory1Gi*2+getMemWithOverhead(memory1Gi), resource.BinarySI)),
 					},
 				},
 			},
