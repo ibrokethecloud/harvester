@@ -178,9 +178,6 @@ func (s *HarvesterServer) ListenAndServe(listenerCfg *dynamiclistener.Config, op
 		listenOpts.TLSListenerConfig = *listenerCfg
 	}
 
-	s.steve.StartAggregation(s.Context)
-	s.startAggregation(opts)
-
 	if err := server.ListenAndServe(s.Context, opts.HTTPSListenPort, opts.HTTPListenPort, s.Handler, listenOpts); err != nil {
 		return err
 	}

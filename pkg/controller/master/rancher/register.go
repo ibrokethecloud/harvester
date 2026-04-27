@@ -90,7 +90,6 @@ func Register(ctx context.Context, management *config.Management, options config
 		configmaps := management.CoreFactory.Core().V1().ConfigMap()
 		nodes := management.CoreFactory.Core().V1().Node()
 		pods := management.CoreFactory.Core().V1().Pod()
-		namespaces := management.CoreFactory.Core().V1().Namespace()
 		deployments := management.AppsFactory.Apps().V1().Deployment()
 		settings := management.HarvesterFactory.Harvesterhci().V1beta1().Setting()
 		h := Handler{
@@ -111,12 +110,6 @@ func Register(ctx context.Context, management *config.Management, options config
 			Deployments:              deployments,
 			SettingCache:             settings.Cache(),
 		}
-		nodes.OnChange(ctx, controllerRancherName, h.PodResourcesOnChanged)
-		rancherSettings.OnChange(ctx, controllerRancherName, h.RancherSettingOnChange)
-		secrets.OnChange(ctx, controllerRancherName, h.TLSSecretOnChange)
-		deployments.OnChange(ctx, controllerCAPIDeployment, h.PatchCAPIDeployment)
-		rancherTokens.OnChange(ctx, controllerRancherName, h.RancherTokenOnChange)
-		namespaces.OnRemove(ctx, controllerNamespaceName, h.onNamespaceRemoved)
 
 		if err := h.registerExposeService(); err != nil {
 			return err
