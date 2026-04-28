@@ -1,0 +1,68 @@
+#!/bin/bash
+set -e
+
+SHA=$(git rev-parse HEAD)
+DAPPERFILE=Dockerfile.dapper
+DOCKER_VARS=""
+DOCKER_ARGS=""
+UUID=$(uuidgen)
+SCRIPT_NAME=$(basename "$0")
+
+generate_env_vars(){
+    ENV_VARS=$(grep "ENV DAPPER_ENV" ${DAPPERFILE} | tail -1 | awk -F"DAPPER_ENV=" '{print $2}'| xargs)
+    echo "ENV_VARS"
+    if [[ -z  ${ENV_VARS} ]]
+    then
+        echo "no DAPPER_ENV found in file so skipping"
+        return
+    fi
+    for v in ${ENV_VARS}
+    do
+        DOCKER_VARS="${DOCKER_VARS} -e $v=\${${v}}"
+    done
+}
+
+generate_run_args(){
+    DOCKER_ARGS=$(grep "ENV DAPPER_RUN_ARGS" ${DAPPERFILE} | tail -1 | awk -F"DAPPER_RUN_ARGS=" '{print $2}'| xargs)
+}
+
+build_image(){
+    echo "building execution image"
+    docker build -t run-image:${SHA} -f ${DAPPERFILE} .
+}
+
+copy_contents(){
+    local container_name=$1
+    local output=$(grep "ENV DAPPER_OUTPUT" ${DAPPERFILE} | tail -1 | awk -F"DAPPER_OUTPUT=" '{print $2}'| xargs)
+    local source=$(grep "ENV DAPPER_SOURCE" ${DAPPERFILE} | tail -1 | awk -F"DAPPER_SOURCE=" '{print $2}'| xargs)
+    for v in ${output}
+    do
+      echo "copying ${v} to host"
+      docker cp $container_name:${source}${v} .
+    done
+}
+
+verify_target(){
+    if [ ${SCRIPT_NAME} == $1 ]
+    then
+        echo "target ${SCRIPT_NAME} cannot call itself"
+        exit 1
+    fi
+}
+
+run(){
+    local command=$1
+    verify_target $1
+    cat ${DAPPERFILE}
+    generate_env_vars
+    generate_run_args
+    echo "calculated vars: ${DOCKER_VARS}"
+    echo "calculated args: ${DOCKER_ARGS}"
+    
+    build_image
+    docker run ${DOCKER_VARS} ${DOCKER_ARGS} --name ci-${UUID} run-image:${SHA} ${command}
+    copy_contents ci-${UUID}
+    docker rm -v ci-${UUID}
+}
+
+run $1

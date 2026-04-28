@@ -4,7 +4,8 @@ FROM quay.io/costoolkit/releases-teal:grub2-efi-image-live-0.0.4-2 AS grub2-efi
 FROM golang:1.25.7-bookworm
 
 ARG DAPPER_HOST_ARCH
-ENV ARCH=$DAPPER_HOST_ARCH
+ARG TARGETARCH
+ENV ARCH=$TARGETARCH
 ENV GOTOOLCHAIN=auto
 
 ARG HELM_VERSION=v3.20.0
@@ -101,7 +102,7 @@ ENV HOME=${DAPPER_SOURCE}
 # -- for dapper
 
 ENV GO111MODULE=on
-
 WORKDIR ${DAPPER_SOURCE}
+COPY . .
 ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
