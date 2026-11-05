@@ -9,8 +9,8 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func AuthHandler(ctx context.Context, config *rest.Config) (http.Handler, error) {
-	scaled, err := ranchercontext.NewScaled(ctx, config)
+func AuthHandler(ctx context.Context, config rest.Config) (http.Handler, error) {
+	scaled, err := ranchercontext.NewScaledContext(config, &ranchercontext.ScaleContextOptions{})
 	if err != nil {
 		return nil, err
 	}
