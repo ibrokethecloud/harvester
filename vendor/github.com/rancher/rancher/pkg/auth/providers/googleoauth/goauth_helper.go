@@ -1,14 +1,14 @@
 package googleoauth
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
-
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -16,9 +16,9 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-func (g *googleOauthProvider) getUserInfoAndGroups(adminSvc *admin.Service, gOAuthToken *oauth2.Token, config *v32.GoogleOauthConfig, testAndEnableAction bool) (v3.Principal, []v3.Principal, error) {
-	var userPrincipal v3.Principal
-	var groupPrincipals []v3.Principal
+func (g *googleOauthProvider) getUserInfoAndGroups(adminSvc *admin.Service, gOAuthToken *oauth2.Token, config *apiv3.GoogleOauthConfig, testAndEnableAction bool) (apiv3.Principal, []apiv3.Principal, error) {
+	var userPrincipal apiv3.Principal
+	var groupPrincipals []apiv3.Principal
 	// use the access token to make requests, get user info
 	user, err := g.goauthClient.getUser(gOAuthToken.AccessToken, config)
 	if err != nil {
@@ -38,7 +38,8 @@ func (g *googleOauthProvider) getUserInfoAndGroups(adminSvc *admin.Service, gOAu
 		// The error for this group request could be 403, because svc acc was not provided, and we're relying on individual
 		// users' creds to get groups
 		if config.ServiceAccountCredential == "" {
-			if gErr, ok := err.(*googleapi.Error); !ok || gErr.Code != http.StatusForbidden {
+			var gErr *googleapi.Error
+			if !errors.As(err, &gErr) || gErr.Code != http.StatusForbidden {
 				// if the error is not forbidden, return the error
 				return userPrincipal, groupPrincipals, err
 			}
@@ -59,9 +60,9 @@ func (g *googleOauthProvider) getUserInfoAndGroups(adminSvc *admin.Service, gOAu
 	return userPrincipal, groupPrincipals, nil
 }
 
-func (g *googleOauthProvider) fetchParentGroups(config *v32.GoogleOauthConfig, groupPrincipals []v3.Principal, adminSvc *admin.Service, hostedDomain string) ([]v3.Principal, error) {
+func (g *googleOauthProvider) fetchParentGroups(config *apiv3.GoogleOauthConfig, groupPrincipals []apiv3.Principal, adminSvc *admin.Service, hostedDomain string) ([]apiv3.Principal, error) {
 	groupMap := make(map[string]bool)
-	var nestedGroupPrincipals []v3.Principal
+	var nestedGroupPrincipals []apiv3.Principal
 	for _, principal := range groupPrincipals {
 		principals, err := g.gatherParentGroups(principal, adminSvc, config, hostedDomain, groupMap)
 		if err != nil {
@@ -75,15 +76,16 @@ func (g *googleOauthProvider) fetchParentGroups(config *v32.GoogleOauthConfig, g
 	return groupPrincipals, nil
 }
 
-func (g *googleOauthProvider) getGroupsUserBelongsTo(adminSvc *admin.Service, userKey string, hostedDomain string, config *v32.GoogleOauthConfig) ([]v3.Principal, error) {
-	var groupPrincipals []v3.Principal
+func (g *googleOauthProvider) getGroupsUserBelongsTo(adminSvc *admin.Service, userKey string, hostedDomain string, config *apiv3.GoogleOauthConfig) ([]apiv3.Principal, error) {
+	var groupPrincipals []apiv3.Principal
 	_, groups, err := g.paginateResults(adminSvc, hostedDomain, userKey, "", "", groupType, false)
 	if err != nil {
 		// The error for this group request could be 403, because svc acc was not provided, and we're relying on individual
 		// users' creds to get groups
 		if config.ServiceAccountCredential == "" {
 			// used the client creds, if error is forbidden, don't throw error
-			if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == http.StatusForbidden {
+			var gErr *googleapi.Error
+			if errors.As(err, &gErr) && gErr.Code == http.StatusForbidden {
 				return groupPrincipals, nil
 			}
 		}
@@ -99,7 +101,7 @@ func (g *googleOauthProvider) getGroupsUserBelongsTo(adminSvc *admin.Service, us
 	return groupPrincipals, nil
 }
 
-func (g *googleOauthProvider) searchPrincipals(adminSvc *admin.Service, searchKey, principalType string, config *v32.GoogleOauthConfig) ([]Account, error) {
+func (g *googleOauthProvider) searchPrincipals(adminSvc *admin.Service, searchKey, principalType string, config *apiv3.GoogleOauthConfig) ([]Account, error) {
 	var accounts []Account
 
 	if principalType == "" || principalType == "user" {
@@ -107,7 +109,8 @@ func (g *googleOauthProvider) searchPrincipals(adminSvc *admin.Service, searchKe
 		if err != nil {
 			if config.ServiceAccountCredential == "" {
 				// used the client creds, must try once with viewType domain_public
-				if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == http.StatusForbidden {
+				var gErr *googleapi.Error
+				if errors.As(err, &gErr) && gErr.Code == http.StatusForbidden {
 					userAccounts, err = g.searchUsers(adminSvc, searchKey, config, true)
 					if err != nil {
 						return nil, err
@@ -127,7 +130,8 @@ func (g *googleOauthProvider) searchPrincipals(adminSvc *admin.Service, searchKe
 		if err != nil {
 			if config.ServiceAccountCredential == "" {
 				// used the client creds, if error is forbidden, don't throw error
-				if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == http.StatusForbidden {
+				var gErr *googleapi.Error
+				if errors.As(err, &gErr) && gErr.Code == http.StatusForbidden {
 					return accounts, nil
 				}
 			}
@@ -139,7 +143,7 @@ func (g *googleOauthProvider) searchPrincipals(adminSvc *admin.Service, searchKe
 	return accounts, nil
 }
 
-func (g *googleOauthProvider) searchUsers(adminSvc *admin.Service, searchKey string, config *v32.GoogleOauthConfig, viewPublic bool) ([]Account, error) {
+func (g *googleOauthProvider) searchUsers(adminSvc *admin.Service, searchKey string, config *apiv3.GoogleOauthConfig, viewPublic bool) ([]Account, error) {
 	var users []*admin.User
 	var accounts []Account
 	users, _, err := g.paginateResults(adminSvc, config.Hostname, "", searchKey, "", userType, viewPublic)
@@ -163,7 +167,7 @@ func (g *googleOauthProvider) searchUsers(adminSvc *admin.Service, searchKey str
 	return accounts, nil
 }
 
-func (g *googleOauthProvider) searchGroups(adminSvc *admin.Service, searchKey string, config *v32.GoogleOauthConfig) ([]Account, error) {
+func (g *googleOauthProvider) searchGroups(adminSvc *admin.Service, searchKey string, config *apiv3.GoogleOauthConfig) ([]Account, error) {
 	var accounts []Account
 	groupsMap := map[string]*admin.Group{}
 	for _, attr := range []string{"name", "email"} {
@@ -230,8 +234,8 @@ func (g *googleOauthProvider) paginateResults(adminSvc *admin.Service, hostedDom
 	}
 }
 
-func (g *googleOauthProvider) gatherParentGroups(groupPrincipal v3.Principal, adminSvc *admin.Service, config *v32.GoogleOauthConfig, hostedDomain string, groupMap map[string]bool) ([]v3.Principal, error) {
-	var principals []v3.Principal
+func (g *googleOauthProvider) gatherParentGroups(groupPrincipal apiv3.Principal, adminSvc *admin.Service, config *apiv3.GoogleOauthConfig, hostedDomain string, groupMap map[string]bool) ([]apiv3.Principal, error) {
+	var principals []apiv3.Principal
 	if groupMap[groupPrincipal.ObjectMeta.Name] {
 		return principals, nil
 	}
@@ -249,21 +253,22 @@ func (g *googleOauthProvider) gatherParentGroups(groupPrincipal v3.Principal, ad
 	for _, group := range groups {
 		if groupMap[group.ObjectMeta.Name] {
 			continue
-		} else {
-			principals = append(principals, group)
-			nestedGroupPrincipals, err := g.gatherParentGroups(group, adminSvc, config, hostedDomain, groupMap)
-			if err != nil {
-				return principals, err
-			}
-			if len(nestedGroupPrincipals) > 0 {
-				principals = append(principals, nestedGroupPrincipals...)
-			}
+		}
+
+		principals = append(principals, group)
+		nestedGroupPrincipals, err := g.gatherParentGroups(group, adminSvc, config, hostedDomain, groupMap)
+		if err != nil {
+			return principals, err
+		}
+		if len(nestedGroupPrincipals) > 0 {
+			principals = append(principals, nestedGroupPrincipals...)
 		}
 	}
+
 	return principals, nil
 }
 
-func (g *googleOauthProvider) getdirectoryServiceFromStoredToken(storedOauthToken string, config *v32.GoogleOauthConfig) (*admin.Service, error) {
+func (g *googleOauthProvider) getdirectoryServiceFromStoredToken(storedOauthToken string, config *apiv3.GoogleOauthConfig) (*admin.Service, error) {
 	var oauthToken oauth2.Token
 	if err := json.Unmarshal([]byte(storedOauthToken), &oauthToken); err != nil {
 		return nil, err
@@ -273,7 +278,9 @@ func (g *googleOauthProvider) getdirectoryServiceFromStoredToken(storedOauthToke
 	if err != nil {
 		return nil, err
 	}
-	adminSvc, err := g.getDirectoryService(g.ctx, config.AdminEmail, []byte(config.ServiceAccountCredential), oauth2Config.TokenSource(g.ctx, &oauthToken))
+
+	ctx := context.TODO()
+	adminSvc, err := g.getDirectoryService(ctx, config.AdminEmail, []byte(config.ServiceAccountCredential), oauth2Config.TokenSource(ctx, &oauthToken))
 	if err != nil {
 		return nil, err
 	}

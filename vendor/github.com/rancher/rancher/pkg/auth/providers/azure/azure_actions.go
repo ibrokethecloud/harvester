@@ -10,7 +10,7 @@ import (
 	"github.com/rancher/norman/api/handler"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/auth/providers/azure/clients"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	client "github.com/rancher/rancher/pkg/client/generated/management/v3"
@@ -19,6 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
+
+const GraphEndpointMigratedAnnotation = "auth.cattle.io/azuread-endpoint-migrated"
 
 func (ap *Provider) formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	common.AddCommonActions(apiContext, resource)
@@ -36,15 +38,14 @@ func (ap *Provider) actionHandler(actionName string, action *types.Action, reque
 		return nil
 	}
 
-	if actionName == "configureTest" {
+	switch actionName {
+	case "configureTest":
 		return ap.ConfigureTest(request)
-	} else if actionName == "testAndApply" {
+	case "testAndApply":
 		return ap.testAndApply(request)
-	} else if actionName == "upgrade" {
-		return ap.migrateToMicrosoftGraph()
+	default:
+		return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 	}
-
-	return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 }
 
 func (ap *Provider) ConfigureTest(request *types.APIContext) error {
@@ -55,7 +56,7 @@ func (ap *Provider) ConfigureTest(request *types.APIContext) error {
 		return err
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"redirectUrl": formAzureRedirectURL(input),
 		"type":        "azureADConfigTestOutput",
 	}
@@ -76,7 +77,7 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 		}
 	}()
 
-	azureADConfigApplyInput := &v32.AzureADConfigApplyInput{}
+	azureADConfigApplyInput := &apiv3.AzureADConfigApplyInput{}
 	if err := json.NewDecoder(request.Request.Body).Decode(azureADConfigApplyInput); err != nil {
 		return httperror.NewAPIError(httperror.InvalidBodyContent,
 			fmt.Sprintf("Failed to parse body: %v", err))
@@ -89,9 +90,10 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 		logrus.Errorf("Failed to fetch Azure AD Config from Kubernetes: %v", err)
 		return httperror.NewAPIError(httperror.ServerError, "failed to fetch Azure AD Config from Kubernetes")
 	}
-	migrateNewFlowAnnotation(currentConfig, azureADConfig)
+	migrateNewFlowAnnotation(azureADConfig)
+	preserveStoredFields(currentConfig, azureADConfig)
 
-	azureLogin := &v32.AzureADLogin{
+	azureLogin := &apiv3.AzureADLogin{
 		Code: azureADConfigApplyInput.Code,
 	}
 
@@ -104,7 +106,7 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 		azureADConfig.ApplicationSecret = value
 	}
 	// Call provider
-	userPrincipal, groupPrincipals, providerToken, err := ap.loginUser(azureADConfig, azureLogin, true)
+	userPrincipal, groupPrincipals, providerToken, _, err := ap.loginUser(azureADConfig, azureLogin, true)
 	if err != nil {
 		if httperror.IsAPIError(err) {
 			return err
@@ -112,7 +114,7 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 		return errors.Wrap(err, "server error while authenticating")
 	}
 
-	user, err := ap.userMGR.SetPrincipalOnCurrentUser(request, userPrincipal)
+	user, err := ap.userMGR.SetPrincipalOnCurrentUser(request.Request, userPrincipal)
 	if err != nil {
 		return err
 	}
@@ -124,7 +126,7 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 
 	userExtraInfo := ap.GetUserExtraAttributes(userPrincipal)
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		return ap.tokenMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo)
+		return ap.userMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo)
 	}); err != nil {
 		return httperror.NewAPIError(httperror.ServerError, fmt.Sprintf("Failed to create or update userAttribute: %v", err))
 	}
@@ -132,19 +134,32 @@ func (ap *Provider) testAndApply(request *types.APIContext) error {
 	return ap.tokenMGR.CreateTokenAndSetCookie(user.Name, userPrincipal, groupPrincipals, providerToken, 0, "Token via Azure Configuration", request)
 }
 
-// Check the current auth config and make sure that the proposed one submitted through the API has up-to-date annotations.
-// Rancher relies on GraphEndpointMigratedAnnotation to choose the right authentication flow and Graph API.
-func migrateNewFlowAnnotation(current, proposed *v32.AzureADConfig) {
-	if IsConfigDeprecated(current) {
-		return
+func preserveStoredFields(stored, incoming *apiv3.AzureADConfig) {
+	if stored.Enabled {
+		incoming.Enabled = true
 	}
+	if incoming.AccessMode == "" {
+		incoming.AccessMode = stored.AccessMode
+	}
+	if incoming.AllowedPrincipalIDs == nil {
+		incoming.AllowedPrincipalIDs = stored.AllowedPrincipalIDs
+	}
+	if incoming.EndSessionEndpoint == "" {
+		incoming.EndSessionEndpoint = stored.EndSessionEndpoint
+	}
+	incoming.LogoutAllSupported = stored.LogoutAllSupported
+}
+
+// migrateNewFlowAnnotation ensures the proposed config has the GraphEndpointMigratedAnnotation set.
+// Rancher relies on this annotation to choose the right authentication flow and Graph API.
+func migrateNewFlowAnnotation(proposed *apiv3.AzureADConfig) {
 	// This covers the case where admins upgrade Rancher to v2.6.7+ without having used Azure AD as the auth provider.
 	// In 2.6.7+, whether Azure AD is later registered or not, Rancher on startup creates the annotation on the template auth config.
 	// But in the case where the auth config had been created on Rancher startup prior to v2.6.7, the annotation would be missing.
 	// This ensures the annotation is set on initial attempt to set up Azure AD.
 	// This also covers the case where admins want to reconfigure a v2.6.7+ new auth flow setup with a new secret or app.
-	if proposed.ObjectMeta.Annotations == nil {
-		proposed.ObjectMeta.Annotations = make(map[string]string)
+	if proposed.Annotations == nil {
+		proposed.Annotations = make(map[string]string)
 	}
-	proposed.ObjectMeta.Annotations[GraphEndpointMigratedAnnotation] = "true"
+	proposed.Annotations[GraphEndpointMigratedAnnotation] = "true"
 }

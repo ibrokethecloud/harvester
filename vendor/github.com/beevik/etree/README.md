@@ -1,4 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/beevik/etree?status.svg)](https://godoc.org/github.com/beevik/etree)
+[![Go](https://github.com/beevik/etree/actions/workflows/go.yml/badge.svg)](https://github.com/beevik/etree/actions/workflows/go.yml)
 
 etree
 =====
@@ -18,6 +19,8 @@ Some of the package's capabilities and features:
 * Implemented in pure go; depends only on standard go libraries.
 * Built on top of the go [encoding/xml](http://golang.org/pkg/encoding/xml)
   package.
+
+The etree package is compatible with go versions 1.23 and later.
 
 ### Creating an XML document
 
@@ -113,7 +116,7 @@ etree selection queries.
 root := doc.SelectElement("bookstore")
 fmt.Println("ROOT element:", root.Tag)
 
-for _, book := range root.SelectElements("book") {
+for _, book := range root.SelectElementsSeq("book") {
     fmt.Println("CHILD element:", book.Tag)
     if title := book.SelectElement("title"); title != nil {
         lang := title.SelectAttrValue("lang", "unknown")
@@ -148,7 +151,7 @@ into the category of 'WEB'.  The double-slash prefix in the path causes the
 search for book elements to occur recursively; book elements may appear at any
 level of the XML hierarchy.
 ```go
-for _, t := range doc.FindElements("//book[@category='WEB']/title") {
+for _, t := range doc.FindElementsSeq("//book[@category='WEB']/title") {
     fmt.Println("Title:", t.Text())
 }
 ```
@@ -162,7 +165,7 @@ Title: Learning XML
 This example finds the first book element under the root bookstore element and
 outputs the tag and text of each of its child elements.
 ```go
-for _, e := range doc.FindElements("./bookstore/book[1]/*") {
+for _, e := range doc.FindElementsSeq("./bookstore/book[1]/*") {
     fmt.Printf("%s: %s\n", e.Tag, e.Text())
 }
 ```
@@ -178,7 +181,7 @@ price: 30.00
 This example finds all books with a price of 49.99 and outputs their titles.
 ```go
 path := etree.MustCompilePath("./bookstore/book[p:price='49.99']/title")
-for _, e := range doc.FindElementsPath(path) {
+for _, e := range doc.FindElementsPathSeq(path) {
     fmt.Println(e.Text())
 }
 ```
@@ -188,8 +191,8 @@ Output:
 XQuery Kick Start
 ```
 
-Note that this example uses the FindElementsPath function, which takes as an
-argument a pre-compiled path object. Use precompiled paths when you plan to
+Note that this example uses the `FindElementsPathSeq` function, which takes as
+an argument a pre-compiled path object. Use precompiled paths when you plan to
 search with the same path more than once.
 
 ### Other features

@@ -3,21 +3,24 @@ package keycloakoidc
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
-	"github.com/pkg/errors"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	"github.com/rancher/rancher/pkg/auth/accessor"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	"github.com/rancher/rancher/pkg/auth/providers/oidc"
 	"github.com/rancher/rancher/pkg/auth/tokens"
 	client "github.com/rancher/rancher/pkg/client/generated/management/v3"
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
+	publicclient "github.com/rancher/rancher/pkg/client/generated/management/v3public"
 	"github.com/rancher/rancher/pkg/types/config"
 	"github.com/rancher/rancher/pkg/user"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,7 +36,7 @@ type keyCloakOIDCProvider struct {
 }
 
 func Configure(ctx context.Context, mgmtCtx *config.ScaledContext, userMGR user.Manager, tokenMGR *tokens.Manager) common.AuthProvider {
-	return &keyCloakOIDCProvider{
+	p := &keyCloakOIDCProvider{
 		oidc.OpenIDCProvider{
 			Name:        Name,
 			Type:        client.KeyCloakOIDCConfigType,
@@ -41,16 +44,19 @@ func Configure(ctx context.Context, mgmtCtx *config.ScaledContext, userMGR user.
 			AuthConfigs: mgmtCtx.Management.AuthConfigs(""),
 			Secrets:     mgmtCtx.Wrangler.Core.Secret(),
 			UserMGR:     userMGR,
-			TokenMGR:    tokenMGR,
+			TokenMgr:    tokenMGR,
 		},
 	}
+
+	p.GetConfig = p.GetOIDCConfig
+	return p
 }
 
 func (k *keyCloakOIDCProvider) GetName() string {
 	return Name
 }
 
-func (k *keyCloakOIDCProvider) newClient(config *v32.OIDCConfig, token v3.Token) (*KeyCloakClient, error) {
+func (k *keyCloakOIDCProvider) newClient(config *apiv3.OIDCConfig, token accessor.TokenAccessor) (*KeyCloakClient, error) {
 	// creating context for new client and for refreshing oauth token if needed
 	ctx, err := oidc.AddCertKeyToContext(context.Background(), config.Certificate, config.PrivateKey)
 	if err != nil {
@@ -58,13 +64,25 @@ func (k *keyCloakOIDCProvider) newClient(config *v32.OIDCConfig, token v3.Token)
 	}
 	provider, err := gooidc.NewProvider(ctx, config.Issuer)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new oidc provider: %w", err)
 	}
+
 	oauthConfig := oidc.ConfigToOauthConfig(provider.Endpoint(), config)
-	// get, refresh and update token
-	oauthToken, err := k.getRefreshAndUpdateToken(ctx, oauthConfig, token)
-	if err != nil {
-		return nil, err
+	var oauthToken *oauth2.Token
+	if config.ClientAuthenticatedSearch {
+		token, err := k.getClientCredentialsToken(ctx, provider, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get client credentials: %w", err)
+		}
+		oauthToken = token
+	} else {
+		// get, refresh and update token
+		token, err := k.getRefreshAndUpdateToken(ctx, oauthConfig, token)
+		if err != nil {
+			return nil, err
+		}
+		oauthToken = token
+
 	}
 	keyCloakClient := &KeyCloakClient{
 		httpClient: oauthConfig.Client(ctx, oauthToken),
@@ -73,17 +91,17 @@ func (k *keyCloakOIDCProvider) newClient(config *v32.OIDCConfig, token v3.Token)
 	return keyCloakClient, err
 }
 
-func (k *keyCloakOIDCProvider) SearchPrincipals(searchValue, principalType string, token v3.Token) ([]v3.Principal, error) {
-	var principals []v3.Principal
+func (k *keyCloakOIDCProvider) SearchPrincipals(searchValue, principalType string, token accessor.TokenAccessor) ([]apiv3.Principal, error) {
+	var principals []apiv3.Principal
 	var err error
 
-	config, err := k.GetOIDCConfig()
+	config, err := k.GetConfig()
 	if err != nil {
 		return principals, err
 	}
 	keyCloakClient, err := k.newClient(config, token)
 	if err != nil {
-		logrus.Errorf("[keycloak oidc] SsearchPrincipals: error creating new http client: %v", err)
+		logrus.Errorf("[keycloak oidc] SearchPrincipals: error creating new http client: %v", err)
 		return principals, err
 	}
 	accts, err := keyCloakClient.searchPrincipals(searchValue, principalType, config)
@@ -92,18 +110,30 @@ func (k *keyCloakOIDCProvider) SearchPrincipals(searchValue, principalType strin
 		return principals, err
 	}
 	for _, acct := range accts {
-		p := k.toPrincipal(acct.Type, acct, &token)
+		p := k.toPrincipal(acct.Type, acct, token)
 		principals = append(principals, p)
 	}
 	return principals, nil
 }
 
-func (k *keyCloakOIDCProvider) toPrincipal(principalType string, acct account, token *v3.Token) v3.Principal {
+// TransformToAuthProvider yields information used, typically by the UI, to be able to form URLs used to perform login.
+func (k *keyCloakOIDCProvider) TransformToAuthProvider(authConfig map[string]any) (map[string]any, error) {
+	p, err := k.OpenIDCProvider.TransformToAuthProvider(authConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	p[publicclient.KeyCloakOIDCProviderFieldScopes] = authConfig["scope"]
+
+	return p, nil
+}
+
+func (k *keyCloakOIDCProvider) toPrincipal(principalType string, acct account, token accessor.TokenAccessor) apiv3.Principal {
 	displayName := acct.Name
 	if displayName == "" {
 		displayName = acct.Username
 	}
-	princ := v3.Principal{
+	princ := apiv3.Principal{
 		ObjectMeta:  metav1.ObjectMeta{Name: k.GetName() + "_" + principalType + "://" + acct.ID},
 		DisplayName: displayName,
 		LoginName:   acct.Username,
@@ -114,72 +144,160 @@ func (k *keyCloakOIDCProvider) toPrincipal(principalType string, acct account, t
 	if principalType == UserType {
 		princ.PrincipalType = UserType
 		if token != nil {
-			princ.Me = k.IsThisUserMe(token.UserPrincipal, princ)
+			princ.Me = k.IsThisUserMe(token.GetUserPrincipal(), princ)
 		}
 	} else {
 		princ.PrincipalType = GroupType
 		princ.ObjectMeta = metav1.ObjectMeta{Name: k.GetName() + "_" + principalType + "://" + acct.Name}
 		if token != nil {
-			princ.MemberOf = k.TokenMGR.IsMemberOf(*token, princ)
+			princ.MemberOf = k.UserMGR.IsMemberOf(token, princ)
 		}
 	}
 	return princ
 }
 
-func (k *keyCloakOIDCProvider) GetPrincipal(principalID string, token v3.Token) (v3.Principal, error) {
+func (k *keyCloakOIDCProvider) GetPrincipal(principalID string, token accessor.TokenAccessor) (apiv3.Principal, error) {
 	config, err := k.GetOIDCConfig()
 	if err != nil {
-		return v3.Principal{}, err
+		return apiv3.Principal{}, err
 	}
 	var externalID string
 	parts := strings.SplitN(principalID, ":", 2)
 	if len(parts) != 2 {
-		return v3.Principal{}, errors.Errorf("invalid id %v", principalID)
+		return apiv3.Principal{}, fmt.Errorf("invalid id %v", principalID)
 	}
 	externalID = strings.TrimPrefix(parts[1], "//")
 	parts = strings.SplitN(parts[0], "_", 2)
 	if len(parts) != 2 {
-		return v3.Principal{}, errors.Errorf("invalid id %v", principalID)
+		return apiv3.Principal{}, fmt.Errorf("invalid id %v", principalID)
 	}
 	principalType := parts[1]
 	keyCloakClient, err := k.newClient(config, token)
 	if err != nil {
 		logrus.Warnf("[keycloak oidc] GetPrincipal: error creating new http client: %v", err)
-		return v3.Principal{}, err
+		return apiv3.Principal{}, err
 	}
 	acct, err := keyCloakClient.getFromKeyCloakByID(externalID, principalType, config)
 	if err != nil {
-		return v3.Principal{}, err
+		return apiv3.Principal{}, err
 	}
-	princ := k.toPrincipal(principalType, acct, &token)
+	princ := k.toPrincipal(principalType, acct, token)
 	return princ, err
 }
 
-func (k *keyCloakOIDCProvider) getRefreshAndUpdateToken(ctx context.Context, oauthConfig oauth2.Config, token v3.Token) (*oauth2.Token, error) {
+func (k *keyCloakOIDCProvider) getRefreshAndUpdateToken(ctx context.Context, oauthConfig oauth2.Config, token accessor.TokenAccessor) (*oauth2.Token, error) {
 	var oauthToken *oauth2.Token
-	storedOauthToken, err := k.TokenMGR.GetSecret(token.UserID, token.AuthProvider, []*v3.Token{&token})
-	if err := json.Unmarshal([]byte(storedOauthToken), &oauthToken); err != nil {
-		return oauthToken, err
-	}
+	storedOauthToken, err := k.TokenMgr.GetSecret(token.GetUserID(), token.GetAuthProvider(), []accessor.TokenAccessor{token})
 	if err != nil {
+		// If the secret lookup failed for a reason other than NotFound, surface the error.
 		if !apierrors.IsNotFound(err) {
-			return oauthToken, err
+			return nil, fmt.Errorf("getting access token for user: %w", err)
 		}
-		oauthToken.AccessToken = token.ProviderInfo["access_token"]
+
+		// Secret not found: fall back to the access token stored in ProviderInfo.
+		accessToken, ok := token.GetProviderInfo()["access_token"]
+		if !ok || strings.TrimSpace(accessToken) == "" {
+			return nil, fmt.Errorf("no stored access token found for user %s", token.GetUserID())
+		}
+		oauthToken = &oauth2.Token{
+			AccessToken: strings.TrimSpace(accessToken),
+		}
+	} else {
+		// Secret retrieved successfully. First, try to interpret it as JSON-encoded oauth2.Token.
+		stored := strings.TrimSpace(storedOauthToken)
+		if stored == "" {
+			return nil, fmt.Errorf("empty access token secret for user %s", token.GetUserID())
+		}
+		if unmarshalErr := json.Unmarshal([]byte(stored), &oauthToken); unmarshalErr != nil || oauthToken == nil {
+			// If unmarshalling fails or yields nil, fall back to treating the secret as a raw access token string.
+			oauthToken = &oauth2.Token{
+				AccessToken: stored,
+			}
+		}
 	}
+
 	// Valid will return false if access token is expired
 	if !oauthToken.Valid() {
 		// since token is not valid, the TokenSource func used in the Client func will attempt to refresh the access token
 		// if the refresh token has not expired
-		logrus.Debugf("[generic oidc] RefeshAndUpdateToken: attempting to refresh access token")
+		logrus.Debugf("[generic oidc] RefreshAndUpdateToken: attempting to refresh access token")
 	}
+
 	reusedToken, err := oauth2.ReuseTokenSource(oauthToken, oauthConfig.TokenSource(ctx, oauthToken)).Token()
 	if err != nil {
-		return oauthToken, err
+		// invalid_grant means the refresh token was revoked at the IdP (e.g. session
+		// deleted in Keycloak). This won't resolve on retry, so surface it as
+		// NonTransientError to stop the controller from requeuing.
+		var retrieveErr *oauth2.RetrieveError
+		if errors.As(err, &retrieveErr) && retrieveErr.ErrorCode == "invalid_grant" {
+			return oauthToken, &common.NonTransientError{Err: fmt.Errorf("setting up reusable token: %w", err)}
+		}
+		return oauthToken, fmt.Errorf("setting up reusable token: %w", err)
 	}
 
 	if !reflect.DeepEqual(oauthToken, reusedToken) {
-		k.UpdateToken(reusedToken, token.UserID)
+		if err := k.UpdateToken(reusedToken, token.GetUserID()); err != nil {
+			logrus.Errorf("updating cached oauth token for user %s: %s", token.GetUserID(), err)
+		}
 	}
+
+	return reusedToken, nil
+}
+
+func (k *keyCloakOIDCProvider) getClientCredentialsToken(ctx context.Context, provider *gooidc.Provider, config *apiv3.OIDCConfig) (*oauth2.Token, error) {
+	var oauthToken *oauth2.Token
+	secretExists := true
+	storedOauthToken, err := k.TokenMgr.GetSecret(k.GetName(), k.GetName(), nil)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			secretExists = false
+		} else {
+			return nil, fmt.Errorf("finding oauth token for provider %s: %w", k.GetName(), err)
+		}
+	}
+	if storedOauthToken != "" {
+		if err := json.Unmarshal([]byte(storedOauthToken), &oauthToken); err != nil {
+			return nil, fmt.Errorf("unmarshalling cached oauth token for provider %s: %w", k.GetName(), err)
+		}
+	}
+	oauthConfig := oidc.ConfigToOauthConfig(provider.Endpoint(), config)
+	clientConf := clientcredentials.Config{
+		ClientID:     oauthConfig.ClientID,
+		ClientSecret: oauthConfig.ClientSecret,
+		TokenURL:     provider.Endpoint().TokenURL,
+		AuthStyle:    oauth2.AuthStyleInParams,
+		Scopes:       oauthConfig.Scopes,
+	}
+	if oauthToken != nil && (!oauthToken.Valid() || oauthToken.AccessToken == "") {
+		logrus.Debugf("[keycloak oidc] RefreshAndUpdateToken: attempting to refresh access token from client credentials")
+		tok, err := clientConf.Token(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch token: %w", err)
+		}
+		oauthToken = tok
+	}
+
+	reusedToken, err := oauth2.ReuseTokenSource(oauthToken, clientConf.TokenSource(ctx)).Token()
+	if err != nil {
+		return nil, fmt.Errorf("reusing the token source for provider %s: %w", k.GetName(), err)
+	}
+
+	if !reflect.DeepEqual(oauthToken, reusedToken) {
+		if !secretExists {
+			tokenBytes, err := json.Marshal(reusedToken)
+			if err != nil {
+				logrus.Errorf("marshalling oauth token for provider %s: %s", k.GetName(), err)
+			} else {
+				if err := k.TokenMgr.CreateSecret(k.GetName(), k.GetName(), string(tokenBytes)); err != nil {
+					logrus.Errorf("creating cached oauth token for provider %s: %s", k.GetName(), err)
+				}
+			}
+		} else {
+			if err := k.UpdateToken(reusedToken, k.GetName()); err != nil {
+				logrus.Errorf("updating cached oauth token for provider %s: %s", k.GetName(), err)
+			}
+		}
+	}
+
 	return reusedToken, nil
 }

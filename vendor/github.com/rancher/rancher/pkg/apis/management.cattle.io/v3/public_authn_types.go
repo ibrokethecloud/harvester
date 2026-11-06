@@ -52,9 +52,27 @@ type AuthToken struct {
 }
 
 type GenericLogin struct {
+	Type         string `json:"type,omitempty"`
 	TTLMillis    int64  `json:"ttl,omitempty"`
 	Description  string `json:"description,omitempty" norman:"type=string,required"`
 	ResponseType string `json:"responseType,omitempty" norman:"type=string,required"` //json or cookie
+	Name         string `json:"-"`
+}
+
+func (g GenericLogin) GetType() string {
+	return g.Type
+}
+func (g GenericLogin) GetTTL() int64 {
+	return g.TTLMillis
+}
+func (g GenericLogin) GetDescription() string {
+	return g.Description
+}
+func (g GenericLogin) GetResponseType() string {
+	return g.ResponseType
+}
+func (g GenericLogin) GetName() string {
+	return g.Name
 }
 
 type BasicLogin struct {
@@ -90,6 +108,19 @@ type GithubProvider struct {
 type GithubLogin struct {
 	GenericLogin `json:",inline"`
 	Code         string `json:"code" norman:"type=string,required"`
+}
+
+// +genclient
+// +kubebuilder:skipversion
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type GithubAppProvider struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	AuthProvider      `json:",inline"`
+
+	RedirectURL string `json:"redirectUrl"`
 }
 
 // +genclient
@@ -201,6 +232,7 @@ type OKTAProvider struct {
 }
 
 type SamlLoginInput struct {
+	GenericLogin     `json:",inline"`
 	FinalRedirectURL string `json:"finalRedirectUrl"`
 	RequestID        string `json:"requestId"`
 	PublicKey        string `json:"publicKey"`
@@ -229,8 +261,16 @@ type OIDCLogin struct {
 	Code         string `json:"code" norman:"type=string,required"`
 }
 
+// +genclient
+// +kubebuilder:skipversion
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type KeyCloakOIDCProvider struct {
 	OIDCProvider `json:",inline"`
+
+	RedirectURL string `json:"redirectUrl"`
+	Scopes      string `json:"scopes"`
 }
 
 // +genclient
@@ -250,4 +290,18 @@ type GenericOIDCProvider struct {
 type GenericOIDCLogin struct {
 	GenericLogin `json:",inline"`
 	Code         string `json:"code" norman:"type=string,required"`
+}
+
+// +genclient
+// +kubebuilder:skipversion
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CognitoProvider struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	AuthProvider      `json:",inline"`
+
+	RedirectURL string `json:"redirectUrl"`
+	Scopes      string `json:"scopes"`
 }

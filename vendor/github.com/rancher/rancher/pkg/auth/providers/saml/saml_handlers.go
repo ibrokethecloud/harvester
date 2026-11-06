@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/crewjam/saml"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -84,10 +84,8 @@ func (s *Provider) getPossibleRequestIDs(r *http.Request) []string {
 		if strings.HasPrefix(name, "Rancher_") {
 			continue
 		}
-		jwtParser := jwt.Parser{
-			ValidMethods: []string{jwt.SigningMethodHS256.Name},
-		}
-		token, err := jwtParser.Parse(value, func(t *jwt.Token) (interface{}, error) {
+		jwtParser := newJWTParser()
+		token, err := jwtParser.Parse(value, func(t *jwt.Token) (any, error) {
 			secretBlock := x509.MarshalPKCS1PrivateKey(serviceProvider.Key)
 			return secretBlock, nil
 		})
@@ -113,9 +111,9 @@ func (s *Provider) HandleSamlLogin(w http.ResponseWriter, r *http.Request, userI
 
 	req, err := serviceProvider.MakeAuthenticationRequest(bindingLocation, binding, saml.HTTPPostBinding)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return "", err
 	}
+
 	// relayState is limited to 80 bytes but also must be integrity protected.
 	// this means that we cannot use a JWT because it is way too long. Instead
 	// we set a cookie that corresponds to the state

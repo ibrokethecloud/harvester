@@ -14,9 +14,9 @@ import (
 	ocispecv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/registry"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 	corev1 "k8s.io/api/core/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -122,32 +122,69 @@ func GenerateIndex(ociClient *Client, URL string, credentialSecret *corev1.Secre
 	var maxTag string
 	var chartName string
 	var updatedChartVersions []*repo.ChartVersion
+	var constraint version.Constraints
+	if clusterRepoSpec.OCIOptions != nil && clusterRepoSpec.OCIOptions.TagFilter != "" {
+		constraint, err = version.NewConstraint(clusterRepoSpec.OCIOptions.TagFilter)
+		if err != nil {
+			logrus.Errorf("failed to parse semver constraint %s: %s", clusterRepoSpec.OCIOptions.TagFilter, err.Error())
+			constraint = version.Constraints{}
+		}
+	} else {
+		constraint = version.Constraints{}
+	}
 	// Loop over all the tags and find the latest version
 	tagsFunc := func(tags []string) error {
 		existingTags := make(map[string]bool)
 		var maxSemver *version.Version
 
 		for i := len(tags) - 1; i >= 0; i-- {
-			existingTags[tags[i]] = true
 			// Check if the tag is a valid semver version or not. If yes, then proceed.
 			// Change underscore (_) back to plus (+) same as Helm does
-			// See https://github.com/helm/helm/issues/10166
+			// See https://github.com/helm/helm/issues/10166. Also having _ is not a valid semver.
 			semverTag, err := version.NewVersion(strings.ReplaceAll(tags[i], "_", "+"))
 			if err != nil {
 				// skipping the tag since it is not semver
+				logrus.Debugf("skipping tag %s since it is not a valid semver for chart %s", tags[i], chartName)
+				continue
+			}
+			// Check if the tag matches the semver constraint from the clusterrepo
+			if !constraint.Check(semverTag) {
+				logrus.Debugf("skipping tag %s since it does not match the semver constraint %s for chart %s", tags[i], clusterRepoSpec.OCIOptions.TagFilter, chartName)
+				continue
+			}
+
+			existingTags[semverTag.String()] = true
+			if clusterRepoSpec.OCIOptions != nil && clusterRepoSpec.OCIOptions.DownloadAllTags {
+				ociClient.tag = semverTag.String()
+				orasRepository, err := ociClient.GetOrasRepository()
+				if err != nil {
+					return fmt.Errorf("failed to create an oras repository for url %s: %w", URL, err)
+				}
+				err = addToHelmRepoIndex(*ociClient, indexFile, orasRepository)
+				if err != nil {
+					// Users can have access to only some repositories and not all.
+					// So, if pulling the chart fails due to Forbidden error, then skip it.
+					var errResp *errcode.ErrorResponse
+					if errors.As(err, &errResp) && errResp.StatusCode == http.StatusForbidden {
+						delete(indexFile.Entries, chartName)
+						logrus.Warnf("failed to add OCI repository %s to helm repo index: %v", ociClient.repository, err)
+					} else {
+						return fmt.Errorf("failed to add tag %s in OCI repository %s to helm repo index: %w", maxTag, ociClient.repository, err)
+					}
+				}
 				continue
 			}
 
 			if maxSemver == nil || maxSemver.LessThan(semverTag) {
 				maxSemver = semverTag
-				maxTag = tags[i]
+				maxTag = semverTag.String()
 			}
 
 			// Add tags into the helm repo index
-			if !indexFile.Has(chartName, tags[i]) {
+			if !indexHas(indexFile, chartName, semverTag.String()) {
 				chartVersion := &repo.ChartVersion{
 					Metadata: &chart.Metadata{
-						Version: tags[i],
+						Version: semverTag.String(),
 						Name:    chartName,
 					},
 					URLs: []string{fmt.Sprintf("oci://%s/%s:%s", ociClient.registry, ociClient.repository, tags[i])},
@@ -193,12 +230,12 @@ func GenerateIndex(ociClient *Client, URL string, credentialSecret *corev1.Secre
 					return fmt.Errorf("failed to fetch tags for repository %s: %w", URL, err)
 				}
 
-				if maxTag != "" {
+				if (clusterRepoSpec.OCIOptions != nil && !clusterRepoSpec.OCIOptions.DownloadAllTags) || maxTag != "" {
 					ociClient.tag = maxTag
 					err = addToHelmRepoIndex(*ociClient, indexFile, orasRepository)
 					if err != nil {
 						// Users can have access to only some repositories and not all.
-						// So, if pulling the chart fails due to Forbiden error, then skip it.
+						// So, if pulling the chart fails due to Forbidden error, then skip it.
 						var errResp *errcode.ErrorResponse
 						if errors.As(err, &errResp) && errResp.StatusCode == http.StatusForbidden {
 							delete(indexFile.Entries, chartName)
@@ -302,11 +339,32 @@ func addToHelmRepoIndex(ociClient Client, indexFile *repo.IndexFile, orasReposit
 		}
 	}
 
+	// Make sure to convert + to _ since OCI registries do not support + in tags and Helm converts it to _ while fetching the chart.
+	originalTag := ociClient.tag
+	ociClient.tag = strings.ReplaceAll(ociClient.tag, "+", "_")
+
 	// Fetch the helm chart tar to get the Chart.yaml
 	filePath, err = ociClient.fetchChart(orasRepository)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch the helm chart %s: %w", ociURL, err)
 		return
+	}
+
+	// Add the chart to the index
+	err = ociClient.addToIndex(indexFile, filePath)
+	if err != nil {
+		err = fmt.Errorf("unable to add helm chart %s to index: %w", ociURL, err)
+	}
+
+	// Replace it back so that further comparisons can continue
+	ociClient.tag = originalTag
+
+	// Remove the entry from the indexfile since the next function addToIndex
+	// will add. This is done to avoid duplication.
+	for index, entry := range indexFile.Entries[chartName] {
+		if entry.Metadata.Name == chartName && entry.Version == ociClient.tag && entry.Digest == "" {
+			indexFile.Entries[chartName] = append(indexFile.Entries[chartName][:index], indexFile.Entries[chartName][index+1:]...)
+		}
 	}
 
 	// We load index into memory and so we should set a limit
@@ -320,19 +378,24 @@ func addToHelmRepoIndex(ociClient Client, indexFile *repo.IndexFile, orasReposit
 		return
 	}
 
-	// Remove the entry from the indexfile since the next function addToIndex
-	// will add. This is done to avoid duplication.
-	for index, entry := range indexFile.Entries[chartName] {
-		if entry.Metadata.Name == chartName && entry.Version == ociClient.tag {
-			indexFile.Entries[chartName] = append(indexFile.Entries[chartName][:index], indexFile.Entries[chartName][index+1:]...)
+	return
+}
+
+func indexHas(indexFile *repo.IndexFile, chartName string, version string) bool {
+	// check if chart exists
+	entries, ok := indexFile.Entries[chartName]
+	if !ok {
+		return false
+	}
+
+	// check if the version exists
+	for _, chartVersion := range entries {
+		if chartVersion != nil &&
+			chartVersion.Metadata != nil &&
+			chartVersion.Metadata.Version == version {
+			return true
 		}
 	}
 
-	// Add the chart to the index
-	err = ociClient.addToIndex(indexFile, filePath)
-	if err != nil {
-		err = fmt.Errorf("unable to add helm chart %s to index: %w", ociURL, err)
-	}
-
-	return
+	return false
 }

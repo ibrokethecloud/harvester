@@ -1,15 +1,16 @@
 package activedirectory
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/norman/httperror"
+	"github.com/rancher/apiserver/pkg/apierror"
 	"github.com/rancher/norman/types"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	"github.com/rancher/rancher/pkg/auth/accessor"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	"github.com/rancher/rancher/pkg/auth/tokens"
 	v3client "github.com/rancher/rancher/pkg/client/generated/management/v3"
@@ -18,6 +19,7 @@ import (
 	"github.com/rancher/rancher/pkg/types/config"
 	"github.com/rancher/rancher/pkg/user"
 	wcorev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/v3/pkg/schemas/validation"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,7 +47,6 @@ const (
 var scopes = []string{UserScope, GroupScope}
 
 type adProvider struct {
-	ctx         context.Context
 	authConfigs mgmtv3.AuthConfigInterface
 	configMaps  wcorev1.ConfigMapCache
 	secrets     wcorev1.SecretController
@@ -55,9 +56,8 @@ type adProvider struct {
 	tokenMGR    *tokens.Manager
 }
 
-func Configure(ctx context.Context, mgmtCtx *config.ScaledContext, userMGR user.Manager, tokenMGR *tokens.Manager) common.AuthProvider {
+func Configure(mgmtCtx *config.ScaledContext, userMGR user.Manager, tokenMGR *tokens.Manager) common.AuthProvider {
 	return &adProvider{
-		ctx:         ctx,
 		authConfigs: mgmtCtx.Management.AuthConfigs(""),
 		configMaps:  mgmtCtx.Wrangler.Core.ConfigMap().Cache(),
 		secrets:     mgmtCtx.Wrangler.Core.Secret(),
@@ -66,11 +66,11 @@ func Configure(ctx context.Context, mgmtCtx *config.ScaledContext, userMGR user.
 	}
 }
 
-func (p *adProvider) LogoutAll(apiContext *types.APIContext, token *v3.Token) error {
+func (p *adProvider) LogoutAll(w http.ResponseWriter, r *http.Request, token accessor.TokenAccessor) error {
 	return nil
 }
 
-func (p *adProvider) Logout(apiContext *types.APIContext, token *v3.Token) error {
+func (p *adProvider) Logout(w http.ResponseWriter, r *http.Request, token accessor.TokenAccessor) error {
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (p *adProvider) CustomizeSchema(schema *types.Schema) {
 	schema.Formatter = p.formatter
 }
 
-func (p *adProvider) TransformToAuthProvider(authConfig map[string]interface{}) (map[string]interface{}, error) {
+func (p *adProvider) TransformToAuthProvider(authConfig map[string]any) (map[string]any, error) {
 	ap := common.TransformToAuthProvider(authConfig)
 	defaultDomain := ""
 	if dld, ok := authConfig[client.ActiveDirectoryProviderFieldDefaultLoginDomain].(string); ok {
@@ -93,7 +93,7 @@ func (p *adProvider) TransformToAuthProvider(authConfig map[string]interface{}) 
 	return ap, nil
 }
 
-func (p *adProvider) AuthenticateUser(ctx context.Context, input interface{}) (v3.Principal, []v3.Principal, string, error) {
+func (p *adProvider) AuthenticateUser(_ http.ResponseWriter, _ *http.Request, input any) (v3.Principal, []v3.Principal, string, error) {
 	login, ok := input.(*v3.BasicLogin)
 	if !ok {
 		return v3.Principal{}, nil, "", errors.New("unexpected input type")
@@ -106,7 +106,7 @@ func (p *adProvider) AuthenticateUser(ctx context.Context, input interface{}) (v
 
 	// If a migration is running, we need to block logins and indicate why we are doing so
 	if config.Annotations != nil && config.Annotations[StatusACMigrationRunning] == StatusMigrationRunning {
-		return v3.Principal{}, nil, "", httperror.WrapAPIError(err, httperror.ClusterUnavailable, StatusLoginDisabled)
+		return v3.Principal{}, nil, "", apierror.WrapAPIError(err, validation.ClusterUnavailable, StatusLoginDisabled)
 	}
 
 	lConn, err := p.ldapConnection(config, caPool)
@@ -123,7 +123,7 @@ func (p *adProvider) AuthenticateUser(ctx context.Context, input interface{}) (v
 	return principal, groupPrincipal, "", err
 }
 
-func (p *adProvider) SearchPrincipals(searchKey, principalType string, myToken v3.Token) ([]v3.Principal, error) {
+func (p *adProvider) SearchPrincipals(searchKey, principalType string, myToken accessor.TokenAccessor) ([]v3.Principal, error) {
 	var principals []v3.Principal
 	var err error
 
@@ -142,11 +142,11 @@ func (p *adProvider) SearchPrincipals(searchKey, principalType string, myToken v
 	if err == nil {
 		for _, principal := range principals {
 			if principal.PrincipalType == "user" {
-				if p.isThisUserMe(myToken.UserPrincipal, principal) {
+				if common.SamePrincipal(myToken.GetUserPrincipal(), principal) {
 					principal.Me = true
 				}
 			} else if principal.PrincipalType == "group" {
-				principal.MemberOf = p.tokenMGR.IsMemberOf(myToken, principal)
+				principal.MemberOf = p.userMGR.IsMemberOf(myToken, principal)
 			}
 		}
 	}
@@ -154,7 +154,7 @@ func (p *adProvider) SearchPrincipals(searchKey, principalType string, myToken v
 	return principals, nil
 }
 
-func (p *adProvider) GetPrincipal(principalID string, token v3.Token) (v3.Principal, error) {
+func (p *adProvider) GetPrincipal(principalID string, token accessor.TokenAccessor) (v3.Principal, error) {
 	config, caPool, err := p.getActiveDirectoryConfig()
 	if err != nil {
 		return v3.Principal{}, nil
@@ -169,17 +169,10 @@ func (p *adProvider) GetPrincipal(principalID string, token v3.Token) (v3.Princi
 	if err != nil {
 		return v3.Principal{}, err
 	}
-	if p.isThisUserMe(token.UserPrincipal, *principal) {
+	if common.SamePrincipal(token.GetUserPrincipal(), *principal) {
 		principal.Me = true
 	}
 	return *principal, err
-}
-
-func (p *adProvider) isThisUserMe(me v3.Principal, other v3.Principal) bool {
-	if me.ObjectMeta.Name == other.ObjectMeta.Name && me.LoginName == other.LoginName && me.PrincipalType == other.PrincipalType {
-		return true
-	}
-	return false
 }
 
 func (p *adProvider) getActiveDirectoryConfig() (*v3.ActiveDirectoryConfig, *x509.CertPool, error) {
@@ -255,14 +248,7 @@ func (p *adProvider) getDNAndScopeFromPrincipalID(principalID string) (string, s
 }
 
 func (p *adProvider) GetUserExtraAttributes(userPrincipal v3.Principal) map[string][]string {
-	extras := make(map[string][]string)
-	if userPrincipal.Name != "" {
-		extras[common.UserAttributePrincipalID] = []string{userPrincipal.Name}
-	}
-	if userPrincipal.LoginName != "" {
-		extras[common.UserAttributeUserName] = []string{userPrincipal.LoginName}
-	}
-	return extras
+	return common.GetCommonUserExtraAttributes(userPrincipal)
 }
 
 type LoginDisabledError struct{}

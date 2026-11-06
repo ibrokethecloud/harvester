@@ -15,15 +15,13 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	msgraphsdkgo "github.com/microsoftgraph/msgraph-sdk-go"
 	msgraphcore "github.com/microsoftgraph/msgraph-sdk-go-core"
 	msgraphgroups "github.com/microsoftgraph/msgraph-sdk-go/groups"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 	msgraphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
 	wcorev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +43,7 @@ const (
 // It first tries to fetch the token from the refresh token, if the access token is found in the database.
 // If that fails, it tries to acquire it directly from the auth provider with the credential (application secret in Azure).
 // It also checks that the access token has the necessary permissions.
-func NewMSGraphClient(config *v32.AzureADConfig, secrets wcorev1.SecretController) (*AzureMSGraphClient, error) {
+func NewMSGraphClient(config *v3.AzureADConfig, secrets wcorev1.SecretController) (*AzureMSGraphClient, error) {
 	cred, err := confidential.NewCredFromSecret(config.ApplicationSecret)
 	if err != nil {
 		return nil, fmt.Errorf("could not create a cred from a secret: %w", err)
@@ -114,7 +112,7 @@ type AzureMSGraphClient struct {
 	authResult         *customAuthResult
 	ConfidentialClient confidential.Client
 
-	GraphClient *msgraphsdkgo.GraphServiceClient
+	GraphClient *msgraphsdk.GraphServiceClient
 }
 
 // GetUser takes a user ID and fetches the user principal from the Microsoft Graph API.
@@ -122,7 +120,11 @@ func (c AzureMSGraphClient) GetUser(userID string) (v3.Principal, error) {
 	logrus.Debugf("[%s] GetUser %s", providerLogPrefix, userID)
 	result, err := c.GraphClient.Users().ByUserId(userID).Get(context.Background(), nil)
 	if err != nil {
-		return v3.Principal{}, fmt.Errorf("getting user by ID: %w", getMSGraphErrorData(err))
+		wrapped := fmt.Errorf("getting user by ID: %w", getMSGraphErrorData(err))
+		if isODataNotFound(err) {
+			wrapped = &common.NonTransientError{Err: wrapped}
+		}
+		return v3.Principal{}, wrapped
 	}
 
 	return userToPrincipal(result), nil
@@ -159,7 +161,11 @@ func (c AzureMSGraphClient) GetGroup(groupID string) (v3.Principal, error) {
 	logrus.Debugf("[%s] GetGroup %s", providerLogPrefix, groupID)
 	result, err := c.GraphClient.Groups().ByGroupId(groupID).Get(context.Background(), nil)
 	if err != nil {
-		return v3.Principal{}, fmt.Errorf("getting group by ID: %w", getMSGraphErrorData(err))
+		wrapped := fmt.Errorf("getting group by ID: %w", getMSGraphErrorData(err))
+		if isODataNotFound(err) {
+			wrapped = &common.NonTransientError{Err: wrapped}
+		}
+		return v3.Principal{}, wrapped
 	}
 
 	return groupToPrincipal(result), nil
@@ -225,7 +231,11 @@ func (c AzureMSGraphClient) listGroupMemberships(ctx context.Context, userID str
 					Count:  &requestCount,
 				}})
 	if err != nil {
-		return fmt.Errorf("listing group memberships: %w", getMSGraphErrorData(err))
+		wrapped := fmt.Errorf("listing group memberships: %w", getMSGraphErrorData(err))
+		if isODataNotFound(err) {
+			wrapped = &common.NonTransientError{Err: wrapped}
+		}
+		return wrapped
 	}
 
 	pageIterator, err := msgraphcore.NewPageIterator[models.DirectoryObjectable](
@@ -253,12 +263,12 @@ func (c AzureMSGraphClient) listGroupMemberships(ctx context.Context, userID str
 
 // LoginUser verifies the user and fetches the user principal, user's group principals. It deliberately does not return
 // the provider access token because the client itself handles its caching and does not need to return it.
-func (c AzureMSGraphClient) LoginUser(config *v32.AzureADConfig, credential *v32.AzureADLogin) (v3.Principal, []v3.Principal, string, error) {
+func (c AzureMSGraphClient) LoginUser(config *v3.AzureADConfig, credential *v3.AzureADLogin) (v3.Principal, []v3.Principal, string, string, error) {
 	logrus.Debugf("[%s] Started token swap with AzureAD", providerLogPrefix)
 
-	oid, err := c.getOIDFromLogin(config, credential)
+	oid, rawIDToken, err := c.getOIDFromLogin(config, credential)
 	if err != nil {
-		return v3.Principal{}, nil, "", err
+		return v3.Principal{}, nil, "", "", err
 	}
 
 	logrus.Debugf("[%s] Completed token swap with AzureAD", providerLogPrefix)
@@ -266,17 +276,17 @@ func (c AzureMSGraphClient) LoginUser(config *v32.AzureADConfig, credential *v32
 	logrus.Debugf("[%s] Started getting user info from AzureAD", providerLogPrefix)
 	userPrincipal, err := c.GetUser(oid)
 	if err != nil {
-		return v3.Principal{}, nil, "", fmt.Errorf("getting UserInfo from Azure: %w", err)
+		return v3.Principal{}, nil, "", "", fmt.Errorf("getting UserInfo from Azure: %w", err)
 	}
 	userPrincipal.Me = true
 	logrus.Debugf("[%s] Completed getting user info from AzureAD", providerLogPrefix)
 
 	groupPrincipals, err := c.listGroupPrincipals(context.Background(), userPrincipal, config.GroupMembershipFilter)
 	if err != nil {
-		return v3.Principal{}, nil, "", err
+		return v3.Principal{}, nil, "", "", err
 	}
 
-	return userPrincipal, groupPrincipals, "", nil
+	return userPrincipal, groupPrincipals, "", rawIDToken, nil
 }
 
 func (c AzureMSGraphClient) listGroupPrincipals(ctx context.Context, userPrincipal v3.Principal, filter string) ([]v3.Principal, error) {
@@ -298,24 +308,25 @@ func (c AzureMSGraphClient) listGroupPrincipals(ctx context.Context, userPrincip
 	return groupPrincipals, nil
 }
 
-func (c AzureMSGraphClient) getOIDFromLogin(config *v32.AzureADConfig, credential *v32.AzureADLogin) (string, error) {
+func (c AzureMSGraphClient) getOIDFromLogin(config *v3.AzureADConfig, credential *v3.AzureADLogin) (oid string, rawIDToken string, err error) {
 	if credential.IDToken != "" {
-		// Acquire the OID from the IDToken to verify the user
+		// Acquire the OID from the IDToken to verify the user.
+		// The frontend-supplied IDToken is itself the raw JWT.
 		oidFromToken, err := oidFromIDToken(credential.IDToken, config)
 		if err != nil {
-			return "", fmt.Errorf("getting OID from IDToken: %w", err)
+			return "", "", fmt.Errorf("getting OID from IDToken: %w", err)
 		}
 
-		return oidFromToken, nil
+		return oidFromToken, credential.IDToken, nil
 	}
 
-	// Acquire the OID exchanging the Code to verify the user
-	oidFromCode, err := oidFromAuthCode(credential.Code, config)
+	// Acquire the OID by exchanging the authorization code.
+	oidFromCode, rawIDToken, err := oidFromAuthCode(credential.Code, config)
 	if err != nil {
-		return "", fmt.Errorf("getting OID from AuthCode: %w", err)
+		return "", "", fmt.Errorf("getting OID from AuthCode: %w", err)
 	}
 
-	return oidFromCode, nil
+	return oidFromCode, rawIDToken, nil
 }
 
 // AccessToken returns the client's underlying provider access token.
@@ -364,7 +375,7 @@ func groupToPrincipal(group azureObject) v3.Principal {
 }
 
 // oidFromIDToken verifies the IDToken, returning the user OID
-func oidFromIDToken(token string, config *v32.AzureADConfig) (string, error) {
+func oidFromIDToken(token string, config *v3.AzureADConfig) (string, error) {
 	issuer, err := url.JoinPath(config.Endpoint, config.TenantID, "/v2.0")
 	if err != nil {
 		return "", fmt.Errorf("joining issuer path: %w", err)
@@ -398,15 +409,15 @@ func oidFromIDToken(token string, config *v32.AzureADConfig) (string, error) {
 	return claims.OID, nil
 }
 
-// oidFromAuthCode exchanges the AuthCode for a IDToken, returning the user OID
-func oidFromAuthCode(token string, config *v32.AzureADConfig) (string, error) {
+// oidFromAuthCode exchanges the AuthCode for an IDToken, returning the user OID and the raw ID token.
+func oidFromAuthCode(token string, config *v3.AzureADConfig) (oid string, rawIDToken string, err error) {
 	cred, err := confidential.NewCredFromSecret(config.ApplicationSecret)
 	if err != nil {
-		return "", fmt.Errorf("could not create a cred from a secret: %w", err)
+		return "", "", fmt.Errorf("could not create a cred from a secret: %w", err)
 	}
 	authorityURL, err := url.JoinPath(config.Endpoint, config.TenantID)
 	if err != nil {
-		return "", fmt.Errorf("could not create token authority url: %w", err)
+		return "", "", fmt.Errorf("could not create token authority url: %w", err)
 	}
 
 	// NOTE: This uses a new client which is not associated to a token cache,
@@ -414,16 +425,20 @@ func oidFromAuthCode(token string, config *v32.AzureADConfig) (string, error) {
 	// this keeps the cache-size down and improves security.
 	confidentialClientApp, err := confidential.New(authorityURL, config.ApplicationID, cred)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	scope := fmt.Sprintf("%s/%s", config.GraphEndpoint, ".default")
 
-	authResult, err := confidentialClientApp.AcquireTokenByAuthCode(context.Background(), token, config.RancherURL, []string{scope})
+	authResult, err := confidentialClientApp.AcquireTokenByAuthCode(context.Background(), token, config.RancherURL, []string{scope, "openid"})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return authResult.IDToken.Oid, nil
+	if authResult.IDToken.RawToken == "" {
+		logrus.Warnf("[%s] ID token not returned by token endpoint; SSO logout will proceed without id_token_hint", providerLogPrefix)
+	}
+
+	return authResult.IDToken.Oid, authResult.IDToken.RawToken, nil
 }
 
 func getMSGraphErrorData(err error) error {
@@ -434,6 +449,15 @@ func getMSGraphErrorData(err error) error {
 		return odataErr
 	}
 	return err
+}
+
+func isODataNotFound(err error) bool {
+	var odataErr *odataerrors.ODataError
+	if !errors.As(err, &odataErr) {
+		return false
+	}
+	oErr := odataErr.GetErrorEscaped()
+	return oErr != nil && oErr.GetCode() != nil && *oErr.GetCode() == "Request_ResourceNotFound"
 }
 
 // accessTokenCache is responsible for reading (replacing) the access token from some storage (a secret in the database,

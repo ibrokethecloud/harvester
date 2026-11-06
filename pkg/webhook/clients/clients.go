@@ -13,7 +13,6 @@ import (
 	v1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/client-go/rest"
 
-	ctlclusterv1 "github.com/harvester/harvester/pkg/generated/controllers/cluster.x-k8s.io"
 	ctlharvestercorev1 "github.com/harvester/harvester/pkg/generated/controllers/core"
 	ctldiscoveryv1 "github.com/harvester/harvester/pkg/generated/controllers/discovery.k8s.io"
 	ctlharvesterv1 "github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io"
@@ -37,7 +36,6 @@ type Clients struct {
 	FleetFactory             *ctlfleetv1.Factory
 	StorageFactory           *storagev1.Factory
 	LonghornFactory          *ctllonghornv1.Factory
-	ClusterFactory           *ctlclusterv1.Factory
 	RancherManagementFactory *rancherv3.Factory
 	CoreFactory              *ctrlcorev1.Factory
 	DiscoveryFactory         *ctldiscoveryv1.Factory
@@ -121,11 +119,6 @@ func New(ctx context.Context, rest *rest.Config, threadiness int, crdExists bool
 	}
 
 	longhornFactory, err := ctllonghornv1.NewFactoryFromConfigWithOptions(rest, clients.FactoryOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterFactory, err := ctlclusterv1.NewFactoryFromConfigWithOptions(rest, clients.FactoryOptions)
 	if err != nil {
 		return nil, err
 	}

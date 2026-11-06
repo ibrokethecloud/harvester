@@ -8,14 +8,13 @@ func init() {
 	InternalSchemeBuilder.Register(&GitRepo{}, &GitRepoList{})
 }
 
-var (
+const (
 	CommitLabel          = "fleet.cattle.io/commit"
 	RepoLabel            = "fleet.cattle.io/repo-name"
 	BundleLabel          = "fleet.cattle.io/bundle-name"
 	BundleNamespaceLabel = "fleet.cattle.io/bundle-namespace"
-)
+	CreatedByUserIDLabel = "fleet.cattle.io/created-by-user-id"
 
-const (
 	GitRepoAcceptedCondition = "Accepted"
 )
 
@@ -51,7 +50,8 @@ type GitRepoList struct {
 
 type GitRepoSpec struct {
 	// Repo is a URL to a git repo to clone and index.
-	// +nullable
+	// +required
+	// +kubebuilder:validation:MinLength=1
 	Repo string `json:"repo,omitempty"`
 
 	// Branch The git branch to follow.
@@ -81,8 +81,8 @@ type GitRepoSpec struct {
 	// +nullable
 	HelmSecretNameForPaths string `json:"helmSecretNameForPaths,omitempty"`
 
-	// HelmRepoURLRegex Helm credentials will be used if the helm repo matches this regex
-	// Credentials will always be used if this is empty or not provided.
+	// HelmRepoURLRegex Helm credentials will be used if the helm repo matches this regex.
+	// Credentials will not be used if this is empty or not provided.
 	// +nullable
 	HelmRepoURLRegex string `json:"helmRepoURLRegex,omitempty"`
 
@@ -112,12 +112,20 @@ type GitRepoSpec struct {
 
 	// PollingInterval is how often to check git for new updates.
 	// +nullable
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="self == '0' || (self.matches('^([0-9]+([.][0-9]+)?(ns|us|µs|ms|s|m|h))+$') && duration(self) <= duration('2562047h'))",message="must be a valid Go duration using units ns, us, µs, ms, s, m, h (e.g. 15s, 5m, 2h, 1h30m); units like d (days) or w (weeks) are not supported"
 	PollingInterval *metav1.Duration `json:"pollingInterval,omitempty"`
 
 	// Increment this number to force a redeployment of contents from Git.
 	ForceSyncGeneration int64 `json:"forceSyncGeneration,omitempty"`
 
 	// ImageScanInterval is the interval of syncing scanned images and writing back to git repo.
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="self == '0' || (self.matches('^([0-9]+([.][0-9]+)?(ns|us|µs|ms|s|m|h))+$') && duration(self) <= duration('2562047h'))",message="must be a valid Go duration using units ns, us, µs, ms, s, m, h (e.g. 15s, 5m, 2h, 1h30m); units like d (days) or w (weeks) are not supported"
 	ImageSyncInterval *metav1.Duration `json:"imageScanInterval,omitempty"`
 
 	// Commit specifies how to commit to the git repo when a new image is scanned and written back to git repo.
@@ -135,8 +143,23 @@ type GitRepoSpec struct {
 	// Disables git polling. When enabled only webhooks will be used.
 	DisablePolling bool `json:"disablePolling,omitempty"`
 
-	// OCIRegistry specifies the OCI registry related parameters
-	OCIRegistry *OCIRegistrySpec `json:"ociRegistry,omitempty"`
+	// OCIRegistrySecret contains the name of the secret to be used for retrieving the OCI registry connection details.
+	OCIRegistrySecret string `json:"ociRegistrySecret,omitempty"`
+
+	// WebhookSecret contains the name of the secret to use for webhook parsing
+	WebhookSecret string `json:"webhookSecret,omitempty"`
+
+	// Bundles defines the paths of bundles to be read.
+	// This drives the fleet resource scanner that simply loads the specified folders
+	Bundles []BundlePath `json:"bundles,omitempty"`
+}
+
+type BundlePath struct {
+	// Base is the base path for the bundle resources
+	Base string `json:"base,omitempty"`
+	// Options is the path (relative to path above) that defines a fleet.yaml file to configure the bundle
+	// +nullable
+	Options string `json:"options,omitempty"`
 }
 
 // GitTarget is a cluster or cluster group to deploy to.
@@ -172,25 +195,18 @@ type GitRepoStatus struct {
 	// WebhookCommit is the latest Git commit hash received from a webhook
 	// +optional
 	WebhookCommit string `json:"webhookCommit,omitempty"`
+	// LastWebhookTime is the time of the last received webhook notification
+	// +optional
+	LastWebhookTime metav1.Time `json:"lastWebhookTime,omitempty"`
+	// PollingCommit is the latest Git commit hash received from polling
+	// +optional
+	PollingCommit string `json:"pollingCommit,omitempty"`
 	// GitJobStatus is the status of the last Git job run, e.g. "Current" if there was no error.
 	GitJobStatus string `json:"gitJobStatus,omitempty"`
 	// LastSyncedImageScanTime is the time of the last image scan.
 	LastSyncedImageScanTime metav1.Time `json:"lastSyncedImageScanTime,omitempty"`
 	// LastPollingTime is the last time the polling check was triggered
 	LastPollingTime metav1.Time `json:"lastPollingTriggered,omitempty"`
-}
-
-type GitRepoDisplay struct {
-	// ReadyBundleDeployments is a string in the form "%d/%d", that describes the
-	// number of ready bundledeployments over the total number of bundledeployments.
-	ReadyBundleDeployments string `json:"readyBundleDeployments,omitempty"`
-	// State is the state of the GitRepo, e.g. "GitUpdating" or the maximal
-	// BundleState according to StateRank.
-	State string `json:"state,omitempty"`
-	// Message contains the relevant message from the deployment conditions.
-	Message string `json:"message,omitempty"`
-	// Error is true if a message is present.
-	Error bool `json:"error,omitempty"`
 }
 
 // CommitSpec specifies how to commit changes to the git repository
@@ -214,23 +230,4 @@ type CorrectDrift struct {
 	Force bool `json:"force,omitempty"`
 	// KeepFailHistory keeps track of failed rollbacks in the helm history.
 	KeepFailHistory bool `json:"keepFailHistory,omitempty"`
-}
-
-type OCIRegistrySpec struct {
-	// Reference of the OCI Registry
-	Reference string `json:"reference,omitempty"`
-
-	// AuthSecretName contains the auth secret where the OCI registry credentials are stored.
-	// +nullable
-	AuthSecretName string `json:"authSecretName,omitempty"`
-
-	// BasicHTTP uses HTTP connections to the OCI registry when enabled.
-	// +optional
-	// +nullable
-	BasicHTTP bool `json:"basicHTTP,omitempty"`
-
-	// InsecureSkipTLS allows connections to OCI registry without certs when enabled.
-	// +optional
-	// +nullable
-	InsecureSkipTLS bool `json:"insecureSkipTLS,omitempty"`
 }

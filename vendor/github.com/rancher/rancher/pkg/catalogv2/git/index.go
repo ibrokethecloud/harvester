@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/rancher/rancher/pkg/catalogv2/chart"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/provenance"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 func BuildOrGetIndex(namespace, name, gitURL string) (*repo.IndexFile, error) {
@@ -26,7 +26,7 @@ func buildOrGetIndex(dir string) (*repo.IndexFile, error) {
 		builtIndex    = repo.NewIndexFile()
 	)
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 		if info.Name() == "index.yaml" {
 			if indexPath == "" || len(path) < len(indexPath) {
 				if index, err := repo.LoadIndexFile(path); err == nil {

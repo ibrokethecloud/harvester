@@ -17,15 +17,14 @@ package auth
 
 import (
 	"context"
-	"sort"
+	"slices"
 	"strings"
 
-	"oras.land/oras-go/v2/internal/slices"
 	"oras.land/oras-go/v2/registry"
 )
 
 // Actions used in scopes.
-// Reference: https://docs.docker.com/registry/spec/auth/scope/
+// Reference: https://distribution.github.io/distribution/spec/auth/scope/
 const (
 	// ActionPull represents generic read access for resources of the repository
 	// type.
@@ -44,7 +43,7 @@ const (
 const ScopeRegistryCatalog = "registry:catalog:*"
 
 // ScopeRepository returns a repository scope with given actions.
-// Reference: https://docs.docker.com/registry/spec/auth/scope/
+// Reference: https://distribution.github.io/distribution/spec/auth/scope/
 func ScopeRepository(repository string, actions ...string) string {
 	actions = cleanActions(actions)
 	if repository == "" || len(actions) == 0 {
@@ -99,7 +98,7 @@ type scopesContextKey struct{}
 // Passing an empty list of scopes will virtually remove the scope hints in the
 // context.
 //
-// Reference: https://docs.docker.com/registry/spec/auth/scope/
+// Reference: https://distribution.github.io/distribution/spec/auth/scope/
 func WithScopes(ctx context.Context, scopes ...string) context.Context {
 	scopes = CleanScopes(scopes)
 	return context.WithValue(ctx, scopesContextKey{}, scopes)
@@ -144,7 +143,7 @@ type scopesForHostContextKey string
 // Passing an empty list of scopes will virtually remove the scope hints in the
 // context for the given host.
 //
-// Reference: https://docs.docker.com/registry/spec/auth/scope/
+// Reference: https://distribution.github.io/distribution/spec/auth/scope/
 func WithScopesForHost(ctx context.Context, host string, scopes ...string) context.Context {
 	scopes = CleanScopes(scopes)
 	return context.WithValue(ctx, scopesForHostContextKey(host), scopes)
@@ -255,7 +254,7 @@ func CleanScopes(scopes []string) []string {
 			actionSet = make(map[string]struct{})
 			namedActions[resourceName] = actionSet
 		}
-		for _, action := range strings.Split(actions, ",") {
+		for action := range strings.SplitSeq(actions, ",") {
 			if action != "" {
 				actionSet[action] = struct{}{}
 			}
@@ -276,14 +275,14 @@ func CleanScopes(scopes []string) []string {
 				}
 				actions = append(actions, action)
 			}
-			sort.Strings(actions)
+			slices.Sort(actions)
 			scope := resourceType + ":" + resourceName + ":" + strings.Join(actions, ",")
 			result = append(result, scope)
 		}
 	}
 
 	// sort and return
-	sort.Strings(result)
+	slices.Sort(result)
 	return result
 }
 
@@ -302,9 +301,9 @@ func cleanActions(actions []string) []string {
 	}
 
 	// slow path
-	sort.Strings(actions)
+	slices.Sort(actions)
 	n := 0
-	for i := 0; i < len(actions); i++ {
+	for i := range len(actions) {
 		if actions[i] == "*" {
 			return []string{"*"}
 		}

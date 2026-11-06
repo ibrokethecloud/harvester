@@ -2,6 +2,7 @@ package features
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const primeEnv = "RANCHER_VERSION_TYPE"
 
 var (
 	features = make(map[string]*Feature)
@@ -59,12 +62,6 @@ var (
 		true,
 		false,
 		false)
-	EmbeddedClusterAPI = newFeature(
-		"embedded-cluster-api",
-		"Enable a Rancher-managed instance of cluster-api core controller",
-		true,
-		false,
-		false)
 	ManagedSystemUpgradeController = newFeature(
 		"managed-system-upgrade-controller",
 		"Enable the installation of the system-upgrade-controller app as a managed system chart",
@@ -101,22 +98,16 @@ var (
 		true,
 		true,
 		true)
-	RKE1CustomNodeCleanup = newFeature(
-		"rke1-custom-node-cleanup",
-		"Enable cleanup RKE1 custom cluster nodes when they are deleted",
-		true,
-		true,
-		true)
 	HarvesterBaremetalContainerWorkload = newFeature(
 		"harvester-baremetal-container-workload",
-		"[Experimental]: Deploy container workloads to underlying harvester cluster",
+		"Deploy container workloads to underlying harvester cluster",
 		false,
 		true,
 		true)
 	ProvisioningV2FleetWorkspaceBackPopulation = newFeature(
 		"provisioningv2-fleet-workspace-back-population",
-		"[Experimental]: Allow Fleet workspace name to be changed on clusters administrated by provisioning v2",
-		false,
+		"Allow Fleet workspace name to be changed on clusters administrated by provisioning v2",
+		true,
 		false,
 		true)
 	UIExtension = newFeature(
@@ -127,15 +118,9 @@ var (
 		true)
 	UISQLCache = newFeature(
 		"ui-sql-cache",
-		"[Experimental]: Enable SQLite-backed caching to improve performance and provide additional UI sorting/filtering features.",
-		false,
-		false,
-		true)
-	RKE1UI = newFeature(
-		"rke1-ui",
-		"Enable RKE1 provisioning in the Rancher UI",
+		"Improve performance by enabling SQLite-backed caching. This also enables server-side pagination and other scaling based performance improvements.",
 		true,
-		true,
+		false,
 		true)
 	ProvisioningPreBootstrap = newFeature(
 		"provisioningprebootstrap",
@@ -153,19 +138,13 @@ var (
 		"aggregated-roletemplates",
 		"[Experimental] Make RoleTemplates use aggregation for generated RBAC roles",
 		false,
-		false,
-		true).lockOnInstall()
-	ClusterAgentSchedulingCustomization = newFeature(
-		"cluster-agent-scheduling-customization",
-		"Enables the automatic deployment of Pod Disruption Budgets and Priority Classes when deploying the cattle-cluster-agent. Disabling this feature will not impact existing clusters.",
-		false,
 		true,
 		true)
-	ImperativeApiExtension = newFeature(
-		"imperative-api-extension",
-		"Enable imperative API extension as a k8s aggregation layer as proxy to the kube apiserver",
-		true,
+	ClusterAgentSchedulingCustomization = newFeature(
+		"cluster-agent-scheduling-customization",
+		"Enables the automatic deployment of Pod Disruption Budgets and Priority Classes when deploying the cattle-cluster-agent and fleet agent. Disabling this feature will not impact existing clusters.",
 		false,
+		true,
 		true)
 	Provisioningv2ETCDSnapshotBackPopulation = newFeature(
 		"v2prov-etcd-snapshot-backpopulate",
@@ -173,20 +152,122 @@ var (
 		true,
 		false,
 		true)
+	OIDCProvider = newFeature(
+		"oidc-provider",
+		"Provide an OIDC provider embedded in Rancher. Required to enable SSO in Rancher Prime components.",
+		IsPrime(), // OIDC is only default enabled on prime, but available to community users
+		false,
+		true)
+	RancherSCCRegistrationExtension = newPrimeFeature(
+		"rancher-scc-registration-extension",
+		"Enable Rancher's SCC registration extension to register the system(s) for customer support",
+		true,
+		false,
+		true)
+	Turtles = newFeature(
+		"turtles",
+		"Enable Rancher Turtles for managing CAPI lifecycle",
+		true,
+		false,
+		false)
+	ClusterAutoscaling = newPrimeFeature(
+		"cluster-autoscaling",
+		"Enable Rancher cluster-autoscaler support",
+		true,
+		false,
+		true,
+	)
+	V3Public = newFeature(
+		"v3-public",
+		"Enable /v3-public API endpoints",
+		true,
+		false,
+		true,
+	)
+	ClusterOwnershipStrategy = newFeature(
+		"consistent-hashing-cluster-ownership",
+		"Enable consistent-hashing for cluster-ownership calculation",
+		false,
+		false,
+		true,
+	)
+	SCIM = newFeature(
+		"scim",
+		"Enable SCIM identity provisioning",
+		false,
+		false,
+		true,
+	)
+	ImportedDay2Ops = newFeature(
+		"imported-day-2-ops",
+		"Enable day 2 ops for imported clusters",
+		true,
+		false,
+		true,
+	)
+	ClusterShell = newFeature(
+		"cluster-shell",
+		"Enable the Rancher cluster shell feature",
+		true,
+		false,
+		true,
+	)
+	NodeShell = newFeature(
+		"node-shell",
+		"Enable the Rancher node shell feature",
+		true,
+		false,
+		true,
+	)
+	PodShell = newFeature(
+		"pod-shell",
+		"Enable the Rancher pod shell feature",
+		true,
+		false,
+		true,
+	)
+	HideLocalAuthProvider = newFeature(
+		"hide-local-auth-provider",
+		"Hide the local auth provider when one or more external auth providers are active",
+		false,
+		true,
+		true,
+	)
+	CRTTokenTTLRotation = newFeature(
+		"crt-token-ttl-rotation",
+		"Enable TTL-based automatic rotation of ClusterRegistrationToken credentials",
+		true,
+		true,
+		true,
+	)
 )
+
+func ListEnabled() []string {
+	ret := []string{}
+	for _, f := range features {
+		if f.Enabled() {
+			ret = append(ret, f.name)
+		}
+	}
+	return ret
+}
 
 type Feature struct {
 	name        string
 	description string
 	// val is the effective value- it is equal to default until explicitly changed.
 	// The order of precedence is lockedValue > value > default
-	val bool
+	// when prime is true and IsPrime() is false, the effective value is always false
+	val *bool
 	// default value of feature
 	def bool
 	// if a feature is not dynamic, then rancher must be restarted when the value is changed
 	dynamic bool
 	// Whether we should install this feature or assume something else will install and manage the Feature CR
 	install bool
+	// prime indicates this feature is only available in Prime builds.
+	// On non-Prime builds, Enabled() always returns false regardless of configuration.
+	prime bool
 	// If a feature is locked on install, it can't be modified after install. A new Rancher instance is required to change the value.
 	lockedOnInstall bool
 }
@@ -229,6 +310,7 @@ func InitializeFeatures(featuresClient managementv3.FeatureClient, featureArgs s
 						Default:     f.def,
 						Dynamic:     f.dynamic,
 						Description: f.description,
+						Prime:       f.prime,
 					},
 				}
 				if f.lockedOnInstall {
@@ -256,26 +338,31 @@ func InitializeFeatures(featuresClient managementv3.FeatureClient, featureArgs s
 				newFeatureState.Status.Description = f.description
 			}
 
+			// Check if a feature is no longer locked but has a locked value. If so, remove the locked value.
+			if !f.lockedOnInstall && featureState.Status.LockedValue != nil {
+				newFeatureState.Status.LockedValue = nil
+			}
+
+			// check if the feature's prime value has changed from previous rancher version
+			if featureState.Status.Prime != f.prime {
+				newFeatureState.Status.Prime = f.prime
+			}
+
 			newFeatureState, err = featuresClient.Update(newFeatureState)
 			if err != nil {
 				logrus.Errorf("unable to update feature %s in initialize features: %v", f.name, err)
 				continue
 			}
 
-			if newFeatureState.Status.LockedValue != nil {
-				f.Set(*newFeatureState.Status.LockedValue)
-				continue
+			newVal := newFeatureState.Status.LockedValue
+			if newVal == nil {
+				newVal = featureState.Spec.Value
 			}
-
-			if featureState.Spec.Value == nil {
-				continue
+			if newVal == nil {
+				f.Unset()
+			} else {
+				f.Set(*newVal)
 			}
-
-			if *featureState.Spec.Value == f.val {
-				continue
-			}
-
-			f.Set(*featureState.Spec.Value)
 		}
 	}
 }
@@ -332,32 +419,73 @@ func applyArgumentDefaults(featureArgs string) error {
 	// only want to apply defaults once all args have been parsed and validated
 	for k, v := range applyFeatureDefaults {
 		features[k].def = v
-		features[k].val = v
 	}
 
 	return nil
 }
 
-// Enabled returns whether the feature is enabled
+// Enabled returns whether the feature is enabled.
+// Prime features always return false on non-Prime builds.
 func (f *Feature) Enabled() bool {
-	return f.val
+	if f.prime && !IsPrime() {
+		return false
+	}
+	if f.val != nil {
+		return *f.val
+	}
+	return f.def
 }
 
-// Disable will disable a feature such that regardless of the user's choice it will always be false
-func (f *Feature) Disable() {
-	f.val = false
-	f.def = false
-	delete(features, f.name)
+// RequireRestarts determines whether a Rancher restart is necessary. This is
+// the case when (1) the feature is non-dynamic and (2) when the value (.spec.value or .status.lockedValue)
+// was changed by a user.
+//
+// Rancher does not require restart when only the default value changes because
+// this only happens during an upgrade.
+func RequireRestarts(f *Feature, obj *v3.Feature) bool {
+	if f.Dynamic() {
+		return false
+	}
+	if f.prime && !IsPrime() {
+		return false
+	}
+
+	val := obj.Status.LockedValue
+	if val == nil {
+		val = obj.Spec.Value
+	}
+
+	if val == nil {
+		// val was already nil, so no changes here
+		if f.val == nil {
+			return false
+		}
+
+		// we're unsetting val, let's check if the previous value was
+		// the same as the default
+		return *f.val != f.def
+	}
+
+	return *val != f.Enabled()
 }
 
 // Dynamic returns whether the feature is dynamic. Rancher must be restarted when
-// a non-dynamic feature's effective value is changed.
+// a non-dynamic feature's value is changed (excluding a default value change)
 func (f *Feature) Dynamic() bool {
 	return f.dynamic
 }
 
+// Prime returns whether the feature is only available in Prime builds.
+func (f *Feature) Prime() bool {
+	return f.prime
+}
+
 func (f *Feature) Set(val bool) {
-	f.val = val
+	f.val = &val
+}
+
+func (f *Feature) Unset() {
+	f.val = nil
 }
 
 func (f *Feature) Name() string {
@@ -377,6 +505,10 @@ func IsEnabled(feature *v3.Feature) bool {
 	if feature == nil {
 		return false
 	}
+	// Prime features always return false on non-Prime builds.
+	if feature.Status.Prime && !IsPrime() {
+		return false
+	}
 	if feature.Status.LockedValue != nil {
 		return *feature.Status.LockedValue
 	}
@@ -392,7 +524,6 @@ func newFeature(name, description string, def, dynamic, install bool) *Feature {
 		name:        name,
 		description: description,
 		def:         def,
-		val:         def,
 		dynamic:     dynamic,
 		install:     install,
 	}
@@ -402,4 +533,18 @@ func newFeature(name, description string, def, dynamic, install bool) *Feature {
 	features[name] = feature
 
 	return feature
+}
+
+// newPrimeFeature creates a feature that is only available in Prime builds.
+// On non-Prime builds Enabled() unconditionally returns false regardless of
+// the configured value or default.
+func newPrimeFeature(name, description string, def, dynamic, install bool) *Feature {
+	f := newFeature(name, description, def, dynamic, install)
+	f.prime = true
+	return f
+}
+
+// IsPrime returns true if it is a Rancher Prime installation
+func IsPrime() bool {
+	return os.Getenv(primeEnv) == "prime"
 }

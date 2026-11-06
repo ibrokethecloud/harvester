@@ -18,18 +18,16 @@ import (
 	"time"
 
 	"github.com/crewjam/saml"
-	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/pkg/errors"
 	responsewriter "github.com/rancher/apiserver/pkg/middleware"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/auth/settings"
 	"github.com/rancher/rancher/pkg/auth/tokens"
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/namespace"
 	dsig "github.com/russellhaering/goxmldsig"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -41,7 +39,9 @@ type IDPMetadata struct {
 	SPSSODescriptors  []saml.SPSSODescriptor  `xml:"SPSSODescriptor"`
 }
 
-var root *mux.Router
+var root *http.ServeMux
+var routeHandlers = make(map[string]http.HandlerFunc)
+var handlerMu sync.RWMutex
 var appliedVersion string
 var initMu sync.Mutex
 
@@ -49,10 +49,31 @@ const UITranslationKeyForErrorMessage = "invalidSamlAttrs"
 const dashboardAuthPath = "/dashboard/auth"
 const loginPath = "/login?"
 
+func setRouteHandler(path string, handler http.HandlerFunc) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	// Wrap with ContentTypeOptions middleware
+	wrapped := responsewriter.ContentTypeOptions(handler)
+	routeHandlers[path] = wrapped.ServeHTTP
+}
+
+func getRouteHandler(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handlerMu.RLock()
+		h, ok := routeHandlers[name]
+		handlerMu.RUnlock()
+		if ok {
+			h(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	}
+}
+
 // InitializeSamlServiceProvider validates changes to SamlConfig structures and
 // creates or updates the associated in-memory information. It is called from the
 // auth samlconfig controller when a SAML configuration was changed.
-func InitializeSamlServiceProvider(configToSet *v32.SamlConfig, name string) error {
+func InitializeSamlServiceProvider(configToSet *apiv3.SamlConfig, name string) error {
 
 	initMu.Lock()
 	defer initMu.Unlock()
@@ -187,84 +208,93 @@ func InitializeSamlServiceProvider(configToSet *v32.SamlConfig, name string) err
 
 	provider.clientState = &cookieStore
 
-	root.Use(responsewriter.ContentTypeOptions)
-
 	SamlProviders[name] = provider
+
+	log.Debugf("SAML [InitializeSamlServiceProvider]: Set /v1-saml handlers for %s on root %p", name, root)
 
 	switch name {
 	case PingName:
-		root.Get("PingACS").HandlerFunc(provider.ServeHTTP)
-		root.Get("PingSLO").HandlerFunc(provider.ServeHTTP)
-		root.Get("PingSLOGet").HandlerFunc(provider.ServeHTTP)
-		root.Get("PingMetadata").HandlerFunc(provider.ServeHTTP)
+		setRouteHandler("PingACS", provider.ServeHTTP)
+		setRouteHandler("PingSLO", provider.ServeHTTP)
+		setRouteHandler("PingSLOGet", provider.ServeHTTP)
+		setRouteHandler("PingMetadata", provider.ServeHTTP)
 	case ADFSName:
-		root.Get("AdfsACS").HandlerFunc(provider.ServeHTTP)
-		root.Get("AdfsSLO").HandlerFunc(provider.ServeHTTP)
-		root.Get("AdfsSLOGet").HandlerFunc(provider.ServeHTTP)
-		root.Get("AdfsMetadata").HandlerFunc(provider.ServeHTTP)
+		setRouteHandler("AdfsACS", provider.ServeHTTP)
+		setRouteHandler("AdfsSLO", provider.ServeHTTP)
+		setRouteHandler("AdfsSLOGet", provider.ServeHTTP)
+		setRouteHandler("AdfsMetadata", provider.ServeHTTP)
 	case KeyCloakName:
-		root.Get("KeyCloakACS").HandlerFunc(provider.ServeHTTP)
-		root.Get("KeyCloakSLO").HandlerFunc(provider.ServeHTTP)
-		root.Get("KeyCloakSLOGet").HandlerFunc(provider.ServeHTTP)
-		root.Get("KeyCloakMetadata").HandlerFunc(provider.ServeHTTP)
+		setRouteHandler("KeyCloakACS", provider.ServeHTTP)
+		setRouteHandler("KeyCloakSLO", provider.ServeHTTP)
+		setRouteHandler("KeyCloakSLOGet", provider.ServeHTTP)
+		setRouteHandler("KeyCloakMetadata", provider.ServeHTTP)
 	case OKTAName:
-		root.Get("OktaACS").HandlerFunc(provider.ServeHTTP)
-		root.Get("OktaSLO").HandlerFunc(provider.ServeHTTP)
-		root.Get("OktaSLOGet").HandlerFunc(provider.ServeHTTP)
-		root.Get("OktaMetadata").HandlerFunc(provider.ServeHTTP)
+		setRouteHandler("OktaACS", provider.ServeHTTP)
+		setRouteHandler("OktaSLO", provider.ServeHTTP)
+		setRouteHandler("OktaSLOGet", provider.ServeHTTP)
+		setRouteHandler("OktaMetadata", provider.ServeHTTP)
 	case ShibbolethName:
-		root.Get("ShibbolethACS").HandlerFunc(provider.ServeHTTP)
-		root.Get("ShibbolethSLO").HandlerFunc(provider.ServeHTTP)
-		root.Get("ShibbolethSLOGet").HandlerFunc(provider.ServeHTTP)
-		root.Get("ShibbolethMetadata").HandlerFunc(provider.ServeHTTP)
+		setRouteHandler("ShibbolethACS", provider.ServeHTTP)
+		setRouteHandler("ShibbolethSLO", provider.ServeHTTP)
+		setRouteHandler("ShibbolethSLOGet", provider.ServeHTTP)
+		setRouteHandler("ShibbolethMetadata", provider.ServeHTTP)
 	}
 
-	appliedVersion = configToSet.ResourceVersion
+	log.Debugf("SAML [InitializeSamlServiceProvider]: /v1-saml handlers for %s on root %p active", name, root)
 
+	appliedVersion = configToSet.ResourceVersion
 	return nil
 }
 
 func AuthHandler() http.Handler {
-	root = mux.NewRouter()
+	log.Debugf("SAML [AuthHandler]: Setting up /v1-saml routes, mux is %p", root)
 
-	root.Methods("POST").Path("/v1-saml/ping/saml/acs").Name("PingACS")
-	root.Methods("POST").Path("/v1-saml/ping/saml/slo").Name("PingSLO")
-	root.Methods("GET").Path("/v1-saml/ping/saml/slo").Name("PingSLOGet")
-	root.Methods("GET").Path("/v1-saml/ping/saml/metadata").Name("PingMetadata")
+	if root != nil {
+		log.Debugf("SAML [AuthHandler]: /v1-saml routes are already set, mux is %p", root)
+		return root
+	}
 
-	root.Methods("POST").Path("/v1-saml/adfs/saml/acs").Name("AdfsACS")
-	root.Methods("POST").Path("/v1-saml/adfs/saml/slo").Name("AdfsSLO")
-	root.Methods("GET").Path("/v1-saml/adfs/saml/slo").Name("AdfsSLOGet")
-	root.Methods("GET").Path("/v1-saml/adfs/saml/metadata").Name("AdfsMetadata")
+	root = http.NewServeMux()
 
-	root.Methods("POST").Path("/v1-saml/keycloak/saml/acs").Name("KeyCloakACS")
-	root.Methods("POST").Path("/v1-saml/keycloak/saml/slo").Name("KeyCloakSLO")
-	root.Methods("GET").Path("/v1-saml/keycloak/saml/slo").Name("KeyCloakSLOGet")
-	root.Methods("GET").Path("/v1-saml/keycloak/saml/metadata").Name("KeyCloakMetadata")
+	root.HandleFunc("POST /v1-saml/ping/saml/acs", getRouteHandler("PingACS"))
+	root.HandleFunc("POST /v1-saml/ping/saml/slo", getRouteHandler("PingSLO"))
+	root.HandleFunc("GET /v1-saml/ping/saml/slo", getRouteHandler("PingSLOGet"))
+	root.HandleFunc("GET /v1-saml/ping/saml/metadata", getRouteHandler("PingMetadata"))
 
-	root.Methods("POST").Path("/v1-saml/okta/saml/acs").Name("OktaACS")
-	root.Methods("POST").Path("/v1-saml/okta/saml/slo").Name("OktaSLO")
-	root.Methods("GET").Path("/v1-saml/okta/saml/slo").Name("OktaSLOGet")
-	root.Methods("GET").Path("/v1-saml/okta/saml/metadata").Name("OktaMetadata")
+	root.HandleFunc("POST /v1-saml/adfs/saml/acs", getRouteHandler("AdfsACS"))
+	root.HandleFunc("POST /v1-saml/adfs/saml/slo", getRouteHandler("AdfsSLO"))
+	root.HandleFunc("GET /v1-saml/adfs/saml/slo", getRouteHandler("AdfsSLOGet"))
+	root.HandleFunc("GET /v1-saml/adfs/saml/metadata", getRouteHandler("AdfsMetadata"))
 
-	root.Methods("POST").Path("/v1-saml/shibboleth/saml/acs").Name("ShibbolethACS")
-	root.Methods("POST").Path("/v1-saml/shibboleth/saml/slo").Name("ShibbolethSLO")
-	root.Methods("GET").Path("/v1-saml/shibboleth/saml/slo").Name("ShibbolethSLOGet")
-	root.Methods("GET").Path("/v1-saml/shibboleth/saml/metadata").Name("ShibbolethMetadata")
+	root.HandleFunc("POST /v1-saml/keycloak/saml/acs", getRouteHandler("KeyCloakACS"))
+	root.HandleFunc("POST /v1-saml/keycloak/saml/slo", getRouteHandler("KeyCloakSLO"))
+	root.HandleFunc("GET /v1-saml/keycloak/saml/slo", getRouteHandler("KeyCloakSLOGet"))
+	root.HandleFunc("GET /v1-saml/keycloak/saml/metadata", getRouteHandler("KeyCloakMetadata"))
 
+	root.HandleFunc("POST /v1-saml/okta/saml/acs", getRouteHandler("OktaACS"))
+	root.HandleFunc("POST /v1-saml/okta/saml/slo", getRouteHandler("OktaSLO"))
+	root.HandleFunc("GET /v1-saml/okta/saml/slo", getRouteHandler("OktaSLOGet"))
+	root.HandleFunc("GET /v1-saml/okta/saml/metadata", getRouteHandler("OktaMetadata"))
+
+	root.HandleFunc("POST /v1-saml/shibboleth/saml/acs", getRouteHandler("ShibbolethACS"))
+	root.HandleFunc("POST /v1-saml/shibboleth/saml/slo", getRouteHandler("ShibbolethSLO"))
+	root.HandleFunc("GET /v1-saml/shibboleth/saml/slo", getRouteHandler("ShibbolethSLOGet"))
+	root.HandleFunc("GET /v1-saml/shibboleth/saml/metadata", getRouteHandler("ShibbolethMetadata"))
+
+	log.Debugf("SAML [AuthHandler]: /v1-saml routes made, mux is %p", root)
 	return root
 }
 
-func (s *Provider) getSamlPrincipals(config *v32.SamlConfig, samlData map[string][]string) (v3.Principal, []v3.Principal, error) {
-	var userPrincipal v3.Principal
-	var groupPrincipals []v3.Principal
+func (s *Provider) getSamlPrincipals(config *apiv3.SamlConfig, samlData map[string][]string) (apiv3.Principal, []apiv3.Principal, error) {
+	var userPrincipal apiv3.Principal
+	var groupPrincipals []apiv3.Principal
 	uid, ok := samlData[config.UIDField]
 	if !ok {
 		// UID field provided by user is actually not there in SAMLResponse, without this we cannot differentiate between users and create separate principals
 		return userPrincipal, groupPrincipals, fmt.Errorf("SAML: Unique ID field is not provided in SAML Response")
 	}
 
-	userPrincipal = v3.Principal{
+	userPrincipal = apiv3.Principal{
 		ObjectMeta:    metav1.ObjectMeta{Name: s.userType + "://" + uid[0]},
 		Provider:      s.name,
 		PrincipalType: "user",
@@ -284,7 +314,7 @@ func (s *Provider) getSamlPrincipals(config *v32.SamlConfig, samlData map[string
 	groups, ok := samlData[config.GroupsField]
 	if ok {
 		for _, group := range groups {
-			group := v3.Principal{
+			group := apiv3.Principal{
 				ObjectMeta:    metav1.ObjectMeta{Name: s.groupType + "://" + group},
 				DisplayName:   group,
 				Provider:      s.name,
@@ -300,7 +330,6 @@ func (s *Provider) getSamlPrincipals(config *v32.SamlConfig, samlData map[string
 
 // FinalizeSamlLogout processes the logout obtained by the POST to /saml/slo from IdP
 func (s *Provider) FinalizeSamlLogout(w http.ResponseWriter, r *http.Request) {
-
 	if relayState := r.Form.Get("RelayState"); relayState != "" {
 		// delete the cookie
 		s.clientState.DeleteState(w, r, relayState)
@@ -356,18 +385,19 @@ func (s *Provider) FinalizeSamlLogout(w http.ResponseWriter, r *http.Request) {
 
 // HandleSamlAssertion processes/handles the assertion obtained by the POST to /saml/acs from IdP
 func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, assertion *saml.Assertion) {
-	var groupPrincipals []v3.Principal
-	var userPrincipal v3.Principal
+	var groupPrincipals []apiv3.Principal
+	var userPrincipal apiv3.Principal
 	var userID string
 	redirectURL := s.clientState.GetState(r, "Rancher_FinalRedirectURL")
 	rancherAction := s.clientState.GetState(r, "Rancher_Action")
 
-	if rancherAction == loginAction {
+	switch rancherAction {
+	case loginAction:
 		if !strings.Contains(redirectURL, dashboardAuthPath) {
 			redirectURL += dashboardAuthPath
 		}
 		redirectURL += loginPath
-	} else if rancherAction == testAndEnableAction {
+	case testAndEnableAction:
 		var err error
 		userID, err = s.getUserIdFromRelayStateCookie(r)
 		if err != nil {
@@ -377,10 +407,36 @@ func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, a
 		}
 		// the first query param is config=saml_provider_name set by UI
 		redirectURL += "&"
+	default:
 	}
 	if relayState := r.Form.Get("RelayState"); relayState != "" {
 		// delete the cookie
 		s.clientState.DeleteState(w, r, relayState)
+	}
+
+	// Validate the assertion's time conditions.
+	now := time.Now()
+	if err := checkAssertionTimeConditions(now, assertion.Conditions); err != nil {
+		log.Errorf("SAML: Rejected assertion ID %q: %v", assertion.ID, err)
+		http.Redirect(w, r, redirectURL+"errorCode=403", http.StatusFound)
+		return
+	}
+
+	assertionExpiry := now.Add(time.Hour)
+	if assertion.Conditions != nil && !assertion.Conditions.NotOnOrAfter.IsZero() {
+		assertionExpiry = assertion.Conditions.NotOnOrAfter
+	}
+	seen, err := s.assertionStore.seen(assertion.ID, assertionExpiry)
+	if err != nil {
+		log.Errorf("SAML: failed to lookup assertion ID %q: %v", assertion.ID, err)
+		http.Redirect(w, r, redirectURL+"errorCode=500", http.StatusFound)
+		return
+	}
+
+	if seen {
+		log.Errorf("SAML: Rejected previous assertion ID %q", assertion.ID)
+		http.Redirect(w, r, redirectURL+"errorCode=403", http.StatusFound)
+		return
 	}
 
 	samlData := make(map[string][]string)
@@ -485,7 +541,7 @@ func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, a
 	loginTime := time.Now()
 	userExtraInfo := s.GetUserExtraAttributes(userPrincipal)
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		return s.tokenMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo, loginTime)
+		return s.userMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo, loginTime)
 	}); err != nil {
 		log.Errorf("SAML: Failed creating or updating userAttribute with error: %v", err)
 		http.Redirect(w, r, redirectURL+"errorCode=500", http.StatusFound)
@@ -509,7 +565,7 @@ func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, a
 			responseType := s.clientState.GetState(r, "Rancher_ResponseType")
 			publicKey := s.clientState.GetState(r, "Rancher_PublicKey")
 
-			token, tokenValue, err := tokens.GetKubeConfigToken(user.Name, responseType, s.userMGR, userPrincipal)
+			token, tokenValue, err := tokens.GetKubeConfigToken(user.Name, responseType, s.tokenMGR, userPrincipal)
 			if err != nil {
 				log.Errorf("SAML: getToken error %v", err)
 				http.Redirect(w, r, redirectURL+"errorCode=500", http.StatusFound)
@@ -542,10 +598,10 @@ func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, a
 			}
 			encoded := base64.StdEncoding.EncodeToString(encryptedToken)
 
-			samlToken := &v3.SamlToken{
+			samlToken := &apiv3.SamlToken{
 				Token:     encoded,
 				ExpiresAt: token.ExpiresAt,
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      requestID,
 					Namespace: namespace.GlobalNamespace,
 				},
@@ -568,8 +624,8 @@ func (s *Provider) HandleSamlAssertion(w http.ResponseWriter, r *http.Request, a
 	}
 }
 
-func (s *Provider) setRancherToken(w http.ResponseWriter, tokenMGR *tokens.Manager, userID string, userPrincipal v3.Principal,
-	groupPrincipals []v3.Principal, isSecure bool) error {
+func (s *Provider) setRancherToken(w http.ResponseWriter, tokenMGR *tokens.Manager, userID string, userPrincipal apiv3.Principal,
+	groupPrincipals []apiv3.Principal, isSecure bool) error {
 	authTimeout := settings.AuthUserSessionTTLMinutes.Get()
 	var ttl int64
 	if minutes, err := strconv.ParseInt(authTimeout, 10, 64); err == nil {
@@ -587,6 +643,9 @@ func (s *Provider) setRancherToken(w http.ResponseWriter, tokenMGR *tokens.Manag
 		Secure:   isSecure,
 		Path:     "/",
 		HttpOnly: true,
+		// Lax is the default in most browsers; setting it
+		// explicitly is a good security measure.
+		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, tokenCookie)
 
@@ -598,10 +657,8 @@ func (s *Provider) getUserIdFromRelayStateCookie(r *http.Request) (string, error
 	// The state is stored in a cookie, which has the relay state as the key and a JWT token containing the userID as the value
 	if relayState := r.Form.Get("RelayState"); relayState != "" {
 		relayStateCookie := s.clientState.GetState(r, relayState)
-		jwtParser := jwt.Parser{
-			ValidMethods: []string{jwt.SigningMethodHS256.Name},
-		}
-		token, err := jwtParser.Parse(relayStateCookie, func(t *jwt.Token) (interface{}, error) {
+		jwtParser := newJWTParser()
+		token, err := jwtParser.Parse(relayStateCookie, func(t *jwt.Token) (any, error) {
 			secretBlock := x509.MarshalPKCS1PrivateKey(s.serviceProvider.Key)
 			return secretBlock, nil
 		})
@@ -616,4 +673,49 @@ func (s *Provider) getUserIdFromRelayStateCookie(r *http.Request) (string, error
 	}
 
 	return userID, nil
+}
+
+func newJWTParser() *jwt.Parser {
+	return jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
+}
+
+func validateFinalRedirectURL(redirectURL string, rancherServerURL string) (string, error) {
+	if redirectURL == "" {
+		return "", errors.New("redirect URL was not provided")
+	}
+	parsed, err := url.Parse(redirectURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid redirect URL: %w", err)
+	}
+	rancherParsed, err := url.Parse(rancherServerURL)
+	if err != nil {
+		return "", fmt.Errorf("could not parse Rancher server URL: %w", err)
+	}
+	if parsed.Host != rancherParsed.Host {
+		return "", fmt.Errorf("redirect URL host %q does not match Rancher host %q", parsed.Host, rancherParsed.Host)
+	}
+
+	return redirectURL, nil
+}
+
+// checkAssertionTimeConditions returns an error if now falls outside the
+// assertion's [NotBefore, NotOnOrAfter) validity window. A nil or zero-valued
+// bound is treated as unbounded on that side.
+func checkAssertionTimeConditions(now time.Time, conditions *saml.Conditions) error {
+	if conditions == nil {
+		return nil
+	}
+	if !conditions.NotBefore.IsZero() && now.Before(conditions.NotBefore) {
+		return fmt.Errorf("current time %s is before NotBefore %s", now, conditions.NotBefore)
+	}
+	if !conditions.NotOnOrAfter.IsZero() && !now.Before(conditions.NotOnOrAfter) {
+		return fmt.Errorf("current time %s is on or after NotOnOrAfter %s", now, conditions.NotOnOrAfter)
+	}
+
+	return nil
+}
+
+type assertionStore interface {
+	// seen returns true if the assertion ID was seen before.
+	seen(id string, expiry time.Time) (bool, error)
 }

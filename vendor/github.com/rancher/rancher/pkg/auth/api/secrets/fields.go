@@ -9,6 +9,7 @@ var (
 	// TypeToFields associates an Auth Config type with a set of secret names related to the config.
 	TypeToFields = map[string][]string{
 		client.GithubConfigType:          {client.GithubConfigFieldClientSecret},
+		client.GithubAppConfigType:       {client.GithubAppConfigFieldClientSecret, client.GithubAppConfigFieldPrivateKey},
 		client.ActiveDirectoryConfigType: {client.ActiveDirectoryConfigFieldServiceAccountPassword},
 		client.AzureADConfigType:         {client.AzureADConfigFieldApplicationSecret},
 		client.OpenLdapConfigType:        {client.LdapConfigFieldServiceAccountPassword},
@@ -22,6 +23,7 @@ var (
 		client.OIDCConfigType:            {client.OIDCConfigFieldPrivateKey, client.OIDCConfigFieldClientSecret},
 		client.KeyCloakOIDCConfigType:    {client.KeyCloakOIDCConfigFieldPrivateKey, client.KeyCloakOIDCConfigFieldClientSecret},
 		client.GenericOIDCConfigType:     {client.GenericOIDCConfigFieldPrivateKey, client.GenericOIDCConfigFieldClientSecret},
+		client.CognitoConfigType:         {client.CognitoConfigFieldPrivateKey, client.CognitoConfigFieldClientSecret},
 	}
 	// SubTypeToFields associates an Auth Config type with a nested map of secret names related to the config.
 	SubTypeToFields = map[string]map[string][]string{

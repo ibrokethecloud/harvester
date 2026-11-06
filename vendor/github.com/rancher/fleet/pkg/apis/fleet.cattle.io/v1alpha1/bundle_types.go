@@ -23,6 +23,12 @@ const (
 	// the downstream cluster, but there were some errors when deploying
 	// the Bundle.
 	ErrApplied BundleState = "ErrApplied"
+	// WaitingForDependency: Bundles have been synced from the Fleet
+	// controller and the downstream cluster, but are not deployed yet
+	// because at least one of the bundles they depend on has not reached
+	// an accepted state. Unlike ErrApplied this is not a deployment error:
+	// it resolves on its own once the dependency progresses.
+	WaitingForDependency BundleState = "WaitingForDependency"
 	// OutOfSync: Bundles have been synced from Fleet controller, but
 	// downstream agent hasn't synced the change yet.
 	OutOfSync BundleState = "OutOfSync"
@@ -35,19 +41,28 @@ const (
 
 	// SecretTypeBundleValues is the secret type used to store the helm values
 	SecretTypeBundleValues = "fleet.cattle.io/bundle-values/v1alpha1"
+
+	// SecretTypeOCIStorage is the secret type used internally to store bundle resources in an OCI registry instead
+	// of etcd.
+	SecretTypeOCIStorage = "fleet.cattle.io/bundle-oci-storage/v1alpha1"
+
+	// InternalSecretLabel is a label added to any secret created by Fleet to propagate Bundle or
+	// BundleDeployment secrets storing credential details for OCI storage or HelmOps.
+	InternalSecretLabel = "fleet.cattle.io/bundle-internal-secret"
 )
 
 var (
 	// StateRank ranks the state, e.g. so the highest ranked non-ready
 	// state can be reported in a summary.
 	StateRank = map[BundleState]int{
-		ErrApplied:  7,
-		WaitApplied: 6,
-		Modified:    5,
-		OutOfSync:   4,
-		Pending:     3,
-		NotReady:    2,
-		Ready:       1,
+		ErrApplied:           8,
+		WaitingForDependency: 7,
+		WaitApplied:          6,
+		Modified:             5,
+		OutOfSync:            4,
+		Pending:              3,
+		NotReady:             2,
+		Ready:                1,
 	}
 )
 
@@ -104,6 +119,13 @@ type BundleSpec struct {
 	// +nullable
 	Resources []BundleResource `json:"resources,omitempty"`
 
+	// TargetCustomizationMode controls how targetCustomizations from fleet.yaml
+	// are evaluated. "FirstMatch" (default) stops at the first matching entry.
+	// "AllMatches" applies all matching entries in order, merging them.
+	// +kubebuilder:default=FirstMatch
+	// +kubebuilder:validation:Enum=FirstMatch;AllMatches
+	TargetCustomizationMode TargetCustomizationMode `json:"targetCustomizationMode,omitempty"`
+
 	// Targets refer to the clusters which will be deployed to.
 	// Targets are evaluated in order and the first one to match is used.
 	Targets []BundleTarget `json:"targets,omitempty"`
@@ -119,11 +141,11 @@ type BundleSpec struct {
 	// +nullable
 	ContentsID string `json:"contentsId,omitempty"`
 
-	// HelmAppOptions stores the options relative to HelmApp resources
-	// Non-nil HelmAppOptions indicate that the source of resources is a Helm chart,
+	// HelmOpOptions stores the options relative to HelmOp resources
+	// Non-nil HelmOpOptions indicate that the source of resources is a Helm chart,
 	// not a git repository.
 	// +nullable
-	HelmAppOptions *BundleHelmOptions `json:"helmAppOptions,omitempty"`
+	HelmOpOptions *BundleHelmOptions `json:"helmOpOptions,omitempty"`
 
 	// ValuesHash is the hash of the values used to render the Helm chart.
 	// It changes when any values from fleet.yaml, values from ValuesFiles or values from target
@@ -138,6 +160,14 @@ type BundleRef struct {
 	// Selector matching bundle's labels.
 	// +nullable
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+	// AcceptedStates is a list of BundleDeployment state that are considered acceptable for this dependency.
+	// If the dependency is in one of these states, it will not block the deployment of the dependent bundle.
+	// Valid Values should match the StateRank keys, except for WaitingForDependency, which is rejected:
+	// it would unblock this bundle exactly when its dependency became blocked on a dependency of its own.
+	// If not specified, default to ["Ready"]: only fully ready dependencies are accepted
+	// Example: ["Ready", "Modified"] will accept dependencies that are either ready or have drifted from their desired state.
+	// +nullable
+	AcceptedStates []BundleState `json:"acceptedStates,omitempty"`
 }
 
 // BundleResource represents the content of a single resource from the bundle, like a YAML manifest.
@@ -153,7 +183,13 @@ type BundleResource struct {
 	Encoding string `json:"encoding,omitempty"`
 }
 
-// RolloverStrategy controls the rollout of the bundle across clusters.
+type OverwrittenResource struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Kind      string `json:"kind,omitempty"`
+}
+
+// RolloutStrategy controls the rollout of the bundle across clusters.
 type RolloutStrategy struct {
 	// A number or percentage of clusters that can be unavailable during an update
 	// of a bundle. This follows the same basic approach as a deployment rollout
@@ -172,6 +208,19 @@ type RolloutStrategy struct {
 	// default: 25%
 	// +nullable
 	AutoPartitionSize *intstr.IntOrString `json:"autoPartitionSize,omitempty"`
+	// AutoPartitionThreshold is the minimum number of clusters that need to be
+	// present before auto-partitioning is enabled. If the number of target
+	// clusters is less than this value, all clusters will be placed in a single
+	// partition.
+	// default: 200
+	// +nullable
+	AutoPartitionThreshold *int `json:"autoPartitionThreshold,omitempty"`
+	// MaxNew is the maximum number of new BundleDeployments that can be created
+	// in a single reconciliation. This limits the rate at which new deployments
+	// are staged when a bundle is first applied to many clusters.
+	// default: 50
+	// +nullable
+	MaxNew *int `json:"maxNew,omitempty"`
 	// A list of definitions of partitions.  If any target clusters do not match
 	// the configuration they are added to partitions at the end following the
 	// autoPartitionSize.
@@ -200,8 +249,8 @@ type Partition struct {
 }
 
 // BundleTargetRestriction is used internally by Fleet and should not be modified.
-// It acts as an allow list, to prevent the creation of BundleDeployments from
-// Targets created by TargetCustomizations in fleet.yaml.
+// It acts as an allow list, restricting BundleDeployment creation to only those clusters
+// that are explicitly listed in the GitRepo targets.
 type BundleTargetRestriction struct {
 	// +nullable
 	Name string `json:"name,omitempty"`
@@ -241,12 +290,6 @@ type BundleTarget struct {
 	ClusterGroupSelector *metav1.LabelSelector `json:"clusterGroupSelector,omitempty"`
 	// DoNotDeploy if set to true, will not deploy to this target.
 	DoNotDeploy bool `json:"doNotDeploy,omitempty"`
-	// NamespaceLabels are labels that will be appended to the namespace created by Fleet.
-	// +nullable
-	NamespaceLabels map[string]string `json:"namespaceLabels,omitempty"`
-	// NamespaceAnnotations are annotations that will be appended to the namespace created by Fleet.
-	// +nullable
-	NamespaceAnnotations map[string]string `json:"namespaceAnnotations,omitempty"`
 }
 
 // BundleSummary contains the number of bundle deployments in each state and a
@@ -264,6 +307,10 @@ type BundleSummary struct {
 	// from the Fleet controller and the downstream cluster, but with some
 	// errors when deploying the bundle.
 	ErrApplied int `json:"errApplied,omitempty"`
+	// WaitingForDependency is the number of bundle deployments which are
+	// not deployed because at least one of the bundles they depend on has
+	// not reached an accepted state.
+	WaitingForDependency int `json:"waitingForDependency,omitempty"`
 	// OutOfSync is the number of bundle deployments that have been synced
 	// from Fleet controller, but not yet by the downstream agent.
 	OutOfSync int `json:"outOfSync,omitempty"`
@@ -309,6 +356,18 @@ type NonReadyResource struct {
 	NonReadyStatus []NonReadyStatus `json:"nonReadyStatus,omitempty"`
 }
 
+// TargetCustomizationMode controls how targetCustomizations from fleet.yaml are evaluated.
+type TargetCustomizationMode string
+
+const (
+	// TargetCustomizationModeFirstMatch stops at the first matching targetCustomization entry.
+	// This is the default behaviour.
+	TargetCustomizationModeFirstMatch TargetCustomizationMode = "FirstMatch"
+	// TargetCustomizationModeAllMatches applies all matching targetCustomization entries
+	// in order, merging their options.
+	TargetCustomizationModeAllMatches TargetCustomizationMode = "AllMatches"
+)
+
 const (
 	// BundleConditionReady is unused. A "Ready" condition on a bundle
 	// indicates that its resources are ready and the dependencies are
@@ -324,6 +383,13 @@ const (
 	// succeeded.
 	BundleDeploymentConditionDeployed  = "Deployed"
 	BundleDeploymentConditionMonitored = "Monitored"
+
+	// BundleDeploymentReasonWaitingForDependency is the reason set on the
+	// Deployed condition when the bundledeployment is not deployed because
+	// one of its dependencies has not reached an accepted state. It
+	// distinguishes that temporary wait from an actual deployment error,
+	// which uses the default "Error" reason.
+	BundleDeploymentReasonWaitingForDependency = "WaitingForDependency"
 )
 
 type BundleStatus struct {
@@ -355,9 +421,6 @@ type BundleStatus struct {
 	// percentage of unavailable partitions.
 	// +optional
 	MaxUnavailablePartitions int `json:"maxUnavailablePartitions"`
-	// MaxNew is always 50. A bundle change can only stage 50
-	// bundledeployments at a time.
-	MaxNew int `json:"maxNew,omitempty"`
 	// PartitionStatus lists the status of each partition.
 	PartitionStatus []PartitionStatus `json:"partitions,omitempty"`
 	// Display contains the number of ready, desiredready clusters and a
@@ -365,7 +428,7 @@ type BundleStatus struct {
 	Display BundleDisplay `json:"display,omitempty"`
 	// ResourceKey lists resources, which will likely be deployed. The
 	// actual list of resources on a cluster might differ, depending on the
-	// helm chart, value templating, etc..
+	// helm chart, value templating, etc.. (deprecated to reduce bundle size)
 	// +nullable
 	ResourceKey []ResourceKey `json:"resourceKey,omitempty"`
 	// OCIReference is the OCI reference used to store contents, this is
@@ -424,9 +487,16 @@ type PartitionStatus struct {
 
 type BundleHelmOptions struct {
 	// SecretName stores the secret name for storing credentials when accessing
-	// a remote helm repository defined in a HelmApp resource
-	SecretName string `json:"helmAppSecretName,omitempty"`
+	// a remote helm repository defined in a HelmOp resource
+	SecretName string `json:"helmOpSecretName,omitempty"`
 
 	// InsecureSkipTLSverify will use insecure HTTPS to clone the helm app resource.
-	InsecureSkipTLSverify bool `json:"helmAppInsecureSkipTLSVerify,omitempty"`
+	InsecureSkipTLSverify bool `json:"helmOpInsecureSkipTLSVerify,omitempty"`
+
+	// CABundle is a PEM encoded CA bundle used to validate TLS connections to
+	// the Helm registry. It is resolved by the controller (which has access to
+	// Rancher's cattle-system CA secrets, if any) and stored here so the agent can use
+	// it without requiring access to those secrets.
+	// +nullable
+	CABundle []byte `json:"helmOpCABundle,omitempty"`
 }

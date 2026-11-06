@@ -3,8 +3,6 @@ package schema
 import (
 	"net/http"
 
-	rketypes "github.com/rancher/rke/types"
-
 	"github.com/rancher/norman/types"
 	m "github.com/rancher/norman/types/mapper"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
@@ -38,17 +36,14 @@ var (
 		Init(userTypes).
 		Init(projectNetworkPolicyTypes).
 		Init(globalTypes).
-		Init(rkeTypes).
 		Init(composeType).
 		Init(kontainerTypes).
-		Init(etcdBackupTypes).
 		Init(credTypes).
 		Init(mgmtSecretTypes).
-		Init(clusterTemplateTypes).
-		Init(driverMetadataTypes).
 		Init(encryptionTypes).
 		Init(fleetTypes).
-		Init(notificationTypes)
+		Init(notificationTypes).
+		Init(oidcProviderTypes)
 
 	TokenSchemas = factory.Schemas(&Version).
 			Init(tokens)
@@ -56,29 +51,6 @@ var (
 
 func fleetTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.MustImport(&Version, v3.FleetWorkspace{})
-}
-
-func rkeTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.AddMapperForType(&Version, rketypes.BaseService{}, m.Drop{Field: "image"}).
-		AddMapperForType(&Version, v1.Taint{},
-			m.Enum{Field: "effect", Options: []string{
-				string(v1.TaintEffectNoSchedule),
-				string(v1.TaintEffectPreferNoSchedule),
-				string(v1.TaintEffectNoExecute),
-			}},
-			m.Required{Fields: []string{
-				"effect",
-				"value",
-				"key",
-			}},
-			m.ReadOnly{Field: "timeAdded"},
-		).
-		MustImport(&Version, rketypes.ExtraEnv{}).
-		MustImport(&Version, rketypes.ExtraVolume{}).
-		MustImport(&Version, rketypes.ExtraVolumeMount{}).
-		MustImport(&Version, rketypes.LinearAutoscalerParams{}).
-		MustImport(&Version, rketypes.DeploymentStrategy{}).
-		MustImport(&Version, rketypes.DaemonSetUpdateStrategy{})
 }
 
 func schemaTypes(schemas *types.Schemas) *types.Schemas {
@@ -110,16 +82,6 @@ func mgmtSecretTypes(schemas *types.Schemas) *types.Schemas {
 			return field
 		})
 	})
-}
-
-func driverMetadataTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.
-		AddMapperForType(&Version, v3.RkeK8sSystemImage{}, m.Drop{Field: "namespaceId"}).
-		AddMapperForType(&Version, v3.RkeK8sServiceOption{}, m.Drop{Field: "namespaceId"}).
-		AddMapperForType(&Version, v3.RkeAddon{}, m.Drop{Field: "namespaceId"}).
-		MustImport(&Version, v3.RkeK8sSystemImage{}).
-		MustImport(&Version, v3.RkeK8sServiceOption{}).
-		MustImport(&Version, v3.RkeAddon{})
 }
 
 func nativeNodeTypes(schemas *types.Schemas) *types.Schemas {
@@ -183,9 +145,6 @@ func clusterTypes(schemas *types.Schemas) *types.Schemas {
 		AddMapperForType(&Version, v3.ClusterRegistrationToken{},
 			&m.Embed{Field: "status"},
 		).
-		AddMapperForType(&Version, rketypes.RancherKubernetesEngineConfig{},
-			m.Drop{Field: "systemImages"},
-		).
 		MustImport(&Version, v3.Cluster{}).
 		MustImport(&Version, v3.ClusterRegistrationToken{}).
 		MustImport(&Version, v3.GenerateKubeConfigOutput{}).
@@ -196,22 +155,13 @@ func clusterTypes(schemas *types.Schemas) *types.Schemas {
 		MustImport(&Version, v3.ImportYamlOutput{}).
 		MustImport(&Version, v3.ExportOutput{}).
 		MustImport(&Version, v3.RestoreFromEtcdBackupInput{}).
-		MustImport(&Version, v3.SaveAsTemplateInput{}).
-		MustImport(&Version, v3.SaveAsTemplateOutput{}).
 		AddMapperForType(&Version, v1.EnvVar{},
 			&m.Move{
 				From: "envVar",
 				To:   "agentEnvVar",
 			}).
-		MustImportAndCustomize(&Version, rketypes.ETCDService{}, func(schema *types.Schema) {
-			schema.MustCustomizeField("extraArgs", func(field types.Field) types.Field {
-				field.Default = map[string]interface{}{
-					"election-timeout":   "5000",
-					"heartbeat-interval": "500"}
-				return field
-			})
-		}).
 		MustImportAndCustomize(&Version, v3.Cluster{}, func(schema *types.Schema) {
+			schema.Status = true
 			schema.MustCustomizeField("name", func(field types.Field) types.Field {
 				field.Type = "dnsLabel"
 				field.Nullable = true
@@ -227,17 +177,6 @@ func clusterTypes(schemas *types.Schemas) *types.Schemas {
 			}
 			schema.ResourceActions[v3.ClusterActionExportYaml] = types.Action{
 				Output: "exportOutput",
-			}
-			schema.ResourceActions[v3.ClusterActionBackupEtcd] = types.Action{}
-			schema.ResourceActions[v3.ClusterActionRestoreFromEtcdBackup] = types.Action{
-				Input: "restoreFromEtcdBackupInput",
-			}
-			schema.ResourceActions[v3.ClusterActionRotateCertificates] = types.Action{
-				Input:  "rotateCertificateInput",
-				Output: "rotateCertificateOutput",
-			}
-			schema.ResourceActions[v3.ClusterActionRotateEncryptionKey] = types.Action{
-				Output: "rotateEncryptionKeyOutput",
 			}
 			schema.ResourceActions[v3.ClusterActionSaveAsTemplate] = types.Action{
 				Input:  "saveAsTemplateInput",
@@ -285,15 +224,11 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.
 		AddMapperForType(&Version, v3.NodeSpec{}, &m.Embed{Field: "internalNodeSpec"}).
 		AddMapperForType(&Version, v3.NodeStatus{},
-			&m.Drop{Field: "nodeTemplateSpec"},
 			&m.Embed{Field: "internalNodeStatus"},
 			&m.Drop{Field: "config"},
 			&m.SliceMerge{From: []string{"conditions", "nodeConditions"}, To: "conditions"}).
 		AddMapperForType(&Version, v3.Node{},
 			&m.Embed{Field: "status"},
-			&m.Move{From: "rkeNode/user", To: "sshUser"},
-			&m.ReadOnly{Field: "sshUser"},
-			&m.Drop{Field: "rkeNode"},
 			&m.Drop{Field: "labels"},
 			&m.Drop{Field: "annotations"},
 			&m.Move{From: "nodeLabels", To: "labels"},
@@ -307,16 +242,7 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 			m.Copy{From: "namespaceId", To: "clusterName"},
 			m.DisplayName{}).
 		AddMapperForType(&Version, v3.NodeDriver{}, m.DisplayName{}).
-		AddMapperForType(&Version, v3.NodeTemplate{}, m.DisplayName{}).
 		MustImport(&Version, v3.PublicEndpoint{}).
-		MustImportAndCustomize(&Version, v3.NodePool{}, func(schema *types.Schema) {
-			schema.ResourceFields["driver"] = types.Field{
-				Type:     "string",
-				CodeName: "Driver",
-				Create:   false,
-				Update:   false,
-			}
-		}).
 		MustImport(&Version, v3.NodeDrainInput{}).
 		MustImportAndCustomize(&Version, v3.Node{}, func(schema *types.Schema) {
 			labelField := schema.ResourceFields["labels"]
@@ -351,9 +277,6 @@ func nodeTypes(schemas *types.Schemas) *types.Schemas {
 			schema.ResourceActions["deactivate"] = types.Action{
 				Output: "nodeDriver",
 			}
-		}).
-		MustImportAndCustomize(&Version, v3.NodeTemplate{}, func(schema *types.Schema) {
-			delete(schema.ResourceFields, "namespaceId")
 		})
 }
 
@@ -363,13 +286,13 @@ func tokens(schemas *types.Schemas) *types.Schemas {
 			schema.CollectionActions = map[string]types.Action{
 				"logout": {},
 				"logoutAll": {
-					Input:  "samlConfigLogoutInput",
-					Output: "samlConfigLogoutOutput",
+					Input:  "authConfigLogoutInput",
+					Output: "authConfigLogoutOutput",
 				},
 			}
 		}).
-		MustImport(&Version, v3.SamlConfigLogoutInput{}).
-		MustImport(&Version, v3.SamlConfigLogoutOutput{})
+		MustImport(&Version, v3.AuthConfigLogoutInput{}).
+		MustImport(&Version, v3.AuthConfigLogoutOutput{})
 }
 
 func authnTypes(schemas *types.Schemas) *types.Schemas {
@@ -436,6 +359,24 @@ func authnTypes(schemas *types.Schemas) *types.Schemas {
 		}).
 		MustImport(&Version, v3.GithubConfigTestOutput{}).
 		MustImport(&Version, v3.GithubConfigApplyInput{}).
+		//GithubApp Config
+		MustImportAndCustomize(&Version, v3.GithubAppConfig{}, func(schema *types.Schema) {
+			schema.BaseType = "authConfig"
+			schema.ResourceActions = map[string]types.Action{
+				"disable": {},
+				"configureTest": {
+					Input:  "githubAppConfig",
+					Output: "githubAppConfigTestOutput",
+				},
+				"testAndApply": {
+					Input: "githubAppConfigApplyInput",
+				},
+			}
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet, http.MethodPut}
+		}).
+		MustImport(&Version, v3.GithubAppConfigTestOutput{}).
+		MustImport(&Version, v3.GithubAppConfigApplyInput{}).
 		//AzureAD Config
 		MustImportAndCustomize(&Version, v3.AzureADConfig{}, func(schema *types.Schema) {
 			schema.BaseType = "authConfig"
@@ -574,6 +515,21 @@ func authnTypes(schemas *types.Schemas) *types.Schemas {
 			schema.CollectionMethods = []string{}
 			schema.ResourceMethods = []string{http.MethodGet, http.MethodPut}
 		}).
+		MustImportAndCustomize(&Version, v3.CognitoConfig{}, func(schema *types.Schema) {
+			schema.BaseType = "authConfig"
+			schema.ResourceActions = map[string]types.Action{
+				"disable": {},
+				"configureTest": {
+					Input:  "genericOIDCConfig",
+					Output: "genericOIDCTestOutput",
+				},
+				"testAndApply": {
+					Input: "genericOIDCApplyInput",
+				},
+			}
+			schema.CollectionMethods = []string{}
+			schema.ResourceMethods = []string{http.MethodGet, http.MethodPut}
+		}).
 		MustImport(&Version, v3.GenericOIDCApplyInput{}).
 		MustImport(&Version, v3.GenericOIDCTestOutput{}).
 		//KeyCloakOIDC Config
@@ -684,37 +640,8 @@ func kontainerTypes(schemas *types.Schemas) *types.Schemas {
 		})
 }
 
-func etcdBackupTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.MustImport(&Version, v3.EtcdBackup{})
-}
-
-func clusterTemplateTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.
-		TypeName("clusterTemplate", v3.ClusterTemplate{}).
-		TypeName("clusterTemplateRevision", v3.ClusterTemplateRevision{}).
-		AddMapperForType(&Version, v3.ClusterTemplate{}, m.Drop{Field: "namespaceId"}, m.DisplayName{}).
-		AddMapperForType(&Version, v3.ClusterTemplateRevision{},
-			m.Drop{Field: "namespaceId"},
-			&m.Embed{Field: "status"},
-			m.DisplayName{}).
-		MustImport(&Version, v3.ClusterTemplateQuestionsOutput{}).
-		MustImport(&Version, v3.ClusterTemplate{}).
-		MustImportAndCustomize(&Version, v3.ClusterTemplateRevision{}, func(schema *types.Schema) {
-			schema.ResourceActions = map[string]types.Action{
-				"disable": {},
-				"enable":  {},
-			}
-			schema.CollectionActions = map[string]types.Action{
-				"listquestions": {
-					Output: "clusterTemplateQuestionsOutput",
-				},
-			}
-		})
-
-}
-
 func encryptionTypes(schemas *types.Schemas) *types.Schemas {
-	return schemas.MustImport(&Version, rketypes.SecretsEncryptionConfig{}).
+	return schemas.
 		MustImport(&Version, apiserver.Key{}, struct {
 			Secret string `norman:"type=password"`
 		}{}).MustImport(&Version, apiserver.KMSConfiguration{}, struct {
@@ -724,4 +651,13 @@ func encryptionTypes(schemas *types.Schemas) *types.Schemas {
 
 func notificationTypes(schemas *types.Schemas) *types.Schemas {
 	return schemas.MustImport(&Version, v3.RancherUserNotification{})
+}
+
+func oidcProviderTypes(schemas *types.Schemas) *types.Schemas {
+	return schemas.MustImportAndCustomize(&Version, v3.OIDCClient{}, func(s *types.Schema) {
+		s.MustCustomizeField("status", func(field types.Field) types.Field {
+			field.Nullable = false
+			return field
+		})
+	})
 }

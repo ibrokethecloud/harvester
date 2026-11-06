@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
 	kubeletconfigv1 "k8s.io/kubelet/config/v1beta1"
 	kubeletstatsv1 "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	"github.com/harvester/harvester/pkg/controller/master/upgrade"
 	ctldiscoveryv1 "github.com/harvester/harvester/pkg/generated/controllers/discovery.k8s.io/v1"
 	ctlharvesterv1 "github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
 	ctlkubevirtv1 "github.com/harvester/harvester/pkg/generated/controllers/kubevirt.io/v1"
@@ -132,11 +130,6 @@ func (v *upgradeValidator) Create(_ *types.Request, newObj runtime.Object) error
 		}
 	}
 
-	req, err := labels.NewRequirement(upgradeStateLabel, selection.NotIn, []string{upgrade.StateSucceeded, upgrade.StateFailed})
-	if err != nil {
-		return werror.NewBadRequest(fmt.Sprintf("%s label is already set as %s or %s", upgradeStateLabel, upgrade.StateSucceeded, upgrade.StateFailed))
-	}
-
 	upgrades, err := v.upgrades.List(newUpgrade.Namespace, labels.NewSelector().Add(*req))
 	if err != nil {
 		return werror.NewInternalError(fmt.Sprintf("can't list upgrades, err: %+v", err))
@@ -146,10 +139,6 @@ func (v *upgradeValidator) Create(_ *types.Request, newObj runtime.Object) error
 		return werror.NewConflict(msg)
 	}
 
-	reqCleanup, err := labels.NewRequirement(upgradeCleanupLabel, selection.In, []string{upgrade.StatePending})
-	if err != nil {
-		return werror.NewBadRequest(fmt.Sprintf("failed to create the '%s' resource selection label: %s", upgradeCleanupLabel, err))
-	}
 	upgrades, err = v.upgrades.List(newUpgrade.Namespace, labels.NewSelector().Add(*reqCleanup))
 	if err != nil {
 		return werror.NewInternalError(fmt.Sprintf("can't list upgrades, err: %+v", err))

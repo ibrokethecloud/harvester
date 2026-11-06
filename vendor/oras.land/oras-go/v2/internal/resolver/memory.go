@@ -17,6 +17,8 @@ package resolver
 
 import (
 	"context"
+	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/opencontainers/go-digest"
@@ -47,7 +49,7 @@ func (m *Memory) Resolve(_ context.Context, reference string) (ocispec.Descripto
 
 	desc, ok := m.index[reference]
 	if !ok {
-		return ocispec.Descriptor{}, errdef.ErrNotFound
+		return ocispec.Descriptor{}, fmt.Errorf("%s: %w", reference, errdef.ErrNotFound)
 	}
 	return desc, nil
 }
@@ -90,11 +92,7 @@ func (m *Memory) Map() map[string]ocispec.Descriptor {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
-	res := make(map[string]ocispec.Descriptor, len(m.index))
-	for key, value := range m.index {
-		res[key] = value
-	}
-	return res
+	return maps.Clone(m.index)
 }
 
 // TagSet returns the set of tags of the descriptor.
@@ -103,9 +101,5 @@ func (m *Memory) TagSet(desc ocispec.Descriptor) set.Set[string] {
 	defer m.lock.RUnlock()
 
 	tagSet := m.tags[desc.Digest]
-	res := make(set.Set[string], len(tagSet))
-	for tag := range tagSet {
-		res.Add(tag)
-	}
-	return res
+	return maps.Clone(tagSet)
 }

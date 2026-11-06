@@ -7,7 +7,7 @@ import (
 
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	"github.com/sirupsen/logrus"
 )
@@ -26,17 +26,16 @@ func (s *Provider) actionHandler(actionName string, action *types.Action, reques
 		return nil
 	}
 
-	if actionName == "testAndEnable" {
-		return s.testAndEnable(actionName, action, request)
+	switch actionName {
+	case "testAndEnable":
+		return s.testAndEnable(request)
+	default:
+		return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 	}
-
-	return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 }
 
-func (s *Provider) testAndEnable(actionName string, action *types.Action, request *types.APIContext) error {
-	// get Final redirect URL from request body
-
-	samlLogin := &v32.SamlConfigTestInput{}
+func (s *Provider) testAndEnable(request *types.APIContext) error {
+	samlLogin := &apiv3.SamlConfigTestInput{}
 	if err := json.NewDecoder(request.Request.Body).Decode(samlLogin); err != nil {
 		return httperror.NewAPIError(httperror.InvalidBodyContent,
 			fmt.Sprintf("SAML: Failed to parse body: %v", err))
@@ -60,19 +59,23 @@ func (s *Provider) testAndEnable(actionName string, action *types.Action, reques
 
 	logrus.Debugf("SAML [testAndEnable]: Setting clientState for SAML service provider %v", s.name)
 
-	finalRedirectURL := samlLogin.FinalRedirectURL
+	finalRedirectURL, err := validateFinalRedirectURL(samlLogin.FinalRedirectURL, provider.serviceProvider.MetadataURL.String())
+	if err != nil {
+		logrus.Errorf("SAML: testAndEnable validating redirect URL: %v", err)
+		return newInvalidURLError("failed to validate final redirection URL")
+	}
 	logrus.Debugf("SAML [testAndEnable]: Final redirect will be (%v)", finalRedirectURL)
 
 	provider.clientState.SetPath(provider.serviceProvider.AcsURL.Path)
 	provider.clientState.SetState(request.Response, request.Request, "Rancher_FinalRedirectURL", finalRedirectURL)
 	provider.clientState.SetState(request.Response, request.Request, "Rancher_Action", testAndEnableAction)
 
-	idpRedirectURL, err := provider.HandleSamlLogin(request.Response, request.Request, provider.userMGR.GetUser(request))
+	idpRedirectURL, err := provider.HandleSamlLogin(request.Response, request.Request, provider.userMGR.GetUser(request.Request))
 	if err != nil {
 		return err
 	}
 	logrus.Debugf("SAML [testAndEnable]: Redirecting to the identity provider login page at %v", idpRedirectURL)
-	data := map[string]interface{}{
+	data := map[string]any{
 		"idpRedirectUrl": idpRedirectURL,
 		"type":           "samlConfigTestOutput",
 	}

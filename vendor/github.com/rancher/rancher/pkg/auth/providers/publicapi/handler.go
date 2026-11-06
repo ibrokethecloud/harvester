@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	normanapi "github.com/rancher/norman/api"
@@ -12,11 +13,31 @@ import (
 	"github.com/rancher/rancher/pkg/types/config"
 )
 
+// NewV1Handler returns an http handler for /v1-public endpoints.
+func NewV1Handler(ctx context.Context, scaledContext *config.ScaledContext) (http.Handler, error) {
+	providerStore, err := newV1AuthProviderStore(scaledContext.Wrangler)
+	if err != nil {
+		return nil, fmt.Errorf("creating authprovider store: %w", err)
+	}
+
+	authTokenStore := newV1AuthTokenStore(scaledContext.Wrangler)
+
+	r := http.NewServeMux()
+	r.HandleFunc("GET /v1-public/authproviders", providerStore.List)
+	r.HandleFunc("POST /v1-public/login", newV1LoginHandler(scaledContext).login)
+	r.HandleFunc("GET /v1-public/authtokens/{id}", authTokenStore.Get)
+	r.HandleFunc("DELETE /v1-public/authtokens/{id}", authTokenStore.Delete)
+
+	return r, nil
+}
+
 type ServerOption func(server *normanapi.Server)
 
-func NewHandler(ctx context.Context, mgmtCtx *config.ScaledContext, opts ...ServerOption) (http.Handler, error) {
+// NewV3Handler returns an http handler for /v3-public endpoints.
+// Deprecated. Use NewV1Handler instead. Will be removed in future releases.
+func NewV3Handler(ctx context.Context, mgmtCtx *config.ScaledContext, opts ...ServerOption) (http.Handler, error) {
 	schemas := types.NewSchemas().AddSchemas(publicSchema.PublicSchemas)
-	if err := authProviderSchemas(ctx, mgmtCtx, schemas); err != nil {
+	if err := authProviderSchemas(mgmtCtx, schemas); err != nil {
 		return nil, err
 	}
 
@@ -36,6 +57,7 @@ var authProviderTypes = []string{
 	v3public.ActiveDirectoryProviderType,
 	v3public.AzureADProviderType,
 	v3public.GithubProviderType,
+	v3public.GithubAppProviderType,
 	v3public.LocalProviderType,
 	v3public.OpenLdapProviderType,
 	v3public.FreeIpaProviderType,
@@ -48,12 +70,13 @@ var authProviderTypes = []string{
 	v3public.OIDCProviderType,
 	v3public.KeyCloakOIDCProviderType,
 	v3public.GenericOIDCProviderType,
+	v3public.CognitoProviderType,
 }
 
-func authProviderSchemas(ctx context.Context, management *config.ScaledContext, schemas *types.Schemas) error {
+func authProviderSchemas(management *config.ScaledContext, schemas *types.Schemas) error {
 	schema := schemas.Schema(&publicSchema.PublicVersion, v3public.AuthProviderType)
 	setAuthProvidersStore(schema, management)
-	lh := newLoginHandler(ctx, management)
+	lh := newV3LoginHandler(management)
 
 	for _, apSubtype := range authProviderTypes {
 		subSchema := schemas.Schema(&publicSchema.PublicVersion, apSubtype)

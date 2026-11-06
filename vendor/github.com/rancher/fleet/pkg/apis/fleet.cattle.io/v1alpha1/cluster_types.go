@@ -32,6 +32,17 @@ var (
 	// ClusterRegistrationTokenAnnotation is the namespace of the
 	// clusterregistration, e.g. "fleet-local".
 	ClusterRegistrationNamespaceAnnotation = "fleet.cattle.io/cluster-registration-namespace"
+	// RegistrationTokenLabel is set on a ClusterRegistration to record which
+	// ClusterRegistrationToken was used. The clusterregistration controller
+	// reads this label to grant only that token's SA scoped read access to
+	// the resulting credential secret.
+	RegistrationTokenLabel = "fleet.cattle.io/registration-token"
+	// RegisteredTokenAnnotation is set on a Cluster, recording which
+	// registration token was used to create it during agent-initiated
+	// registration. A later ClusterRegistration claiming the same ClientID
+	// but presenting a different registration token is not granted. Updating
+	// this annotation to another token name allows registering with it.
+	RegisteredTokenAnnotation = "fleet.cattle.io/registered-token"
 	// ManagedLabel is used for clean up. Cluster namespaces and other
 	// resources with this label will be cleaned up. Used in Rancher to
 	// identify fleet namespaces.
@@ -42,6 +53,15 @@ var (
 	// ClusterLabel is used on a bundledeployment to refer to the targeted
 	// cluster
 	ClusterLabel = "fleet.cattle.io/cluster"
+
+	// ClusterManagementLabel can be used to specify a custom cluster manager
+	ClusterManagementLabel = "fleet.cattle.io/cluster-management"
+
+	// LocalClusterName is the name of the Cluster object that represents the
+	// management (local) cluster. It is created by the bootstrap controller in
+	// the bootstrap namespace and is also used as the value of the "name" label
+	// the local cluster's ClusterGroup selects on.
+	LocalClusterName = "local"
 )
 
 // +genclient
@@ -73,6 +93,21 @@ type ClusterList struct {
 	Items           []Cluster `json:"items"`
 }
 
+type AgentSchedulingCustomization struct {
+	PriorityClass       *PriorityClassSpec       `json:"priorityClass,omitempty"`
+	PodDisruptionBudget *PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+}
+
+type PriorityClassSpec struct {
+	Value            int                      `json:"value,omitempty"`
+	PreemptionPolicy *corev1.PreemptionPolicy `json:"preemptionPolicy,omitempty"`
+}
+
+type PodDisruptionBudgetSpec struct {
+	MinAvailable   string `json:"minAvailable,omitempty"`
+	MaxUnavailable string `json:"maxUnavailable,omitempty"`
+}
+
 type ClusterSpec struct {
 	// Paused if set to true, will stop any BundleDeployments from being updated.
 	Paused bool `json:"paused,omitempty"`
@@ -90,6 +125,11 @@ type ClusterSpec struct {
 
 	// KubeConfigSecretNamespace is the namespace of the secret containing the kubeconfig for the downstream cluster.
 	// If unset, it will be assumed the secret can be found in the namespace that the Cluster object resides within.
+	// A secret in a different namespace is only used if it carries the label
+	// fleet.cattle.io/kubeconfig-referenceable-from set to the Cluster's namespace,
+	// or, if the fleet-controller setting allowUnlabeledKubeConfigSecretNamespaces
+	// is enabled, if that label is missing or empty and the secret is in one of
+	// Fleet's well-known namespaces.
 	// +nullable
 	KubeConfigSecretNamespace string `json:"kubeConfigSecretNamespace,omitempty"`
 
@@ -131,6 +171,17 @@ type ClusterSpec struct {
 	// HostNetwork sets the agent Deployment to use hostNetwork: true setting.
 	// Allows for provisioning of network related bundles (CNI configuration).
 	HostNetwork *bool `json:"hostNetwork,omitempty"`
+
+	// +nullable
+	// +optional
+	AgentSchedulingCustomization *AgentSchedulingCustomization `json:"agentSchedulingCustomization,omitempty"`
+
+	// +nullable
+	// +optional
+	// AgentPullSecrets references image pull secrets to be used by the Fleet agent deployment on this cluster.
+	// If set, it overrides any global image pull secrets set as values in the Fleet chart, and Fleet will not
+	// propagate/copy them, as Rancher would then be expected to handle that propagation.
+	AgentPullSecrets *[]corev1.LocalObjectReference `json:"agentPullSecrets,omitempty"`
 }
 
 type ClusterStatus struct {
@@ -145,13 +196,24 @@ type ClusterStatus struct {
 	Summary BundleSummary `json:"summary,omitempty"`
 	// ResourceCounts is an aggregate over the ResourceCounts.
 	ResourceCounts ResourceCounts `json:"resourceCounts,omitempty"`
+
 	// ReadyGitRepos is the number of gitrepos for this cluster that are ready.
 	// +optional
 	ReadyGitRepos int `json:"readyGitRepos"`
+
 	// DesiredReadyGitRepos is the number of gitrepos for this cluster that
 	// are desired to be ready.
 	// +optional
 	DesiredReadyGitRepos int `json:"desiredReadyGitRepos"`
+
+	// ReadyHelmOps is the number of helmop resources for this cluster that are ready.
+	// +optional
+	ReadyHelmOps int `json:"readyHelmOps"`
+
+	// DesiredReadyHelmOps is the number of helmop resources for this cluster that
+	// are desired to be ready.
+	// +optional
+	DesiredReadyHelmOps int `json:"desiredReadyHelmOps"`
 
 	// AgentEnvVarsHash is a hash of the agent's env vars, used to detect changes.
 	// +nullable
@@ -189,6 +251,10 @@ type ClusterStatus struct {
 	// configuration, used to detect changes.
 	// +nullable
 	AgentTolerationsHash string `json:"agentTolerationsHash,omitempty"`
+	// AgentPullSecretsHash is a hash of the agent's image pull secret
+	// configuration, used to detect changes.
+	// +nullable
+	AgentPullSecretsHash string `json:"agentPullSecretsHash,omitempty"`
 	// AgentConfigChanged is set to true if any of the agent configuration
 	// changed, like the API server URL or CA. Setting it to true will
 	// trigger a re-import of the cluster.
@@ -216,6 +282,18 @@ type ClusterStatus struct {
 
 	// GarbageCollectionInterval determines how often agents clean up obsolete Helm releases.
 	GarbageCollectionInterval *metav1.Duration `json:"garbageCollectionInterval,omitempty"`
+
+	AgentSchedulingCustomizationHash string `json:"agentSchedulingCustomizationHash,omitempty"`
+
+	// Scheduled specifies if the cluster has been added to any Schedule.
+	// When set to true ActiveSchedule is taken into account to check if the deployment
+	// can be deployed.
+	Scheduled bool `json:"scheduled,omitempty"`
+
+	// ActiveSchedule specifies if the cluster is in schedule, which means BundleDeployments can
+	// be updated and deployed. If ActiveSchedule is set to false and Scheduled is set to true
+	// BundleDeployments are not updated nor deployed.
+	ActiveSchedule bool `json:"activeSchedule,omitempty"`
 }
 
 type ClusterDisplay struct {

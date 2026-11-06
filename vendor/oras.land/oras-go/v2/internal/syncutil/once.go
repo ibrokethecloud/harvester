@@ -15,12 +15,16 @@ limitations under the License.
 
 package syncutil
 
-import "context"
+import (
+	"context"
+	"sync"
+	"sync/atomic"
+)
 
 // Once is an object that will perform exactly one action.
-// Unlike sync.Once, this Once allowes the action to have return values.
+// Unlike sync.Once, this Once allows the action to have return values.
 type Once struct {
-	result interface{}
+	result any
 	err    error
 	status chan bool
 }
@@ -42,7 +46,7 @@ func NewOnce() *Once {
 // Besides the return value of the function f, including the error, Do returns
 // true if the function f passed is called first and is not cancelled, deadline
 // exceeded, or panicking. Otherwise, returns false.
-func (o *Once) Do(ctx context.Context, f func() (interface{}, error)) (bool, interface{}, error) {
+func (o *Once) Do(ctx context.Context, f func() (any, error)) (bool, any, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			o.status <- true
@@ -67,4 +71,32 @@ func (o *Once) Do(ctx context.Context, f func() (interface{}, error)) (bool, int
 			return false, nil, ctx.Err()
 		}
 	}
+}
+
+// OnceOrRetry is an object that will perform exactly one success action.
+type OnceOrRetry struct {
+	done atomic.Bool
+	lock sync.Mutex
+}
+
+// OnceOrRetry calls the function f if and only if Do is being called for the
+// first time for this instance of Once or all previous calls to Do are failed.
+func (o *OnceOrRetry) Do(f func() error) error {
+	// fast path
+	if o.done.Load() {
+		return nil
+	}
+
+	// slow path
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
+	if o.done.Load() {
+		return nil
+	}
+	if err := f(); err != nil {
+		return err
+	}
+	o.done.Store(true)
+	return nil
 }

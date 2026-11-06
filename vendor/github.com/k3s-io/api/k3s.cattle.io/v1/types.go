@@ -7,6 +7,8 @@ import (
 
 // +genclient
 // +genclient:noStatus
+// +kubebuilder:printcolumn:name="Source",type=string,JSONPath=`.spec.source`
+// +kubebuilder:printcolumn:name="Checksum",type=string,JSONPath=`.spec.checksum`
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Addon is used to track application of a manifest file on disk. It mostly exists so that the wrangler DesiredSet
@@ -29,6 +31,12 @@ type AddonSpec struct {
 
 // +genclient
 // +genclient:nonNamespaced
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="SnapshotName",type=string,JSONPath=`.spec.snapshotName`
+// +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.nodeName`
+// +kubebuilder:printcolumn:name="Location",type=string,JSONPath=`.spec.location`
+// +kubebuilder:printcolumn:name="Size",type=string,JSONPath=`.status.size`
+// +kubebuilder:printcolumn:name="CreationTime",type=date,JSONPath=`.status.creationTime`
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ETCDSnapshot tracks a point-in-time snapshot of the etcd datastore.
@@ -74,6 +82,8 @@ type ETCDSnapshotS3 struct {
 	SkipSSLVerify bool `json:"skipSSLVerify,omitempty"`
 	// Bucket is the bucket holding the snapshot
 	Bucket string `json:"bucket,omitempty"`
+	// BucketLookup is the bucket lookup type, one of 'auto', 'dns', 'path'. Default if empty is 'auto'.
+	BucketLookup string `json:"bucketLookup,omitempty"`
 	// Region is the region of the S3 service
 	Region string `json:"region,omitempty"`
 	// Prefix is the prefix in which the snapshot file is stored.

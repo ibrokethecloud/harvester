@@ -6,12 +6,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	"github.com/rancher/rancher/pkg/auth/accessor"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	baseoidc "github.com/rancher/rancher/pkg/auth/providers/oidc"
 	"github.com/rancher/rancher/pkg/auth/tokens"
 	client "github.com/rancher/rancher/pkg/client/generated/management/v3"
 	publicclient "github.com/rancher/rancher/pkg/client/generated/management/v3public"
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/types/config"
 	"github.com/rancher/rancher/pkg/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,17 +29,20 @@ const (
 )
 
 func Configure(ctx context.Context, mgmtCtx *config.ScaledContext, userMGR user.Manager, tokenMGR *tokens.Manager) common.AuthProvider {
-	return &GenOIDCProvider{
+	p := &GenOIDCProvider{
 		baseoidc.OpenIDCProvider{
-			Name:        Name,
-			Type:        client.GenericOIDCConfigType,
-			CTX:         ctx,
-			AuthConfigs: mgmtCtx.Management.AuthConfigs(""),
-			Secrets:     mgmtCtx.Wrangler.Core.Secret(),
-			UserMGR:     userMGR,
-			TokenMGR:    tokenMGR,
+			Name:         Name,
+			Type:         client.GenericOIDCConfigType,
+			CTX:          ctx,
+			AuthConfigs:  mgmtCtx.Management.AuthConfigs(""),
+			Secrets:      mgmtCtx.Wrangler.Core.Secret(),
+			UserMGR:      userMGR,
+			TokenMgr:     tokenMGR,
+			UserSearcher: common.NewUserSearcher(mgmtCtx.Management.Users("").Controller().Lister()),
 		},
 	}
+	p.GetConfig = p.GetOIDCConfig
+	return p
 }
 
 // GetName returns the name of this provider.
@@ -46,26 +50,34 @@ func (g *GenOIDCProvider) GetName() string {
 	return Name
 }
 
-// SearchPrincipals will return a principal of the requested principalType with a displayName
-// that matches the searchValue.  If principalType is empty, both a user principal and a group principal will
-// be returned.  This is done because OIDC does not have a proper lookup mechanism.  In order
-// to provide some degree of functionality that allows manual entry for users/groups, this is the compromise.
-func (g *GenOIDCProvider) SearchPrincipals(searchValue, principalType string, _ v3.Token) ([]v3.Principal, error) {
-	var principals []v3.Principal
+// SearchPrincipals will return the users Rancher already knows about whose
+// display name or username matches the searchValue, followed by a principal of
+// the requested principalType holding the searchValue itself.
+// If principalType is empty, both a user principal and a group principal will
+// be returned.  This is done because OIDC does not have a proper lookup
+// mechanism, so that last principal lets an admin enter a subject or group ID by
+// hand for an identity Rancher has not seen yet.
+func (g *GenOIDCProvider) SearchPrincipals(searchValue, principalType string, _ accessor.TokenAccessor) ([]apiv3.Principal, error) {
+	var principals []apiv3.Principal
 
 	if principalType != GroupType {
-		p := v3.Principal{
+		fromSearchValue := apiv3.Principal{
 			ObjectMeta:    metav1.ObjectMeta{Name: g.Name + "_" + UserType + "://" + searchValue},
 			DisplayName:   searchValue,
 			LoginName:     searchValue,
 			PrincipalType: UserType,
 			Provider:      g.Name,
 		}
-		principals = append(principals, p)
+
+		users, err := common.PrincipalsWithFallback(g.UserSearcher, g.Name, searchValue, fromSearchValue)
+		if err != nil {
+			return nil, err
+		}
+		principals = append(principals, users...)
 	}
 
 	if principalType != UserType {
-		gp := v3.Principal{
+		gp := apiv3.Principal{
 			ObjectMeta:    metav1.ObjectMeta{Name: g.Name + "_" + GroupType + "://" + searchValue},
 			DisplayName:   searchValue,
 			PrincipalType: GroupType,
@@ -76,8 +88,8 @@ func (g *GenOIDCProvider) SearchPrincipals(searchValue, principalType string, _ 
 	return principals, nil
 }
 
-func (g *GenOIDCProvider) GetPrincipal(principalID string, token v3.Token) (v3.Principal, error) {
-	var p v3.Principal
+func (g *GenOIDCProvider) GetPrincipal(principalID string, token accessor.TokenAccessor) (apiv3.Principal, error) {
+	var p apiv3.Principal
 
 	// parsing id to get the external id and type. Example genericoidc_<user|group>://<user sub | group name>
 	principalScheme, externalID, found := strings.Cut(principalID, "://")
@@ -96,7 +108,7 @@ func (g *GenOIDCProvider) GetPrincipal(principalID string, token v3.Token) (v3.P
 		return p, fmt.Errorf("invalid principal type: %s", principalType)
 	}
 	if principalType == UserType {
-		p = v3.Principal{
+		p = apiv3.Principal{
 			ObjectMeta:    metav1.ObjectMeta{Name: provider + "_" + principalType + "://" + externalID},
 			DisplayName:   externalID,
 			LoginName:     externalID,
@@ -106,27 +118,39 @@ func (g *GenOIDCProvider) GetPrincipal(principalID string, token v3.Token) (v3.P
 	} else {
 		p = g.groupToPrincipal(externalID)
 	}
-	p = g.toPrincipalFromToken(principalType, p, &token)
+	p = g.toPrincipalFromToken(principalType, p, token)
 	return p, nil
 }
 
 // TransformToAuthProvider yields information used, typically by the UI, to be able to form URLs used to perform login.
-func (g *GenOIDCProvider) TransformToAuthProvider(authConfig map[string]interface{}) (map[string]interface{}, error) {
-	p := common.TransformToAuthProvider(authConfig)
-	p[publicclient.GenericOIDCProviderFieldRedirectURL] = g.getRedirectURL(authConfig)
+func (g *GenOIDCProvider) TransformToAuthProvider(authConfig map[string]any) (map[string]any, error) {
+	p, err := g.OpenIDCProvider.TransformToAuthProvider(authConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform auth config: %w", err)
+	}
+
+	if authConfig["acrValue"] != nil {
+		redirectURL := p[publicclient.GenericOIDCProviderFieldRedirectURL].(string)
+		p[publicclient.GenericOIDCProviderFieldRedirectURL] = redirectURL + fmt.Sprintf("&acr_values=%s", authConfig["acrValue"])
+	}
+
 	p[publicclient.GenericOIDCProviderFieldScopes] = authConfig["scope"]
+
 	return p, nil
 }
 
 // RefetchGroupPrincipals is not implemented for OIDC.
-func (g *GenOIDCProvider) RefetchGroupPrincipals(principalID string, secret string) ([]v3.Principal, error) {
+func (g *GenOIDCProvider) RefetchGroupPrincipals(principalID string, secret string) ([]apiv3.Principal, error) {
 	return nil, errors.New("Not implemented")
 }
 
-// groupToPrincipal takes a bare group name and turns it into a v3.Principal group object by filling-in other fields
+func (g *GenOIDCProvider) UsesUserSecrets() bool      { return false }
+func (g *GenOIDCProvider) CanRefreshPrincipals() bool { return false }
+
+// groupToPrincipal takes a bare group name and turns it into a apiv3.Principal group object by filling-in other fields
 // with basic provider information.
-func (g *GenOIDCProvider) groupToPrincipal(groupName string) v3.Principal {
-	return v3.Principal{
+func (g *GenOIDCProvider) groupToPrincipal(groupName string) apiv3.Principal {
+	return apiv3.Principal{
 		ObjectMeta:    metav1.ObjectMeta{Name: g.Name + "_" + GroupType + "://" + groupName},
 		DisplayName:   groupName,
 		Provider:      g.Name,
@@ -135,40 +159,23 @@ func (g *GenOIDCProvider) groupToPrincipal(groupName string) v3.Principal {
 	}
 }
 
-// getRedirectURL uses the AuthConfig map to build-up the redirect URL passed to the OIDC provider at login-time.
-func (g *GenOIDCProvider) getRedirectURL(config map[string]interface{}) string {
-	authURL, _ := baseoidc.FetchAuthURL(config)
-
-	redirectURL := fmt.Sprintf(
-		"%s?client_id=%s&response_type=code&redirect_uri=%s",
-		authURL,
-		config["clientId"],
-		config["rancherUrl"],
-	)
-
-	if config["acrValue"] != nil {
-		redirectURL += fmt.Sprintf("&acr_values=%s", config["acrValue"])
-	}
-
-	return redirectURL
-}
-
 // toPrincipalFromToken uses additional information about the principal found in the token, if available, to provide
 // a more detailed, useful Principal object.
-func (g *GenOIDCProvider) toPrincipalFromToken(principalType string, princ v3.Principal, token *v3.Token) v3.Principal {
+func (g *GenOIDCProvider) toPrincipalFromToken(principalType string, princ apiv3.Principal, token accessor.TokenAccessor) apiv3.Principal {
 	if principalType == UserType {
 		princ.PrincipalType = UserType
 		if token != nil {
-			princ.Me = g.IsThisUserMe(token.UserPrincipal, princ)
+			princ.Me = g.IsThisUserMe(token.GetUserPrincipal(), princ)
 			if princ.Me {
-				princ.LoginName = token.UserPrincipal.LoginName
-				princ.DisplayName = token.UserPrincipal.DisplayName
+				tokenPrincipal := token.GetUserPrincipal()
+				princ.LoginName = tokenPrincipal.LoginName
+				princ.DisplayName = tokenPrincipal.DisplayName
 			}
 		}
 	} else {
 		princ.PrincipalType = GroupType
 		if token != nil {
-			princ.MemberOf = g.TokenMGR.IsMemberOf(*token, princ)
+			princ.MemberOf = g.UserMGR.IsMemberOf(token, princ)
 		}
 	}
 	return princ

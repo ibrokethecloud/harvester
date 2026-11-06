@@ -36,6 +36,7 @@ type EKSClusterConfigSpec struct {
 	AmazonCredentialSecret string            `json:"amazonCredentialSecret"`
 	DisplayName            string            `json:"displayName" norman:"noupdate"`
 	Region                 string            `json:"region" norman:"noupdate"`
+	IPFamily               *string           `json:"ipFamily,omitempty" norman:"noupdate,pointer"`
 	Imported               bool              `json:"imported" norman:"noupdate"`
 	KubernetesVersion      *string           `json:"kubernetesVersion" norman:"pointer"`
 	Tags                   map[string]string `json:"tags"`
@@ -63,6 +64,7 @@ type EKSClusterConfigStatus struct {
 	// describes how the above network fields were provided. Valid values are provided and generated
 	NetworkFieldsSource string   `json:"networkFieldsSource"`
 	FailureMessage      string   `json:"failureMessage"`
+	Message             string   `json:"message"`
 	GeneratedNodeRole   string   `json:"generatedNodeRole"`
 	CompletedUpdateIDs  []string `json:"completedUpdateIDs,omitempty"`
 }

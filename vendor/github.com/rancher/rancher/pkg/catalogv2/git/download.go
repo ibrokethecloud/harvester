@@ -8,7 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Ensure runs git clone, clean DIRTY contents and fetch the latest commit
+// Ensure the repository is checked out at the provided commit reference.
+// Cloning/fetching and cleaning a dirty state is performed if necessary
 func Ensure(secret *corev1.Secret, namespace, name, gitURL, commit string, insecureSkipTLS bool, caBundle []byte) error {
 	git, err := gitForRepo(secret, namespace, name, gitURL, insecureSkipTLS, caBundle)
 	if err != nil {
@@ -18,6 +19,12 @@ func Ensure(secret *corev1.Secret, namespace, name, gitURL, commit string, insec
 	// If the repositories are rancher managed and if bundled is set
 	// don't fetch anything from upstream.
 	if IsBundled(git.Directory) && settings.SystemCatalog.Get() == "bundled" {
+		if err := git.reset("HEAD"); err != nil {
+			return fmt.Errorf("ensure failure: %w", err)
+		}
+		// Always use HEAD in bundled mode. During upgrades, ClusterRepo.Status.Commit may reference
+		// an old commit. Without this return, attempting to reset to that old commit could revert
+		// bundled charts to an older version, removing new charts needed by the upgraded Rancher.
 		return nil
 	}
 

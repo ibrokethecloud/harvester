@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io"
@@ -20,6 +21,7 @@ import (
 	"github.com/rancher/norman/types"
 	"github.com/rancher/rancher/pkg/controllers"
 	"github.com/rancher/rancher/pkg/generated/controllers/catalog.cattle.io"
+	"github.com/rancher/rancher/pkg/generated/controllers/upgrade.cattle.io"
 	apiregistrationv1 "github.com/rancher/rancher/pkg/generated/norman/apiregistration.k8s.io/v1"
 	appsv1 "github.com/rancher/rancher/pkg/generated/norman/apps/v1"
 	autoscaling "github.com/rancher/rancher/pkg/generated/norman/autoscaling/v2"
@@ -44,22 +46,18 @@ import (
 	"github.com/rancher/rancher/pkg/wrangler"
 	steve "github.com/rancher/steve/pkg/server"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
-	wcorev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/rbac"
-	wrbacv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/rbac/v1"
 	"github.com/rancher/wrangler/v3/pkg/generic"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	k8sauthuser "k8s.io/apiserver/pkg/authentication/user"
 	k8dynamic "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-)
-
-const (
-	stvAggregationSecretName = "stv-aggregation"
 )
 
 var (
@@ -144,7 +142,7 @@ func NewScaledContext(config rest.Config, opts *ScaleContextOptions) (*ScaledCon
 	context.Management = managementv3.NewFromControllerFactory(context.ControllerFactory)
 	context.Project = projectv3.NewFromControllerFactory(context.ControllerFactory)
 	context.RBAC = rbacv1.NewFromControllerFactory(context.ControllerFactory)
-	context.Core = corev1.NewFromControllerFactory(context.ControllerFactory)
+	context.Core = namespace.NormanInterface(corev1.NewFromControllerFactory(context.ControllerFactory))
 
 	context.K8sClient, err = kubernetes.NewForConfig(&config)
 	if err != nil {
@@ -202,9 +200,20 @@ type ManagementContext struct {
 	Wrangler   *wrangler.Context
 }
 
+// Impersonator allows managing user impersonation for a given cluster
+type Impersonator interface {
+	// SetUpImpersonation creates a service account on a cluster with a clusterrole and clusterrolebinding allowing it to impersonate a Rancher user.
+	SetUpImpersonation(k8sauthuser.Info) error
+	// GetToken retrieves the impersonated ServiceAccount token for an upstream user
+	GetToken(k8sauthuser.Info) (string, error)
+}
+
 type UserContext struct {
-	Management        *ManagementContext
-	ClusterName       string
+	Management  *ManagementContext
+	ClusterName string
+	// ClusterUID is the UID of the management cluster this context is for. A cluster removed and created
+	// again under the same name is a different cluster, which this context must not act on.
+	ClusterUID        k8stypes.UID
 	RESTConfig        rest.Config
 	ControllerFactory controller.SharedControllerFactory
 	UnversionedClient rest.Interface
@@ -212,28 +221,36 @@ type UserContext struct {
 	K8sClient         kubernetes.Interface
 	runContext        context.Context
 
+	Impersonator Impersonator
+
 	APIAggregation apiregistrationv1.Interface
 	Apps           appsv1.Interface
 	Autoscaling    autoscaling.Interface
 	Catalog        catalog.Interface
 	Project        projectv3.Interface
-	Core           corev1.Interface
-	RBAC           rbacv1.Interface
 	Extensions     extv1beta1.Interface
 	BatchV1        batchv1.Interface
 	Networking     knetworkingv1.Interface
 	Cluster        clusterv3.Interface
 	Storage        storagev1.Interface
+	Plan           upgrade.Interface // the field is initialized only for rancher-provisioned rke2/k3s cluster
 
-	RBACw wrbacv1.Interface
-	Corew wcorev1.Interface
+	// these interfaces are a subset of the original APIs, restricting their access in order to prevent accidentally adding new downstream caches
+	RBACw rbacInterface
+	Corew coreInterface
 
 	K3s k3s.Interface
 
 	KindNamespaces map[schema.GroupVersionKind]string
 
-	caValidatorControllerFactory controller.SharedControllerFactory
-	CAValidatorSecret            wcorev1.SecretController
+	// OnDeferredStartError is invoked when a deferred controller registration for this cluster
+	// keeps failing and cannot be recovered in-process. The failure has already been logged.
+	OnDeferredStartError func()
+
+	extraControllerFactoriesMutex sync.Mutex
+	extraControllerFactories      map[string]controller.SharedControllerFactory
+	// startContext stores the context used to start the all controller factories, allowing to register even if Start was already called
+	startContext context.Context
 }
 
 // WithAgent returns a shallow copy of the Context that has been configured to use a user agent in its
@@ -244,7 +261,7 @@ func (c *ManagementContext) WithAgent(userAgent string) *ManagementContext {
 	mgmtCopy.Management = managementv3.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory)
 	mgmtCopy.Project = projectv3.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory)
 	mgmtCopy.RBAC = rbacv1.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory)
-	mgmtCopy.Core = corev1.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory)
+	mgmtCopy.Core = namespace.NormanInterface(corev1.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory))
 	mgmtCopy.Apps = appsv1.NewFromControllerFactoryWithAgent(fullUserAgent, c.ControllerFactory)
 
 	mgmtCopy.Wrangler = mgmtCopy.Wrangler.WithAgent(userAgent)
@@ -252,28 +269,50 @@ func (c *ManagementContext) WithAgent(userAgent string) *ManagementContext {
 	return &mgmtCopy
 }
 
-func (w *UserContext) DeferredStart(ctx context.Context, register func(ctx context.Context) error) func() error {
-	f := w.deferredStartAsync(ctx, register)
-	return func() error {
-		go f()
-		return nil
+// DeferredStart returns a starter that registers and starts the cluster's controllers the first
+// time it is called. The starter returns nothing: it runs in the background, so there is no result
+// to hand back by the time it returns, and reporting a failure is its own job rather than the
+// caller's - see deferredStart.
+func (w *UserContext) DeferredStart(ctx context.Context, register func(ctx context.Context) error) func() {
+	return w.deferredStart(ctx, w.deferredStartAsync(ctx, register))
+}
+
+// deferredStart returns a starter that runs f in the background.
+//
+// Failures are escalated to OnDeferredStartError to have the whole UserContext and the factory rebuilt.
+func (w *UserContext) deferredStart(ctx context.Context, f func() error) func() {
+	// The starter is called from controller handlers, so it fires repeatedly. Only the first call
+	// does anything: either f succeeds, or it fails and the UserContext is
+	// rebuilt, which replaces this starter along with it.
+	var started atomic.Bool
+
+	return func() {
+		if !started.CompareAndSwap(false, true) {
+			return
+		}
+
+		go func() {
+			err := f()
+
+			// A cancelled context means the cluster is already being torn down, so there is nothing
+			// left to recover.
+			if err == nil || ctx.Err() != nil {
+				return
+			}
+
+			logrus.Errorf("deferred controller start failed for cluster %s: %v, rebuilding cluster controllers", w.ClusterName, err)
+			if w.OnDeferredStartError != nil {
+				w.OnDeferredStartError()
+			}
+		}()
 	}
 }
 
+// deferredStartAsync returns the work a deferred start does on each attempt: register the cluster's
+// handlers into a transaction, start the controllers, and commit the transaction only once the
+// controllers are up. It is not safe to call concurrently - deferredStart serializes it.
 func (w *UserContext) deferredStartAsync(ctx context.Context, register func(ctx context.Context) error) func() error {
-	var (
-		startLock sync.Mutex
-		started   = false
-	)
-
 	return func() error {
-		startLock.Lock()
-		defer startLock.Unlock()
-
-		if started {
-			return nil
-		}
-
 		cancelCtx, cancel := context.WithCancel(ctx)
 		transaction := controller.NewHandlerTransaction(cancelCtx)
 		if err := register(transaction); err != nil {
@@ -283,43 +322,20 @@ func (w *UserContext) deferredStartAsync(ctx context.Context, register func(ctx 
 		}
 
 		if err := w.Start(cancelCtx); err != nil {
+			// Because we cancel this context, this Start cannot be retried. Informers that
+			// managed to start are stopped and can never be restarted.
 			cancel()
 			transaction.Rollback()
 			return err
 		}
 
 		transaction.Commit()
-		started = true
 		go func() {
-			// this is make go vet happy that we aren't leaking a context
+			// this is to make go vet happy that we aren't leaking a context
 			<-ctx.Done()
 			cancel()
 		}()
 		return nil
-	}
-}
-
-func (w *UserContext) UserOnlyContext() *UserOnlyContext {
-	return &UserOnlyContext{
-		Schemas:           w.Management.Schemas,
-		ClusterName:       w.ClusterName,
-		RESTConfig:        w.RESTConfig,
-		UnversionedClient: w.UnversionedClient,
-		K8sClient:         w.K8sClient,
-
-		Autoscaling: w.Autoscaling,
-		Apps:        w.Apps,
-		Project:     w.Project,
-		Core:        w.Core,
-		RBAC:        w.RBAC,
-		Extensions:  w.Extensions,
-		Networking:  w.Networking,
-		BatchV1:     w.BatchV1,
-		Cluster:     w.Cluster,
-		Storage:     w.Storage,
-
-		caValidatorControllerFactory: w.caValidatorControllerFactory,
-		CAValidatorSecret:            w.CAValidatorSecret,
 	}
 }
 
@@ -336,15 +352,11 @@ type UserOnlyContext struct {
 	Autoscaling     autoscaling.Interface
 	Project         projectv3.Interface
 	Core            corev1.Interface
-	RBAC            rbacv1.Interface
 	Extensions      extv1beta1.Interface
 	BatchV1         batchv1.Interface
 	Networking      knetworkingv1.Interface
 	Cluster         clusterv3.Interface
 	Storage         storagev1.Interface
-
-	caValidatorControllerFactory controller.SharedControllerFactory
-	CAValidatorSecret            wcorev1.SecretController
 }
 
 func newManagementContext(c *ScaledContext) (*ManagementContext, error) {
@@ -361,7 +373,7 @@ func newManagementContext(c *ScaledContext) (*ManagementContext, error) {
 	context.Management = managementv3.NewFromControllerFactory(controllerFactory)
 	context.Project = projectv3.NewFromControllerFactory(controllerFactory)
 	context.RBAC = rbacv1.NewFromControllerFactory(controllerFactory)
-	context.Core = corev1.NewFromControllerFactory(controllerFactory)
+	context.Core = namespace.NormanInterface(corev1.NewFromControllerFactory(controllerFactory))
 	context.Apps = appsv1.NewFromControllerFactory(controllerFactory)
 
 	context.K8sClient, err = kubernetes.NewForConfig(&config)
@@ -399,13 +411,26 @@ func newManagementContext(c *ScaledContext) (*ManagementContext, error) {
 	return context, err
 }
 
+// IsCluster reports whether cluster is the cluster this context is for: it has the same name and, if this
+// context knows it, the same UID.
+func (w *UserContext) IsCluster(cluster metav1.Object) bool {
+	return cluster.GetName() == w.ClusterName && MatchesClusterUID(w.ClusterUID, cluster)
+}
+
+// MatchesClusterUID reports whether cluster has the UID a controller was started for. A controller that
+// doesn't know the UID matches any cluster with its cluster's name.
+func MatchesClusterUID(uid k8stypes.UID, cluster metav1.Object) bool {
+	return uid == "" || cluster.GetUID() == uid
+}
+
 func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterName string) (*UserContext, error) {
 	var err error
 	context := &UserContext{
-		RESTConfig:     *steve.RestConfigDefaults(&config),
-		ClusterName:    clusterName,
-		runContext:     scaledContext.RunContext,
-		KindNamespaces: map[schema.GroupVersionKind]string{},
+		RESTConfig:               *steve.RestConfigDefaults(&config),
+		ClusterName:              clusterName,
+		runContext:               scaledContext.RunContext,
+		KindNamespaces:           map[schema.GroupVersionKind]string{},
+		extraControllerFactories: map[string]controller.SharedControllerFactory{},
 	}
 
 	context.Management, err = scaledContext.NewManagementContext()
@@ -435,10 +460,8 @@ func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterNam
 	}
 
 	context.Apps = appsv1.NewFromControllerFactory(controllerFactory)
-	context.Core = corev1.NewFromControllerFactory(controllerFactory)
 	context.Project = projectv3.NewFromControllerFactory(controllerFactory)
 	context.Storage = storagev1.NewFromControllerFactory(controllerFactory)
-	context.RBAC = rbacv1.NewFromControllerFactory(controllerFactory)
 	context.Networking = knetworkingv1.NewFromControllerFactory(controllerFactory)
 	context.Extensions = extv1beta1.NewFromControllerFactory(controllerFactory)
 	context.BatchV1 = batchv1.NewFromControllerFactory(controllerFactory)
@@ -460,7 +483,7 @@ func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterNam
 	if err != nil {
 		return nil, err
 	}
-	context.Corew = corew.Core().V1()
+	context.Corew = coreInterface{namespace.NewWranglerFactory(corew)}
 
 	ctlg, err := catalog.NewFactoryFromConfigWithOptions(&context.RESTConfig, &catalog.FactoryOptions{SharedControllerFactory: controllerFactory})
 	if err != nil {
@@ -483,33 +506,57 @@ func NewUserContext(scaledContext *ScaledContext, config rest.Config, clusterNam
 		return nil, err
 	}
 
-	// We want to avoid keeping in the cache all Secrets so we use a separate controller factory that only watches a single Secret
-	//
-	// The default controller factory restricts downstream Secret caches to the impersonation namespace only, see https://github.com/rancher/rancher/issues/46827
-	caValidatorControllerFactory := newCAValidatorControllerFactory(clientFactory)
-	context.caValidatorControllerFactory = caValidatorControllerFactory
-	caValidatorOpts := &generic.FactoryOptions{
-		SharedControllerFactory: caValidatorControllerFactory,
-	}
-	caValidatorCorew, err := core.NewFactoryFromConfigWithOptions(&context.RESTConfig, caValidatorOpts)
-	if err != nil {
-		return nil, err
-	}
-	context.CAValidatorSecret = caValidatorCorew.Core().V1().Secret()
-
 	return context, err
 }
 
-func (w *UserContext) Start(ctx context.Context) error {
+func (w *UserContext) Start(pctx context.Context) error {
+	w.extraControllerFactoriesMutex.Lock()
+	defer w.extraControllerFactoriesMutex.Unlock()
+
 	logrus.Info("Starting cluster controllers for ", w.ClusterName)
 	if err := w.Management.ControllerFactory.Start(w.runContext, 50); err != nil {
 		return err
 	}
-	ctx = metrics.WithContextID(ctx, fmt.Sprintf("usercontext_%s", w.ClusterName))
+	ctx := metrics.WithContextID(pctx, fmt.Sprintf("usercontext_%s", w.ClusterName))
 	if err := w.ControllerFactory.Start(ctx, 5); err != nil {
 		return err
 	}
-	return w.caValidatorControllerFactory.Start(ctx, 1)
+
+	for name, factory := range w.extraControllerFactories {
+		ctx := metrics.WithContextID(pctx, fmt.Sprintf("usercontext_%s_%s", name, w.ClusterName))
+		if err := factory.Start(ctx, 1); err != nil {
+			return err
+		}
+	}
+
+	w.startContext = pctx
+	return nil
+}
+
+// RegisterExtraControllerFactory allows starting dedicated controller factories together with the default ones.
+// This should be only used in extraordinary cases, for which the default controllers/caches are not suitable.
+func (w *UserContext) RegisterExtraControllerFactory(name string, factory controller.SharedControllerFactory) error {
+	w.extraControllerFactoriesMutex.Lock()
+	defer w.extraControllerFactoriesMutex.Unlock()
+
+	if _, ok := w.extraControllerFactories[name]; ok {
+		return fmt.Errorf("duplicate extra controller factory %q in UserContext for cluster %q", name, w.ClusterName)
+	}
+
+	// Start have already been called, allow to register new controller factories even then
+	if w.startContext != nil {
+		ctx := metrics.WithContextID(w.startContext, fmt.Sprintf("usercontext_%s_%s", name, w.ClusterName))
+		if err := factory.Start(ctx, 1); err != nil {
+			return err
+		}
+	}
+
+	if w.extraControllerFactories == nil {
+		w.extraControllerFactories = make(map[string]controller.SharedControllerFactory)
+	}
+	w.extraControllerFactories[name] = factory
+
+	return nil
 }
 
 func NewUserOnlyContext(config *wrangler.Context) (*UserOnlyContext, error) {
@@ -521,10 +568,9 @@ func NewUserOnlyContext(config *wrangler.Context) (*UserOnlyContext, error) {
 	}
 
 	context.Apps = appsv1.NewFromControllerFactory(context.ControllerFactory)
-	context.Core = corev1.NewFromControllerFactory(context.ControllerFactory)
+	context.Core = namespace.NormanInterface(corev1.NewFromControllerFactory(context.ControllerFactory))
 	context.Project = projectv3.NewFromControllerFactory(context.ControllerFactory)
 	context.Storage = storagev1.NewFromControllerFactory(context.ControllerFactory)
-	context.RBAC = rbacv1.NewFromControllerFactory(context.ControllerFactory)
 	context.Extensions = extv1beta1.NewFromControllerFactory(context.ControllerFactory)
 	context.BatchV1 = batchv1.NewFromControllerFactory(context.ControllerFactory)
 	context.Autoscaling = autoscaling.NewFromControllerFactory(context.ControllerFactory)
@@ -547,23 +593,6 @@ func NewUserOnlyContext(config *wrangler.Context) (*UserOnlyContext, error) {
 		AddSchemas(clusterSchema.Schemas).
 		AddSchemas(projectSchema.Schemas)
 
-	clientFactory, err := client.NewSharedClientFactory(enableProtobuf(&context.RESTConfig), &client.SharedClientFactoryOptions{
-		Scheme: wrangler.Scheme,
-	})
-	if err != nil {
-		return nil, err
-	}
-	caValidatorControllerFactory := newCAValidatorControllerFactory(clientFactory)
-	context.caValidatorControllerFactory = caValidatorControllerFactory
-	caValidatorOpts := &generic.FactoryOptions{
-		SharedControllerFactory: caValidatorControllerFactory,
-	}
-	caValidatorCorew, err := core.NewFactoryFromConfigWithOptions(&context.RESTConfig, caValidatorOpts)
-	if err != nil {
-		return nil, err
-	}
-	context.CAValidatorSecret = caValidatorCorew.Core().V1().Secret()
-
 	return context, err
 }
 
@@ -571,18 +600,4 @@ func (w *UserOnlyContext) Start(ctx context.Context) error {
 	logrus.Info("Starting workload controllers")
 	ctx = metrics.WithContextID(ctx, fmt.Sprintf("useronlycontext_%s", w.ClusterName))
 	return w.ControllerFactory.Start(ctx, 5)
-}
-
-func newCAValidatorControllerFactory(clientFactory client.SharedClientFactory) controller.SharedControllerFactory {
-	caValidatorCacheFactory := cache.NewSharedCachedFactory(clientFactory, &cache.SharedCacheFactoryOptions{
-		KindTweakList: map[schema.GroupVersionKind]cache.TweakListOptionsFunc{
-			corev1.SchemeGroupVersion.WithKind("Secret"): func(opts *metav1.ListOptions) {
-				opts.FieldSelector = fmt.Sprintf("metadata.namespace=%s,metadata.name=%s", namespace.System, stvAggregationSecretName)
-			},
-		},
-	})
-
-	caValidatorFactoryOpts := controllers.GetOptsFromEnv(controllers.User)
-	caValidatorControllerFactory := controller.NewSharedControllerFactory(caValidatorCacheFactory, caValidatorFactoryOpts)
-	return caValidatorControllerFactory
 }

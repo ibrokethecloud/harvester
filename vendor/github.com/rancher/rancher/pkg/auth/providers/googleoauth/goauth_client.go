@@ -1,14 +1,12 @@
 package googleoauth
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 )
 
 // GClient implements a httpclient for google oauth
@@ -16,7 +14,7 @@ type GClient struct {
 	httpClient *http.Client
 }
 
-func (g *GClient) getUser(accessToken string, config *v32.GoogleOauthConfig) (*Account, error) {
+func (g *GClient) getUser(accessToken string, config *apiv3.GoogleOauthConfig) (*Account, error) {
 	// userinfo endpoint doesn't require viewType param, non-admins and admins both can query this endpoint
 	respBytes, _, err := g.getFromGoogle(accessToken, config.UserInfoEndpoint)
 	if err != nil {
@@ -48,12 +46,9 @@ func (g *GClient) getFromGoogle(accessToken string, url string) ([]byte, int, er
 	case 200:
 	case 201:
 	default:
-		var body bytes.Buffer
-		io.Copy(&body, resp.Body)
-		return nil, resp.StatusCode, fmt.Errorf("request failed, got status code: %d. Response: %s",
-			resp.StatusCode, body.Bytes())
+		return nil, resp.StatusCode, fmt.Errorf("request failed, got status code: %d", resp.StatusCode)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	return b, statusCode, err
 }

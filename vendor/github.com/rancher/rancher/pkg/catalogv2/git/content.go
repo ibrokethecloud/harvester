@@ -10,7 +10,7 @@ import (
 
 	"github.com/rancher/rancher/pkg/catalogv2/chart"
 	"github.com/rancher/wrangler/v3/pkg/schemas/validation"
-	"helm.sh/helm/v3/pkg/repo"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Icon will return the icon for a chartName version in a local repository by getting the relative path
@@ -54,9 +54,7 @@ func Chart(namespace, name, gitURL string, chartVersion *repo.ChartVersion) (io.
 }
 
 func relative(base, publicURL, path string) (string, error) {
-	if strings.HasPrefix(path, publicURL) {
-		path = path[len(publicURL):]
-	}
+	path = strings.TrimPrefix(path, publicURL)
 	path = strings.TrimPrefix(path, "file://")
 
 	baseAbs, err := filepath.Abs(base)
@@ -67,6 +65,13 @@ func relative(base, publicURL, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, err = filepath.Rel(baseAbs, fullAbs)
-	return fullAbs, err
+	rel, err := filepath.Rel(baseAbs, fullAbs)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve relative path: %w", err)
+	}
+	if !filepath.IsLocal(rel) {
+		return "", fmt.Errorf("invalid file path [%s]", path)
+	}
+
+	return fullAbs, nil
 }

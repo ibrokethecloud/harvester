@@ -13,6 +13,7 @@ import (
 
 var authConfigTypes = []string{
 	client.GithubConfigType,
+	client.GithubAppConfigType,
 	client.LocalConfigType,
 	client.ActiveDirectoryConfigType,
 	client.AzureADConfigType,
@@ -27,6 +28,7 @@ var authConfigTypes = []string{
 	client.OIDCConfigType,
 	client.KeyCloakOIDCConfigType,
 	client.GenericOIDCConfigType,
+	client.CognitoConfigType,
 }
 
 func SetupAuthConfig(ctx context.Context, management *config.ScaledContext, schemas *types.Schemas) {

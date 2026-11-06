@@ -10,7 +10,7 @@ const (
         {
           "matchExpressions": [
             {
-              "key": "beta.kubernetes.io/os",
+              "key": "kubernetes.io/os",
               "operator": "NotIn",
               "values": [
                 "windows"
@@ -41,20 +41,6 @@ const (
           "matchExpressions": [
             {
               "key": "node-role.kubernetes.io/control-plane",
-              "operator": "In",
-              "values": [
-                "true"
-              ]
-            }
-          ]
-        }
-      },
-      {
-        "weight": 100,
-        "preference": {
-          "matchExpressions": [
-            {
-              "key": "node-role.kubernetes.io/master",
               "operator": "In",
               "values": [
                 "true"
@@ -129,7 +115,17 @@ const (
     "value": 1000000000
 }`
 
+	FleetAgentPriorityClass = `{
+    "preemptionPolicy": "PreemptLowerPriority",
+    "value":  999999999
+}`
+
 	ClusterAgentPodDisruptionBudget = `{
+	"minAvailable": "1",
+	"maxUnavailable": "0"
+}`
+
+	FleetAgentPodDisruptionBudget = `{
 	"minAvailable": "1",
 	"maxUnavailable": "0"
 }`

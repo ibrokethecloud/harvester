@@ -2,6 +2,7 @@ package v3
 
 import (
 	"strings"
+	"time"
 
 	"github.com/rancher/norman/condition"
 	"github.com/rancher/norman/types"
@@ -47,29 +48,115 @@ type Token struct {
 	Enabled            *bool             `json:"enabled,omitempty" norman:"default=true"`
 }
 
+// Implement the TokenAccessor interface
+
+func (t *Token) GetName() string {
+	return t.ObjectMeta.Name
+}
+
+func (t *Token) GetFullName() string {
+	return t.ObjectMeta.Name
+}
+
+func (t *Token) GetIsEnabled() bool {
+	return t.Enabled == nil || *t.Enabled
+}
+
+func (t *Token) GetIsDerived() bool {
+	return t.IsDerived
+}
+
+func (t *Token) GetAuthProvider() string {
+	return t.AuthProvider
+}
+
+func (t *Token) GetUserID() string {
+	return t.UserID
+}
+
 func (t *Token) ObjClusterName() string {
 	return t.ClusterName
 }
 
+func (t *Token) GetUserPrincipal() Principal {
+	return t.UserPrincipal
+}
+
+func (t *Token) GetGroupPrincipals() []Principal {
+	return t.GroupPrincipals
+}
+
+func (t *Token) GetProviderInfo() map[string]string {
+	return t.ProviderInfo
+}
+
+func (t *Token) GetLastUsedAt() *metav1.Time {
+	return t.LastUsedAt
+}
+
+func (t *Token) GetLastActivitySeen() *metav1.Time {
+	return t.ActivityLastSeenAt
+}
+
+func (t *Token) GetCreationTime() metav1.Time {
+	return t.CreationTimestamp
+}
+
+func (t *Token) GetExpiresAt() string {
+	return t.ExpiresAt
+}
+
+func (t *Token) GetIsExpired() bool {
+	if t.TTLMillis == 0 {
+		return false
+	}
+
+	created := t.ObjectMeta.CreationTimestamp.Time
+	durationElapsed := time.Since(created)
+
+	ttlDuration := time.Duration(t.TTLMillis) * time.Millisecond
+	return durationElapsed.Seconds() >= ttlDuration.Seconds()
+}
+
 // +genclient
-// +kubebuilder:skipversion
 // +genclient:nonNamespaced
+// +kubebuilder:resource:scope=Cluster
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// User represents a user in Rancher
 type User struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	DisplayName        string     `json:"displayName,omitempty"`
-	Description        string     `json:"description"`
-	Username           string     `json:"username,omitempty"`
-	Password           string     `json:"password,omitempty" norman:"writeOnly,noupdate"`
-	MustChangePassword bool       `json:"mustChangePassword,omitempty"`
-	PrincipalIDs       []string   `json:"principalIds,omitempty" norman:"type=array[reference[principal]]"`
-	Me                 bool       `json:"me,omitempty" norman:"nocreate,noupdate"`
-	Enabled            *bool      `json:"enabled,omitempty" norman:"default=true"`
-	Spec               UserSpec   `json:"spec,omitempty"`
-	Status             UserStatus `json:"status"`
+	// DisplayName is the user friendly name shown in the UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
+	// Description provides a brief summary about the user.
+	// +optional
+	Description string `json:"description"`
+	// Username is the unique login identifier for the user.
+	// +optional
+	Username string `json:"username,omitempty"`
+	// Deprecated. Password are stored in secrets in the cattle-local-user-passwords namespace.
+	// +optional
+	Password string `json:"password,omitempty" norman:"writeOnly,noupdate"`
+	// MustChangePassword is a flag that, if true, forces the user to change their
+	// password upon their next login.
+	// +optional
+	MustChangePassword bool `json:"mustChangePassword,omitempty"`
+	// PrincipalIDs lists the authentication provider identities (e.g. GitHub, Keycloak or Active Directory)
+	// that are associated with this user account.
+	// +optional
+	PrincipalIDs []string `json:"principalIds,omitempty" norman:"type=array[reference[principal]]"`
+	// Deprecated. Only used by /v3 Rancher API.
+	// +optional
+	Me bool `json:"me,omitempty" norman:"nocreate,noupdate"`
+	// Enabled indicates whether the user account is active.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty" norman:"default=true"`
+	// Status contains the most recent observed state of the user.
+	// +optional
+	Status UserStatus `json:"status"`
 }
 
 // IsSystem returns true if the user is a system user.
@@ -88,7 +175,17 @@ func (u *User) IsDefaultAdmin() bool {
 	return u.Username == "admin"
 }
 
+// GetEnabled returns true if the user is enabled.
+func (u *User) GetEnabled() bool {
+	if u.Enabled == nil {
+		return true // Enabled by default.
+	}
+
+	return *u.Enabled
+}
+
 type UserStatus struct {
+	// +optional
 	Conditions []UserCondition `json:"conditions"`
 }
 
@@ -106,8 +203,6 @@ type UserCondition struct {
 	// Human-readable message indicating details about last transition
 	Message string `json:"message,omitempty"`
 }
-
-type UserSpec struct{}
 
 // +genclient
 // +kubebuilder:skipversion
@@ -138,11 +233,14 @@ type Principals struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Group identifies an identity provider's group that is provisioned via SCIM.
 type Group struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	DisplayName string `json:"displayName,omitempty"`
+	Provider    string `json:"provider,omitempty"`
+	ExternalID  string `json:"externalId,omitempty"`
 }
 
 // +genclient
@@ -239,7 +337,6 @@ type AuthConfigConditions struct {
 
 // +genclient
 // +kubebuilder:skipversion
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type SamlToken struct {
@@ -265,12 +362,13 @@ type LocalConfig struct {
 type GithubConfig struct {
 	AuthConfig `json:",inline" mapstructure:",squash"`
 
-	Hostname     string `json:"hostname,omitempty" norman:"default=github.com" norman:"required"`
-	TLS          bool   `json:"tls,omitempty" norman:"notnullable,default=true" norman:"required"`
+	Hostname string `json:"hostname,omitempty" norman:"default=github.com,required"`
+	TLS      bool   `json:"tls,omitempty" norman:"notnullable,default=true,required"`
+
 	ClientID     string `json:"clientId,omitempty" norman:"required"`
 	ClientSecret string `json:"clientSecret,omitempty" norman:"required,type=password"`
 
-	// AdditionalClientIDs is a map of clientID to client secrets
+	// AdditionalClientIDs is a map of clientIDs to client secrets
 	AdditionalClientIDs map[string]string `json:"additionalClientIds,omitempty" norman:"nocreate,noupdate"`
 	HostnameToClientID  map[string]string `json:"hostnameToClientId,omitempty" norman:"nocreate,noupdate"`
 }
@@ -283,6 +381,48 @@ type GithubConfigApplyInput struct {
 	GithubConfig GithubConfig `json:"githubConfig,omitempty"`
 	Code         string       `json:"code,omitempty"`
 	Enabled      bool         `json:"enabled,omitempty"`
+}
+
+// +genclient
+// +kubebuilder:skipversion
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+//
+// GithubAppConfig provides a combination of the GithubConfig and additional
+// fields to configure the GitHub app for synchronization of user data.
+type GithubAppConfig struct {
+	AuthConfig `json:",inline" mapstructure:",squash"`
+
+	// Hostname is the API server for the GitHub installation.
+	Hostname string `json:"hostname,omitempty" norman:"default=github.com,required"`
+	TLS      bool   `json:"tls,omitempty" norman:"notnullable,default=true,required"`
+
+	ClientID     string `json:"clientId,omitempty" norman:"required"`
+	ClientSecret string `json:"clientSecret,omitempty" norman:"required,type=password"`
+
+	// AdditionalClientIDs is a map of clientIDs to client secrets
+	AdditionalClientIDs map[string]string `json:"additionalClientIds,omitempty" norman:"nocreate,noupdate"`
+	HostnameToClientID  map[string]string `json:"hostnameToClientId,omitempty" norman:"nocreate,noupdate"`
+
+	// AppID is the GitHub App ID and is provided on the GitHub apps page.
+	AppID string `json:"appId,omitempty" norman:"required"`
+
+	// The Installation ID to query (this will be bound to a specific
+	// Organization) and without it, we query all installations for the App.
+	InstallationID string `json:"installationId,omitempty"`
+
+	// PrivateKey is a PEM format private key for signing requests.
+	PrivateKey string `json:"privateKey,omitempty" norman:"type=password,required"`
+}
+
+type GithubAppConfigTestOutput struct {
+	RedirectURL string `json:"redirectUrl"`
+}
+
+type GithubAppConfigApplyInput struct {
+	GithubConfig GithubAppConfig `json:"githubConfig,omitempty"`
+	Code         string          `json:"code,omitempty"`
+	Enabled      bool            `json:"enabled,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -323,6 +463,18 @@ type AzureADConfig struct {
 	ApplicationSecret     string `json:"applicationSecret,omitempty" norman:"required,type=password"`
 	RancherURL            string `json:"rancherUrl,omitempty" norman:"required,notnullable"`
 	GroupMembershipFilter string `json:"groupMembershipFilter,omitempty"`
+
+	// EndSessionEndpoint overrides the Azure AD end_session_endpoint used for SSO logout.
+	// If empty, defaults to {Endpoint}/{TenantID}/oauth2/v2.0/logout.
+	EndSessionEndpoint string `json:"endSessionEndpoint,omitempty"`
+
+	// LogoutAllEnabled enables SSO logout (RP-Initiated Logout) for this provider.
+	// Can be set only if AuthConfig.LogoutAllSupported is true.
+	LogoutAllEnabled bool `json:"logoutAllEnabled,omitempty"`
+
+	// LogoutAllForced, when set, makes SSO logout the only accepted logout path.
+	// Requires LogoutAllEnabled to be true.
+	LogoutAllForced bool `json:"logoutAllForced,omitempty"`
 }
 
 type AzureADConfigTestOutput struct {
@@ -512,11 +664,11 @@ type SamlConfigTestOutput struct {
 	IdpRedirectURL string `json:"idpRedirectUrl"`
 }
 
-type SamlConfigLogoutInput struct {
+type AuthConfigLogoutInput struct {
 	FinalRedirectURL string `json:"finalRedirectUrl"`
 }
 
-type SamlConfigLogoutOutput struct {
+type AuthConfigLogoutOutput struct {
 	IdpRedirectURL string `json:"idpRedirectUrl"`
 }
 
@@ -562,11 +714,45 @@ type OIDCConfig struct {
 	Certificate        string `json:"certificate,omitempty"`
 	PrivateKey         string `json:"privateKey,omitempty" norman:"type=password"`
 	GroupSearchEnabled *bool  `json:"groupSearchEnabled"`
-	GroupsClaim        string `json:"groupsClaim,omitempty"`
 	// Scopes is expected to be a space delimited list of scopes
 	Scopes string `json:"scope,omitempty"`
 	// AcrValue is expected to be string containing the required ACR value
 	AcrValue string `json:"acrValue,omitempty"`
+
+	// This is provided by the OIDC Provider - it is the `end_session_uri` from
+	// the discovery data.
+	EndSessionEndpoint string `json:"endSessionEndpoint,omitempty"`
+	// Flag. True when the auth provider is configured to accept a `Logout All`
+	// operation. Can be set if and only if the provider supports `Logout All`
+	// (see AuthConfig.LogoutAllSupported).
+	LogoutAllEnabled bool `json:"logoutAllEnabled,omitempty"`
+
+	// Flag. Can be set if and only if `LogoutAllEnabled` (above) is set.
+	// When set `Logout All` is the only kind of logout accepted. A regular
+	// logout request will be rejected.
+	LogoutAllForced bool `json:"logoutAllForced,omitempty"`
+
+	// GroupsClaim is used instead of groups
+	GroupsClaim string `json:"groupsClaim,omitempty"`
+
+	// NameClaim is used instead instead of the name claim.
+	NameClaim string `json:"nameClaim,omitempty"`
+
+	// EmailClaim is used instead of email
+	EmailClaim string `json:"emailClaim,omitempty"`
+
+	// PKCE Method - leave empty for no PKCE or S256 for S256
+	// verification.
+	PKCEMethod string `json:"pkceMethod"`
+
+	// RancherAPIHost should be the base URL for accessing Rancher through the
+	// web. e.g. https://rancher.example.com.
+	RancherAPIHost string `json:"rancherApiHost"`
+
+	// clientAuthenticatedSearch indicates that we should search with the
+	// client/secret rather than the user credentials if the underlying provider
+	// supports this.
+	ClientAuthenticatedSearch bool `json:"clientAuthenticatedSearch"`
 }
 
 type OIDCTestOutput struct {
@@ -577,10 +763,6 @@ type OIDCApplyInput struct {
 	OIDCConfig OIDCConfig `json:"oidcConfig,omitempty"`
 	Code       string     `json:"code,omitempty"`
 	Enabled    bool       `json:"enabled,omitempty"`
-}
-
-type KeyCloakOIDCConfig struct {
-	OIDCConfig `json:",inline" mapstructure:",squash"`
 }
 
 // +genclient
@@ -612,4 +794,14 @@ type GenericOIDCTestOutput struct {
 // the configuration for the OIDC provider as well as an auth code.
 type GenericOIDCApplyInput struct {
 	OIDCApplyInput `json:",inline" mapstructure:",squash"`
+}
+
+// KeyCloakOIDCConfig is the wrapper for the Generic OIDC provider to hold the OIDC Configuration
+type KeyCloakOIDCConfig struct {
+	OIDCConfig `json:",inline" mapstructure:",squash"`
+}
+
+// GenericOIDCConfig is a wrapper for the AWS Cognito provider holding the OIDC Configuration
+type CognitoConfig struct {
+	OIDCConfig `json:",inline" mapstructure:",squash"`
 }

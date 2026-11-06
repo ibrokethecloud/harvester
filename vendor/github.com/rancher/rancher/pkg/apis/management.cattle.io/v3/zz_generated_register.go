@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Rancher Labs, Inc.
+Copyright 2026 Rancher Labs, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,15 +39,14 @@ var (
 	ClusterProxyConfigResourceName                        = "clusterproxyconfigs"
 	ClusterRegistrationTokenResourceName                  = "clusterregistrationtokens"
 	ClusterRoleTemplateBindingResourceName                = "clusterroletemplatebindings"
-	ClusterTemplateResourceName                           = "clustertemplates"
-	ClusterTemplateRevisionResourceName                   = "clustertemplaterevisions"
+	CognitoProviderResourceName                           = "cognitoproviders"
 	ComposeConfigResourceName                             = "composeconfigs"
 	DynamicSchemaResourceName                             = "dynamicschemas"
-	EtcdBackupResourceName                                = "etcdbackups"
 	FeatureResourceName                                   = "features"
 	FleetWorkspaceResourceName                            = "fleetworkspaces"
 	FreeIpaProviderResourceName                           = "freeipaproviders"
 	GenericOIDCProviderResourceName                       = "genericoidcproviders"
+	GithubAppProviderResourceName                         = "githubappproviders"
 	GithubProviderResourceName                            = "githubproviders"
 	GlobalRoleResourceName                                = "globalroles"
 	GlobalRoleBindingResourceName                         = "globalrolebindings"
@@ -59,8 +58,7 @@ var (
 	ManagedChartResourceName                              = "managedcharts"
 	NodeResourceName                                      = "nodes"
 	NodeDriverResourceName                                = "nodedrivers"
-	NodePoolResourceName                                  = "nodepools"
-	NodeTemplateResourceName                              = "nodetemplates"
+	OIDCClientResourceName                                = "oidcclients"
 	OIDCProviderResourceName                              = "oidcproviders"
 	OpenLdapProviderResourceName                          = "openldapproviders"
 	PodSecurityAdmissionConfigurationTemplateResourceName = "podsecurityadmissionconfigurationtemplates"
@@ -69,10 +67,8 @@ var (
 	ProjectResourceName                                   = "projects"
 	ProjectNetworkPolicyResourceName                      = "projectnetworkpolicies"
 	ProjectRoleTemplateBindingResourceName                = "projectroletemplatebindings"
+	ProxyEndpointResourceName                             = "proxyendpoints"
 	RancherUserNotificationResourceName                   = "rancherusernotifications"
-	RkeAddonResourceName                                  = "rkeaddons"
-	RkeK8sServiceOptionResourceName                       = "rkek8sserviceoptions"
-	RkeK8sSystemImageResourceName                         = "rkek8ssystemimages"
 	RoleTemplateResourceName                              = "roletemplates"
 	SamlProviderResourceName                              = "samlproviders"
 	SamlTokenResourceName                                 = "samltokens"
@@ -125,16 +121,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ClusterRegistrationTokenList{},
 		&ClusterRoleTemplateBinding{},
 		&ClusterRoleTemplateBindingList{},
-		&ClusterTemplate{},
-		&ClusterTemplateList{},
-		&ClusterTemplateRevision{},
-		&ClusterTemplateRevisionList{},
+		&CognitoProvider{},
+		&CognitoProviderList{},
 		&ComposeConfig{},
 		&ComposeConfigList{},
 		&DynamicSchema{},
 		&DynamicSchemaList{},
-		&EtcdBackup{},
-		&EtcdBackupList{},
 		&Feature{},
 		&FeatureList{},
 		&FleetWorkspace{},
@@ -143,6 +135,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&FreeIpaProviderList{},
 		&GenericOIDCProvider{},
 		&GenericOIDCProviderList{},
+		&GithubAppProvider{},
+		&GithubAppProviderList{},
 		&GithubProvider{},
 		&GithubProviderList{},
 		&GlobalRole{},
@@ -165,10 +159,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NodeList{},
 		&NodeDriver{},
 		&NodeDriverList{},
-		&NodePool{},
-		&NodePoolList{},
-		&NodeTemplate{},
-		&NodeTemplateList{},
+		&OIDCClient{},
+		&OIDCClientList{},
 		&OIDCProvider{},
 		&OIDCProviderList{},
 		&OpenLdapProvider{},
@@ -185,14 +177,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ProjectNetworkPolicyList{},
 		&ProjectRoleTemplateBinding{},
 		&ProjectRoleTemplateBindingList{},
+		&ProxyEndpoint{},
+		&ProxyEndpointList{},
 		&RancherUserNotification{},
 		&RancherUserNotificationList{},
-		&RkeAddon{},
-		&RkeAddonList{},
-		&RkeK8sServiceOption{},
-		&RkeK8sServiceOptionList{},
-		&RkeK8sSystemImage{},
-		&RkeK8sSystemImageList{},
 		&RoleTemplate{},
 		&RoleTemplateList{},
 		&SamlProvider{},

@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest/adal"
-	v3 "github.com/rancher/rancher/pkg/generated/norman/management.cattle.io/v3"
+	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 )
 
 // GetPrincipalID attempts to extract the ID of either a user or group from the principal value.
 func GetPrincipalID(principal v3.Principal) string {
-	name := principal.ObjectMeta.Name
+	name := principal.Name
 	if parts := strings.Split(name, "//"); len(parts) > 1 {
 		return parts[1]
 	}
@@ -21,7 +20,7 @@ func GetPrincipalID(principal v3.Principal) string {
 
 // ExtractFieldFromJWT attempts to extract a value from a JWT by field name.
 // It does not make assumptions about the type of the return value, so the caller is responsible for handling that.
-func ExtractFieldFromJWT(tokenString string, fieldID string) (interface{}, error) {
+func ExtractFieldFromJWT(tokenString string, fieldID string) (any, error) {
 	pieces := strings.Split(tokenString, ".")
 	if len(pieces) != 3 {
 		return "", fmt.Errorf("invalid token")
@@ -31,7 +30,7 @@ func ExtractFieldFromJWT(tokenString string, fieldID string) (interface{}, error
 		return "", fmt.Errorf("error decoding token")
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	err = json.Unmarshal(decoded, &data)
 	if err != nil {
 		return "", fmt.Errorf("error unmarshaling token")
@@ -64,13 +63,4 @@ func ParsePrincipalID(principalID string) (map[string]string, error) {
 	parsed["type"] = pparts[1]
 
 	return parsed, nil
-}
-
-func unmarshalADALToken(secret string) (adal.Token, error) {
-	var azureToken adal.Token
-	err := json.Unmarshal([]byte(secret), &azureToken)
-	if err != nil {
-		return azureToken, err
-	}
-	return azureToken, nil
 }

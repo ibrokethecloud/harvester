@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	roleLabel  = "pod-impersonation.cattle.io/cluster-role"
-	keyLabel   = "pod-impersonation.cattle.io/key"
-	TokenLabel = "pod-impersonation.cattle.io/token"
+	roleLabel     = "pod-impersonation.cattle.io/cluster-role"
+	keyLabel      = "pod-impersonation.cattle.io/key"
+	TokenLabel    = "pod-impersonation.cattle.io/token"
+	extraCRBLabel = "pod-impersonation.cattle.io/for-role"
 )
 
 type PodImpersonation struct {
@@ -80,7 +81,7 @@ func (s *PodImpersonation) PurgeOldRoles(gvk schema.GroupVersionKind, key string
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			_ = client.RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
+			s.deleteRoleAndExtraCRBs(ctx, client, name)
 		}()
 	} else {
 		s.pendingLock.Lock()
@@ -97,7 +98,7 @@ func (s *PodImpersonation) PurgeOldRoles(gvk schema.GroupVersionKind, key string
 				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 				defer cancel()
 
-				_ = client.RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
+				s.deleteRoleAndExtraCRBs(ctx, client, name)
 
 				s.pendingLock.Lock()
 				delete(s.pending, name)
@@ -109,13 +110,26 @@ func (s *PodImpersonation) PurgeOldRoles(gvk schema.GroupVersionKind, key string
 	return nil
 }
 
+func (s *PodImpersonation) deleteRoleAndExtraCRBs(ctx context.Context, client kubernetes.Interface, roleName string) error {
+	err := client.RbacV1().ClusterRoles().Delete(ctx, roleName, metav1.DeleteOptions{})
+	crbList, listErr := client.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{
+		LabelSelector: extraCRBLabel + "=" + roleName,
+	})
+	if listErr == nil {
+		for _, crb := range crbList.Items {
+			_ = client.RbacV1().ClusterRoleBindings().Delete(ctx, crb.Name, metav1.DeleteOptions{})
+		}
+	}
+	return err
+}
+
 func (s *PodImpersonation) DeleteRole(ctx context.Context, pod v1.Pod) error {
 	client, err := s.cg.AdminK8sInterface()
 	if err != nil {
 		return err
 	}
 	roleName := pod.Annotations[roleLabel]
-	return client.RbacV1().ClusterRoles().Delete(ctx, roleName, metav1.DeleteOptions{})
+	return s.deleteRoleAndExtraCRBs(ctx, client, roleName)
 }
 
 type PodOptions struct {
@@ -123,6 +137,11 @@ type PodOptions struct {
 	SecretsToCreate    []*v1.Secret
 	Wait               bool
 	ImageOverride      string
+	Username           string // Username for kubeconfig paths (e.g. "shell", "kuberlr"). Defaults to "shell" for non-root, "root" for root
+	UserID             *int64 // UserID for chown operations on kubeconfig files. Defaults to 1000 if not specified
+	// ExtraClusterRoles is a list of existing ClusterRole names to bind
+	// the operation's impersonation SA to for the duration of the pod.
+	ExtraClusterRoles []string
 }
 
 // CreatePod will create a pod with a service account that impersonates as user. Corresponding
@@ -222,6 +241,35 @@ func (s *PodImpersonation) createRole(ctx context.Context, user user.Info, names
 		AggregationRule: nil,
 	}, metav1.CreateOptions{})
 
+}
+
+func (s *PodImpersonation) createExtraRoleBindings(ctx context.Context, role *rbacv1.ClusterRole, sa *v1.ServiceAccount, extraClusterRoles []string, client kubernetes.Interface) error {
+	for _, clusterRoleName := range extraClusterRoles {
+		_, err := client.RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "helm-op-" + sa.Name + "-",
+				Labels: map[string]string{
+					extraCRBLabel: role.Name,
+				},
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "ServiceAccount",
+					Name:      sa.Name,
+					Namespace: sa.Namespace,
+				},
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     "ClusterRole",
+				Name:     clusterRoleName,
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *PodImpersonation) createRoleBinding(ctx context.Context, role *rbacv1.ClusterRole, serviceAccount *v1.ServiceAccount, client kubernetes.Interface) error {
@@ -334,6 +382,12 @@ func (s *PodImpersonation) createPod(ctx context.Context, user user.Info, role *
 		return nil, err
 	}
 
+	if len(podOptions.ExtraClusterRoles) > 0 {
+		if err := s.createExtraRoleBindings(ctx, role, sa, podOptions.ExtraClusterRoles, client); err != nil {
+			return nil, err
+		}
+	}
+
 	sc := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            sa.Name + "-token",
@@ -361,7 +415,7 @@ func (s *PodImpersonation) createPod(ctx context.Context, user user.Info, role *
 			}
 		}
 	}
-	pod = s.augmentPod(pod, sa, tokenSecret, podOptions.ImageOverride)
+	pod = s.augmentPod(pod, sa, tokenSecret, podOptions)
 
 	if err := s.createConfigMaps(ctx, user, role, pod, podOptions, client); err != nil {
 		return nil, err
@@ -510,17 +564,51 @@ func (s *PodImpersonation) adminKubeConfig(user user.Info, role *rbacv1.ClusterR
 	}, nil
 }
 
-func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret *v1.Secret, imageOverride string) *v1.Pod {
+func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret *v1.Secret, podOptions *PodOptions) *v1.Pod {
 	var (
 		zero      = int64(0)
 		t         = true
 		f         = false
 		m         = int32(0o644)
 		m2        = int32(0o600)
-		shellUser = 1000
+		shellUser = int64(1000)
 	)
 
 	pod = pod.DeepCopy()
+
+	// Detect if this is a non-root pod
+	isNonRoot := false
+	hasFSGroup := false
+
+	if pod.Spec.SecurityContext != nil {
+		psc := pod.Spec.SecurityContext
+		if psc.RunAsNonRoot != nil && *psc.RunAsNonRoot {
+			isNonRoot = true
+		}
+		if psc.FSGroup != nil {
+			hasFSGroup = true
+		}
+	}
+
+	// Determine image to use
+	image := ""
+	if podOptions != nil && podOptions.ImageOverride != "" {
+		image = podOptions.ImageOverride
+	}
+	if image == "" {
+		image = s.imageName()
+	}
+
+	// Determine username for kubeconfig paths
+	username := "root"
+	if isNonRoot {
+		username = "shell" // default for non-root
+	}
+	if podOptions != nil && podOptions.Username != "" {
+		username = podOptions.Username // user override
+	}
+
+	kubeconfigPath := userKubeConfigPath(username)
 
 	pod.Spec.ServiceAccountName = ""
 	pod.Spec.AutomountServiceAccountToken = &f
@@ -562,11 +650,6 @@ func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret
 			},
 		})
 
-	image := imageOverride
-	if image == "" {
-		image = s.imageName()
-	}
-
 	for i, container := range pod.Spec.Containers {
 		for _, envvar := range container.Env {
 			if envvar.Name != "KUBECONFIG" {
@@ -586,16 +669,36 @@ func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret
 				SubPath:   "config",
 			}
 
+			// Build init container SecurityContext based on pod settings
+			var initSecurityContext *v1.SecurityContext
+			if !isNonRoot {
+				// Legacy mode: force root for chown
+				initSecurityContext = &v1.SecurityContext{
+					RunAsUser:  &zero,
+					RunAsGroup: &zero,
+				}
+			}
+			// else: inherit from pod SecurityContext (nil = inherit)
+
+			// Build init command based on whether we need chown
+			initCmd := fmt.Sprintf("cp %s %s", cfgVMount.MountPath, vmount.MountPath+"/config")
+			userID := shellUser
+			if podOptions != nil && podOptions.UserID != nil {
+				userID = *podOptions.UserID
+			}
+			if !hasFSGroup && !isNonRoot {
+				// Only chown if we don't have fsGroup AND we're running as root
+				initCmd = fmt.Sprintf("cp %s %s && chown %d %s/config",
+					cfgVMount.MountPath, vmount.MountPath, userID, vmount.MountPath)
+			}
+
 			pod.Spec.InitContainers = append(pod.Spec.InitContainers, v1.Container{
 				Name:            "init-kubeconfig-volume",
 				Image:           image,
-				Command:         []string{"sh", "-c", fmt.Sprintf("cp %s %s && chown %d %s/config", cfgVMount.MountPath, vmount.MountPath, shellUser, vmount.MountPath)},
+				Command:         []string{"sh", "-c", initCmd},
 				ImagePullPolicy: v1.PullIfNotPresent,
-				SecurityContext: &v1.SecurityContext{
-					RunAsUser:  &zero,
-					RunAsGroup: &zero,
-				},
-				VolumeMounts: []v1.VolumeMount{cfgVMount, vmount},
+				SecurityContext: initSecurityContext,
+				VolumeMounts:    []v1.VolumeMount{cfgVMount, vmount},
 			},
 			)
 
@@ -608,6 +711,22 @@ func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret
 		}
 	}
 
+	// Build proxy container SecurityContext
+	var proxySecurityContext *v1.SecurityContext
+	if isNonRoot {
+		// Non-root mode: inherit from pod, but still enforce ReadOnlyRootFilesystem
+		proxySecurityContext = &v1.SecurityContext{
+			ReadOnlyRootFilesystem: &t,
+		}
+	} else {
+		// Legacy mode: force root
+		proxySecurityContext = &v1.SecurityContext{
+			RunAsUser:              &zero,
+			RunAsGroup:             &zero,
+			ReadOnlyRootFilesystem: &t,
+		}
+	}
+
 	pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{
 		Name:            "proxy",
 		Image:           image,
@@ -615,20 +734,16 @@ func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret
 		Env: []v1.EnvVar{
 			{
 				Name:  "KUBECONFIG",
-				Value: "/root/.kube/config",
+				Value: kubeconfigPath,
 			},
 		},
-		Command: []string{"sh", "-c", "kubectl proxy --disable-filter || true"},
-		SecurityContext: &v1.SecurityContext{
-			RunAsUser:              &zero,
-			RunAsGroup:             &zero,
-			ReadOnlyRootFilesystem: &t,
-		},
+		Command:         []string{"sh", "-c", "kubectl proxy --disable-filter || true"},
+		SecurityContext: proxySecurityContext,
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      "admin-kubeconfig",
 				ReadOnly:  true,
-				MountPath: "/root/.kube/config",
+				MountPath: kubeconfigPath,
 				SubPath:   "config",
 			},
 			{
@@ -640,6 +755,13 @@ func (s *PodImpersonation) augmentPod(pod *v1.Pod, sa *v1.ServiceAccount, secret
 	})
 
 	return pod
+}
+
+func userKubeConfigPath(username string) string {
+	if username == "" || username == "root" {
+		return "/root/.kube/config"
+	}
+	return "/home/" + username + "/.kube/config"
 }
 
 func (s *PodImpersonation) createSecrets(ctx context.Context, role *rbacv1.ClusterRole, pod *v1.Pod, podOptions *PodOptions, client kubernetes.Interface) error {

@@ -12,11 +12,17 @@ import (
 	"github.com/rancher/norman/api/handler"
 	"github.com/rancher/norman/httperror"
 	"github.com/rancher/norman/types"
-	v32 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
+	apiv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
+	client "github.com/rancher/rancher/pkg/client/generated/management/v3"
 	managementschema "github.com/rancher/rancher/pkg/schemas/management.cattle.io/v3"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
 )
+
+const cognitoGroupsClaim = "cognito:groups"
 
 func (o *OpenIDCProvider) Formatter(apiContext *types.APIContext, resource *types.RawResource) {
 	common.AddCommonActions(apiContext, resource)
@@ -33,13 +39,14 @@ func (o *OpenIDCProvider) ActionHandler(actionName string, action *types.Action,
 		return nil
 	}
 
-	if actionName == "configureTest" {
+	switch actionName {
+	case "configureTest":
 		return o.ConfigureTest(request)
-	} else if actionName == "testAndApply" {
+	case "testAndApply":
 		return o.TestAndApply(request)
+	default:
+		return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 	}
-
-	return httperror.NewAPIError(httperror.ActionNotAvailable, "")
 }
 
 func (o *OpenIDCProvider) ConfigureTest(request *types.APIContext) error {
@@ -50,11 +57,24 @@ func (o *OpenIDCProvider) ConfigureTest(request *types.APIContext) error {
 		return err
 	}
 
-	data := map[string]interface{}{
-		"redirectUrl": o.getRedirectURL(input),
+	pkceMethod := input[client.GenericOIDCConfigFieldPKCEMethod]
+	if pkceMethod != "" {
+		logrus.Debugf("OpenIDCProvider: PKCE enabled: %v", pkceMethod)
+	}
+
+	var pkceVerifier string
+	if pkceMethod != "" {
+		pkceVerifier = oauth2.GenerateVerifier()
+		SetPKCEVerifier(request.Request, request.Response, pkceVerifier)
+	}
+
+	data := map[string]any{
+		"redirectUrl": GetOIDCRedirectionURL(input, pkceVerifier, &orderedValues{}),
 		"type":        "OIDCTestOutput",
 	}
+
 	request.WriteResponse(http.StatusOK, data)
+
 	return nil
 }
 
@@ -63,8 +83,8 @@ func (o *OpenIDCProvider) ConfigureTest(request *types.APIContext) error {
 // If the verification succeed, creates a Token to access the provider.
 // It returns an error in case of failure.
 func (o *OpenIDCProvider) TestAndApply(request *types.APIContext) error {
-	var oidcConfig v32.OIDCConfig
-	oidcConfigApplyInput := &v32.OIDCApplyInput{}
+	var oidcConfig apiv3.OIDCConfig
+	oidcConfigApplyInput := &apiv3.OIDCApplyInput{}
 
 	if err := json.NewDecoder(request.Request.Body).Decode(oidcConfigApplyInput); err != nil {
 		return httperror.NewAPIError(httperror.InvalidBodyContent,
@@ -75,15 +95,18 @@ func (o *OpenIDCProvider) TestAndApply(request *types.APIContext) error {
 	// set a default value for GroupSearchEnabled
 	// in case user input is nil for some reasons.
 	if oidcConfigApplyInput.OIDCConfig.GroupSearchEnabled == nil {
-		falseBool := false
-		oidcConfig.GroupSearchEnabled = &falseBool
+		oidcConfig.GroupSearchEnabled = ptr.To(false)
 	}
-	oidcLogin := &v32.OIDCLogin{
+	// we need to set cognito:groups as GroupsClaim in order to be able to fetch groups from aws cognito
+	if oidcConfig.Type == client.CognitoConfigType {
+		oidcConfig.GroupsClaim = cognitoGroupsClaim
+	}
+	oidcLogin := &apiv3.OIDCLogin{
 		Code: oidcConfigApplyInput.Code,
 	}
 
 	if !validateScopes(oidcConfig.Scopes) {
-		return fmt.Errorf("scopes are invalid:  scopes must be space delimited and openid is a required scope. %s", oidcConfig.Scopes)
+		return fmt.Errorf("scopes are invalid: scopes must be space delimited and openid is a required scope. %s", oidcConfig.Scopes)
 	}
 
 	// encode url to ensure path is escaped properly
@@ -94,19 +117,21 @@ func (o *OpenIDCProvider) TestAndApply(request *types.APIContext) error {
 		if httperror.IsAPIError(err) {
 			return err
 		}
-		return errors.Wrap(err, "[generic oidc]: server error while authenticating")
+		return errors.Wrap(err, "[generic oidc]: failed to parse the issuer URL while authenticating")
 	}
 	oidcConfig.Issuer = issuerURL.String()
 
 	// call provider
-	userPrincipal, groupPrincipals, providerToken, _, err := o.LoginUser(request.Request.Context(), oidcLogin, &oidcConfig)
+	userPrincipal, groupPrincipals, providerToken, _, err := o.LoginUser(
+		request.Response, request.Request,
+		oidcLogin, &oidcConfig)
 	if err != nil {
 		if httperror.IsAPIError(err) {
 			return err
 		}
 		return errors.Wrap(err, "[generic oidc]: server error while authenticating")
 	}
-	user, err := o.UserMGR.SetPrincipalOnCurrentUser(request, userPrincipal)
+	user, err := o.UserMGR.SetPrincipalOnCurrentUser(request.Request, userPrincipal)
 	if err != nil {
 		return err
 	}
@@ -118,12 +143,12 @@ func (o *OpenIDCProvider) TestAndApply(request *types.APIContext) error {
 
 	userExtraInfo := o.GetUserExtraAttributes(userPrincipal)
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		return o.TokenMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo)
+		return o.UserMGR.UserAttributeCreateOrUpdate(user.Name, userPrincipal.Provider, groupPrincipals, userExtraInfo)
 	}); err != nil {
 		return httperror.NewAPIError(httperror.ServerError, fmt.Sprintf("[generic oidc]: Failed to create or update userAttribute: %v", err))
 	}
 
-	return o.TokenMGR.CreateTokenAndSetCookie(user.Name, userPrincipal, groupPrincipals, providerToken, 0, "Token via OIDC Configuration", request)
+	return o.TokenMgr.CreateTokenAndSetCookie(user.Name, userPrincipal, groupPrincipals, providerToken, 0, "Token via OIDC Configuration", request)
 }
 
 // validateScopes returns true if there are no commas in the scopes string and openid is included as a scope.

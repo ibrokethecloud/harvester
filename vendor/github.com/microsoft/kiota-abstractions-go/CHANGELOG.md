@@ -2,14 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.9.4](https://github.com/microsoft/kiota-abstractions-go/compare/v1.9.3...v1.9.4) (2026-03-09)
 
-## [Unreleased]
 
-### Added
+### Bug Fixes
+
+* duration normalization no longer produces invalid ISO 8601 week combinations ([7285e50](https://github.com/microsoft/kiota-abstractions-go/commit/7285e5075231e31a38d3d638c4c76a7aca190723))
+* ISO 8601 duration normalization must not produce partial-week combinations ([aa3357f](https://github.com/microsoft/kiota-abstractions-go/commit/aa3357f68d1dfdd9e1d39d037ddce8e046c8268d))
+
+## [1.9.3](https://github.com/microsoft/kiota-abstractions-go/compare/v1.9.2...v1.9.3) (2025-07-16)
+
+
+### Bug Fixes
+
+* for timeOnly to support string with nanosecond precision ([#206](https://github.com/microsoft/kiota-abstractions-go/issues/206)) ([fbc2113](https://github.com/microsoft/kiota-abstractions-go/commit/fbc21133d031ef3e09b6aeda2de54033bd8533ce))
+
+## [1.9.2](https://github.com/microsoft/kiota-abstractions-go/compare/v1.9.1...v1.9.2) (2025-04-02)
+
+
+### Bug Fixes
+
+* drop dependency on common-go ([#199](https://github.com/microsoft/kiota-abstractions-go/issues/199)) ([5702488](https://github.com/microsoft/kiota-abstractions-go/commit/57024882f125ff719a2155293d5e28716f2ba9db))
+
+## [1.9.1](https://github.com/microsoft/kiota-abstractions-go/compare/v1.9.0...v1.9.1) (2025-03-24)
+
+
+### Bug Fixes
+
+* upgrades common go dependency to solve triming issues ([5769aa7](https://github.com/microsoft/kiota-abstractions-go/commit/5769aa7c12ddcd01862ded353ffe4b966da25b55))
+* upgrades common go dependency to solve triming issues ([73349ca](https://github.com/microsoft/kiota-abstractions-go/commit/73349ca6ebe5122fad13eb85fd957490ea8cfeea))
+
+## [1.9.0](https://github.com/microsoft/kiota-abstractions-go/compare/v1.8.1...v1.9.0) (2025-03-13)
+
+
+### Features
+
+* upgrades required go version from go1.18 to go 1.22 ([526145f](https://github.com/microsoft/kiota-abstractions-go/commit/526145f3f219287feffe814d2f3efb2d9b7e233d))
+
+## [1.8.1] - 2024-07-09
 
 ### Changed
+
+- Fixed outdated reference to std uri template.
+
+## [1.8.0] - 2024-07-09
+
+### Changed
+
+-  Removed native support for date in `std-uritemplate`  [#1.8.0](https://github.com/microsoft/kiota-abstractions-go/issues/183)
 
 ### Added
 

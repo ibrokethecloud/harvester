@@ -5,6 +5,7 @@
 package etree
 
 import (
+	"iter"
 	"strconv"
 	"strings"
 )
@@ -122,6 +123,20 @@ func MustCompilePath(path string) Path {
 	return p
 }
 
+// traverse follows the path from the element e, yielding elements that match
+// the path's selectors and filters using iterators.
+func (p Path) traverse(e *Element) iter.Seq[*Element] {
+	pather := newPather()
+	return func(yield func(*Element) bool) {
+		pather.queue.add(node{e, p.segments})
+		for pather.queue.len() > 0 {
+			if cont := pather.eval(pather.queue.remove(), yield); !cont {
+				return
+			}
+		}
+	}
+}
+
 // A segment is a portion of a path between "/" characters.
 // It contains one selector and zero or more [filters].
 type segment struct {
@@ -148,17 +163,6 @@ type filter interface {
 	apply(p *pather)
 }
 
-// A pather is helper object that traverses an element tree using
-// a Path object.  It collects and deduplicates all elements matching
-// the path query.
-type pather struct {
-	queue      fifo
-	results    []*Element
-	inResults  map[*Element]bool
-	candidates []*Element
-	scratch    []*Element // used by filters
-}
-
 // A node represents an element and the remaining path segments that
 // should be applied against it by the pather.
 type node struct {
@@ -166,6 +170,18 @@ type node struct {
 	segments []segment
 }
 
+// A pather is helper object that traverses an element tree using
+// a Path object.  It collects and deduplicates all elements matching
+// the path query.
+type pather struct {
+	queue      queue[node]
+	results    []*Element
+	inResults  map[*Element]bool
+	candidates []*Element
+	scratch    []*Element // used by filters
+}
+
+// newPather creates a new pather instance.
 func newPather() *pather {
 	return &pather{
 		results:    make([]*Element, 0),
@@ -175,20 +191,11 @@ func newPather() *pather {
 	}
 }
 
-// traverse follows the path from the element e, collecting
-// and then returning all elements that match the path's selectors
-// and filters.
-func (p *pather) traverse(e *Element, path Path) []*Element {
-	for p.queue.add(node{e, path.segments}); p.queue.len() > 0; {
-		p.eval(p.queue.remove().(node))
-	}
-	return p.results
-}
-
-// eval evaluates the current path node by applying the remaining
-// path's selector rules against the node's element.
-func (p *pather) eval(n node) {
-	p.candidates = p.candidates[0:0]
+// eval evaluates the current path node by applying the remaining path's
+// selector rules against the node's element, yielding results via iterator.
+// Returns false if early termination is requested.
+func (p *pather) eval(n node, yield func(*Element) bool) bool {
+	p.candidates = p.candidates[:0]
 	seg, remain := n.segments[0], n.segments[1:]
 	seg.apply(n.e, p)
 
@@ -196,7 +203,9 @@ func (p *pather) eval(n node) {
 		for _, c := range p.candidates {
 			if in := p.inResults[c]; !in {
 				p.inResults[c] = true
-				p.results = append(p.results, c)
+				if !yield(c) {
+					return false
+				}
 			}
 		}
 	} else {
@@ -204,6 +213,7 @@ func (p *pather) eval(n node) {
 			p.queue.add(node{c, remain})
 		}
 	}
+	return true
 }
 
 // A compiler generates a compiled path from a path string.
@@ -242,12 +252,17 @@ func splitPath(path string) []string {
 	var pieces []string
 	start := 0
 	inquote := false
+	var quote byte
 	for i := 0; i+1 <= len(path); i++ {
-		if path[i] == '\'' {
-			inquote = !inquote
-		} else if path[i] == '/' && !inquote {
-			pieces = append(pieces, path[start:i])
-			start = i + 1
+		if !inquote {
+			if path[i] == '\'' || path[i] == '"' {
+				inquote, quote = true, path[i]
+			} else if path[i] == '/' {
+				pieces = append(pieces, path[start:i])
+				start = i + 1
+			}
+		} else if path[i] == quote {
+			inquote = false
 		}
 	}
 	return append(pieces, path[start:])
@@ -302,30 +317,34 @@ func (c *compiler) parseFilter(path string) filter {
 		return nil
 	}
 
-	// Filter contains [@attr='val'], [fn()='val'], or [tag='val']?
-	eqindex := strings.Index(path, "='")
-	if eqindex >= 0 {
-		rindex := nextIndex(path, "'", eqindex+2)
-		if rindex != len(path)-1 {
-			c.err = ErrPath("path has mismatched filter quotes.")
-			return nil
-		}
-
-		key := path[:eqindex]
-		value := path[eqindex+2 : rindex]
-
-		switch {
-		case key[0] == '@':
-			return newFilterAttrVal(key[1:], value)
-		case strings.HasSuffix(key, "()"):
-			name := key[:len(key)-2]
-			if fn, ok := fnTable[name]; ok {
-				return newFilterFuncVal(fn, value)
+	// Filter contains [@attr='val'], [@attr="val"], [fn()='val'],
+	// [fn()="val"], [tag='val'] or [tag="val"]?
+	eqindex := strings.IndexByte(path, '=')
+	if eqindex >= 0 && eqindex+1 < len(path) {
+		quote := path[eqindex+1]
+		if quote == '\'' || quote == '"' {
+			rindex := nextIndex(path, quote, eqindex+2)
+			if rindex != len(path)-1 {
+				c.err = ErrPath("path has mismatched filter quotes.")
+				return nil
 			}
-			c.err = ErrPath("path has unknown function " + name)
-			return nil
-		default:
-			return newFilterChildText(key, value)
+
+			key := path[:eqindex]
+			value := path[eqindex+2 : rindex]
+
+			switch {
+			case key[0] == '@':
+				return newFilterAttrVal(key[1:], value)
+			case strings.HasSuffix(key, "()"):
+				name := key[:len(key)-2]
+				if fn, ok := fnTable[name]; ok {
+					return newFilterFuncVal(fn, value)
+				}
+				c.err = ErrPath("path has unknown function " + name)
+				return nil
+			default:
+				return newFilterChildText(key, value)
+			}
 		}
 	}
 
@@ -397,9 +416,9 @@ func (s *selectChildren) apply(e *Element, p *pather) {
 type selectDescendants struct{}
 
 func (s *selectDescendants) apply(e *Element, p *pather) {
-	var queue fifo
+	var queue queue[*Element]
 	for queue.add(e); queue.len() > 0; {
-		e := queue.remove().(*Element)
+		e := queue.remove()
 		p.candidates = append(p.candidates, e)
 		for _, c := range e.Child {
 			if c, ok := c.(*Element); ok {
