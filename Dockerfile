@@ -50,12 +50,12 @@ RUN mkdir /usr/tmp && \
 COPY --from=golangci/golangci-lint:v2.12.2-alpine@sha256:91b27804074a0bacea298707f016911e60cf0cdbc6c7bf5ccacb5f0606d18d60 /usr/bin/golangci-lint /usr/local/bin/golangci-lint
 
 ## install controller-gen
-RUN GO111MODULE=on go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.1
+RUN GO111MODULE=on go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.23.0
 ## install ginkgo
 RUN GO111MODULE=on go install github.com/onsi/ginkgo/v2/ginkgo@v2.29.0
 
 # install openapi-gen
-RUN GO111MODULE=on go install k8s.io/code-generator/cmd/openapi-gen@v0.29.13
+RUN GO111MODULE=on go install k8s.io/code-generator/cmd/openapi-gen@v0.29.15
 
 # install kind
 RUN curl -Lo /usr/bin/kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-${ARCH} && \

@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/cisco-open/operator-tools/pkg/typeoverride"
-	util "github.com/cisco-open/operator-tools/pkg/utils"
 	"github.com/cisco-open/operator-tools/pkg/volume"
 	"github.com/spf13/cast"
 	corev1 "k8s.io/api/core/v1"
@@ -102,11 +101,15 @@ type FluentdSpec struct {
 	// +docLink:"more info, https://docs.fluentd.org/deployment/system-config#enable_msgpack_time_support"
 	EnableMsgpackTimeSupport bool   `json:"enableMsgpackTimeSupport,omitempty"`
 	PodPriorityClassName     string `json:"podPriorityClassName,omitempty"`
+	// Duration in seconds for graceful pod termination. Set higher than expected cleanup time.
+	// +kubebuilder:validation:Minimum=0
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// +kubebuilder:validation:enum=stdout,null
 	FluentLogDestination string `json:"fluentLogDestination,omitempty"`
 	// FluentOutLogrotate sends fluent's stdout to file and rotates it
 	FluentOutLogrotate      *FluentOutLogrotate          `json:"fluentOutLogrotate,omitempty"`
 	ForwardInputConfig      *input.ForwardInputConfig    `json:"forwardInputConfig,omitempty"`
+	ServiceOverrides        *typeoverride.Service        `json:"service,omitempty"`
 	ServiceAccountOverrides *typeoverride.ServiceAccount `json:"serviceAccount,omitempty"`
 	DNSPolicy               corev1.DNSPolicy             `json:"dnsPolicy,omitempty"`
 	DNSConfig               *corev1.PodDNSConfig         `json:"dnsConfig,omitempty"`
@@ -116,9 +119,40 @@ type FluentdSpec struct {
 	// Available in Logging operator version 4.5 and later.
 	// Configure sidecar container in Fluentd pods, for example: [https://github.com/kube-logging/logging-operator/config/samples/logging_logging_fluentd_sidecars.yaml](https://github.com/kube-logging/logging-operator/config/samples/logging_logging_fluentd_sidecars.yaml).
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
-	// Overrides the default logging level configCheck setup
-	// This field is not used directly, just copied over the field in the logging resource if defined
+	// Overrides the default logging level configCheck setup.
+	// This field is not used directly, its fields are copied over the ones in the logging resource, field by field, so setting one field here does not discard the others set on the logging resource.
 	ConfigCheck *ConfigCheck `json:"configCheck,omitempty"`
+	// ConfigCheckPod adds helper init containers and volumes to the transient
+	// configcheck pod; contents must exit on their own, or set restartPolicy:
+	// Always for a long-running helper. Takes effect on the next config change.
+	ConfigCheckPod *ConfigCheckPodOverrides `json:"configCheckPod,omitempty"`
+}
+
+// +kubebuilder:object:generate=true
+
+// ConfigCheckPodOverrides adds helper containers, volumes and a deadline to the
+// transient fluentd configcheck pod, merged onto the generated pod spec last.
+type ConfigCheckPodOverrides struct {
+	// InitContainers to add to the configcheck pod. Plain init containers run
+	// to completion, in order, before the dry-run container starts - the merge
+	// prepends these ahead of the operator's own init containers, so they run
+	// first. A long-running helper must instead be a native sidecar
+	// (restartPolicy: Always, k8s 1.29+): the kubelet ends it once the dry-run
+	// container exits, letting the pod reach Succeeded/Failed.
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+	// Volumes available to the configcheck pod only. FluentdSpec.ExtraVolumes
+	// is already mounted here too, but a PersistentVolumeClaim-backed entry is
+	// downgraded to an emptyDir on the check pod; give a same-named entry here
+	// to override that. An entry whose name matches an operator-managed volume
+	// field-merges into it (volumes use retainKeys, so the whole VolumeSource
+	// is replaced, not deep-merged).
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// ActiveDeadlineSeconds bounds how long the configcheck pod may run before
+	// it is treated as failed and deleted so a new one can be created and
+	// retried. Without it, a helper container that never terminates leaves the
+	// pod running indefinitely and blocks config rollout, with no timeout.
+	// +kubebuilder:validation:Minimum=1
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
@@ -142,7 +176,7 @@ func (f *FluentdSpec) GetFluentdMetricsPath() string {
 	return f.Metrics.Path
 }
 
-func (f *FluentdSpec) SetDefaults() error {
+func (f *FluentdSpec) SetDefaults() error { //nolint: gocyclo
 	if f != nil { //nolint:nestif
 		if f.FluentdPvcSpec != nil {
 			return errors.New("`fluentdPvcSpec` field is deprecated, use: `bufferStorageVolume`")
@@ -167,28 +201,33 @@ func (f *FluentdSpec) SetDefaults() error {
 			f.Security = &Security{}
 		}
 		if f.Security.RoleBasedAccessControlCreate == nil {
-			f.Security.RoleBasedAccessControlCreate = util.BoolPointer(true)
+			f.Security.RoleBasedAccessControlCreate = new(true)
 		}
 		if f.Security.SecurityContext == nil {
 			f.Security.SecurityContext = &corev1.SecurityContext{
-				RunAsUser:    util.IntPointer64(100),
-				RunAsGroup:   util.IntPointer64(101),
-				RunAsNonRoot: util.BoolPointer(true),
+				RunAsUser:    new(int64(100)),
+				RunAsGroup:   new(int64(101)),
+				RunAsNonRoot: new(true),
 			}
 		}
 		if f.Security.PodSecurityContext == nil {
 			f.Security.PodSecurityContext = &corev1.PodSecurityContext{
-				RunAsUser:    util.IntPointer64(100),
-				RunAsGroup:   util.IntPointer64(101),
-				RunAsNonRoot: util.BoolPointer(true),
-				FSGroup:      util.IntPointer64(101),
+				RunAsUser:    new(int64(100)),
+				RunAsGroup:   new(int64(101)),
+				RunAsNonRoot: new(true),
+				FSGroup:      new(int64(101)),
 			}
 		}
 		if f.Security.PodSecurityContext.FSGroup == nil {
-			f.Security.PodSecurityContext.FSGroup = util.IntPointer64(101)
+			f.Security.PodSecurityContext.FSGroup = new(int64(101))
+		}
+		if f.Security.PodSecurityContext.SeccompProfile == nil {
+			f.Security.PodSecurityContext.SeccompProfile = &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			}
 		}
 		if f.Security.CreateOpenShiftSCC == nil {
-			f.Security.CreateOpenShiftSCC = util.BoolPointer(false)
+			f.Security.CreateOpenShiftSCC = new(false)
 		}
 		if f.Workers <= 0 {
 			f.Workers = 1

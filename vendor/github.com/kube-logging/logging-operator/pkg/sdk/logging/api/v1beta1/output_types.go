@@ -53,6 +53,7 @@ type OutputSpec struct {
 	SplunkHecOutput                   *output.SplunkHecOutput                   `json:"splunkHec,omitempty"`
 	HTTPOutput                        *output.HTTPOutputConfig                  `json:"http,omitempty"`
 	AwsElasticsearchOutputConfig      *output.AwsElasticsearchOutputConfig      `json:"awsElasticsearch,omitempty"`
+	RabbitMQOutputConfig              *output.RabbitMQOutputConfig              `json:"rabbitmq,omitempty"`
 	RedisOutputConfig                 *output.RedisOutputConfig                 `json:"redis,omitempty"`
 	SyslogOutputConfig                *output.SyslogOutputConfig                `json:"syslog,omitempty"`
 	GelfOutputConfig                  *output.GelfOutputConfig                  `json:"gelf,omitempty"`
@@ -61,6 +62,7 @@ type OutputSpec struct {
 	RelabelOutputConfig               *output.RelabelOutputConfig               `json:"relabel,omitempty"`
 	VMwareLogInsightConfig            *output.VMwareLogInsightOutput            `json:"vmwareLogInsight,omitempty"`
 	VMwareLogIntelligenceOutputConfig *output.VMwareLogIntelligenceOutputConfig `json:"vmwareLogIntelligence,omitempty"`
+	LMLogsOutputConfig                *output.LMLogsOutputConfig                `json:"lmLogs,omitempty"`
 }
 
 // OutputStatus defines the observed state of Output
@@ -93,8 +95,4 @@ type OutputList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Output `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Output{}, &OutputList{})
 }

@@ -79,6 +79,7 @@ type Filter struct {
 	Prometheus          *filter.PrometheusConfig          `json:"prometheus,omitempty"`
 	Throttle            *filter.Throttle                  `json:"throttle,omitempty"`
 	KubeEventsTimestamp *filter.KubeEventsTimestampConfig `json:"kube_events_timestamp,omitempty"`
+	Raw                 *filter.Raw                       `json:"raw,omitempty"`
 }
 
 // FlowStatus defines the observed state of Flow
@@ -111,8 +112,4 @@ type FlowList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Flow `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Flow{}, &FlowList{})
 }

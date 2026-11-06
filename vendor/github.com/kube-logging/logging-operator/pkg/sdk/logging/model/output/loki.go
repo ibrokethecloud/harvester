@@ -17,6 +17,7 @@ package output
 import (
 	"github.com/cisco-open/operator-tools/pkg/secret"
 	util "github.com/cisco-open/operator-tools/pkg/utils"
+
 	"github.com/kube-logging/logging-operator/pkg/sdk/logging/model/types"
 )
 
@@ -79,7 +80,7 @@ type LokiOutput struct {
 	Labels Label `json:"labels,omitempty"`
 	// Set of extra labels to include with every Loki stream.
 	ExtraLabels map[string]string `json:"extra_labels,omitempty"`
-	// Format to use when flattening the record to a log line: json, key_value (default: key_value)
+	// Format to use when flattening the record to a log line: json, key_value (default: json)
 	LineFormat string `json:"line_format,omitempty" plugin:"default:json"`
 	// Extract kubernetes labels as loki labels (default: false)
 	ExtractKubernetesLabels *bool `json:"extract_kubernetes_labels,omitempty"`
@@ -149,10 +150,10 @@ func (l *LokiOutput) ToDirective(secretLoader secret.SecretLoader, id string) (t
 			l.RemoveKeys = []string{"kubernetes"}
 		}
 		if l.ExtractKubernetesLabels == nil {
-			l.ExtractKubernetesLabels = util.BoolPointer(true)
+			l.ExtractKubernetesLabels = new(true)
 		}
 		if l.IncludeThreadLabel == nil {
-			l.IncludeThreadLabel = util.BoolPointer(true)
+			l.IncludeThreadLabel = new(true)
 		}
 		// Prevent meta configuration from marshaling
 		l.ConfigureKubernetesLabels = nil

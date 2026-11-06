@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/cisco-open/operator-tools/pkg/secret"
-	"github.com/cisco-open/operator-tools/pkg/utils"
+
 	"github.com/kube-logging/logging-operator/pkg/sdk/logging/model/types"
 )
 
@@ -121,6 +121,10 @@ type S3OutputConfig struct {
 	EnableTransferAcceleration string `json:"enable_transfer_acceleration,omitempty"`
 	// If false, the certificate of endpoint will not be verified
 	SslVerifyPeer string `json:"ssl_verify_peer,omitempty"`
+	// Full path to the SSL certificate authority bundle file used to verify peer certificates
+	SslCaBundle string `json:"ssl_ca_bundle,omitempty"`
+	// Full path to the directory containing unbundled SSL certificate authority files
+	SslCaDirectory string `json:"ssl_ca_directory,omitempty"`
 	// URI of proxy environment
 	ProxyUri string `json:"proxy_uri,omitempty"`
 	// Allows grantee to read the object ACL
@@ -252,7 +256,7 @@ func (c *S3OutputConfig) ToDirective(secretLoader secret.SecretLoader, id string
 		if c.Buffer == nil {
 			c.Buffer = new(Buffer)
 		}
-		c.Buffer.Tags = utils.StringPointer(OneEyeTags)
+		c.Buffer.Tags = new(OneEyeTags)
 		c.Path = fmt.Sprintf(OneEyePathTemplate, clusterName)
 		c.S3ObjectKeyFormat = OneEyeObjectKeyFormat
 	}

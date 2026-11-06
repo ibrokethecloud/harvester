@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cisco-open/operator-tools/pkg/types"
 	util "github.com/cisco-open/operator-tools/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,8 +54,7 @@ type LoggingSpec struct {
 	// Can be overridden on the fluentd / syslog-ng level.
 	ConfigCheck ConfigCheck `json:"configCheck,omitempty"`
 	// FluentbitAgent daemonset configuration.
-	// Deprecated, will be removed with next major version
-	// Migrate to the standalone NodeAgent resource
+	// DEPRECATED: Migrate to the standalone FluentBitAgent resource
 	FluentbitSpec *FluentbitSpec `json:"fluentbit,omitempty"`
 	// Fluentd statefulset configuration
 	FluentdSpec *FluentdSpec `json:"fluentd,omitempty"`
@@ -81,14 +81,15 @@ type LoggingSpec struct {
 	// Resources like fluentbit and fluentd will run in this namespace as well.
 	ControlNamespace string `json:"controlNamespace"`
 
+	// Namespace to deploy Fluent Bit resources (DaemonSet, Service, ServiceAccount, config Secret, ServiceMonitors). If unset, it defaults to `controlNamespace` to preserve backward compatibility.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable, please recreate the resource"
+	FluentbitAgentNamespace string `json:"fluentBitAgentNamespace,omitempty"`
+
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable, please recreate the resource"
 
 	// Allow configuration of cluster resources from any namespace. Mutually exclusive with ControlNamespace restriction of Cluster resources
 	// WARNING: Becareful when turning this on and off as it can result in some resources being orphaned.
 	AllowClusterResourcesFromAllNamespaces bool `json:"allowClusterResourcesFromAllNamespaces,omitempty"`
-	// InlineNodeAgent Configuration
-	// Deprecated, will be removed with next major version
-	NodeAgents []*InlineNodeAgent `json:"nodeAgents,omitempty"`
 	// EnableRecreateWorkloadOnImmutableFieldChange enables the operator to recreate the
 	// fluentbit daemonset and the fluentd statefulset (and possibly other resource in the future)
 	// in case there is a change in an immutable field
@@ -103,6 +104,12 @@ type LoggingSpec struct {
 	// RouteConfig determines whether to use loggingRoutes or to create resources based on the logging resource
 	// that can be managed by the Telemetry Controller.
 	RouteConfig *RouteConfig `json:"routeConfig,omitempty"`
+	// EnableRawFluentdFilter enables the use of the Raw filter for fluentd. This allows users to configure custom or unexposed Fluentd filters via raw configuration.
+	// Break-glass setting: enabling it lets every user who can create a Flow or ClusterFlow in this logging domain inject arbitrary
+	// configuration (and thereby run arbitrary code) into the shared Fluentd aggregator, which processes all tenants' logs and mounts
+	// output credentials and TLS keys. Enable it only if you trust all Flow authors. Disabling it again does not retroactively remove
+	// already rendered raw configuration: delete the offending Flow, rotate the aggregator's credentials and restart it.
+	EnableRawFluentdFilter bool `json:"enableRawFluentdFilter,omitempty"`
 }
 
 type ConfigCheckStrategy string
@@ -198,8 +205,8 @@ type DefaultFlowSpec struct {
 var Version string
 
 const (
-	DefaultFluentbitImageRepository               = "docker.io/fluent/fluent-bit"
-	DefaultFluentbitImageTag                      = "3.2.5"
+	DefaultFluentbitImageRepository               = "ghcr.io/fluent/fluent-bit"
+	DefaultFluentbitImageTag                      = "5.0.5"
 	DefaultFluentbitBufferVolumeImageRepository   = "ghcr.io/kube-logging/logging-operator/node-exporter"
 	DefaultFluentbitBufferVolumeImageTag          = "latest"
 	DefaultFluentbitBufferStorageVolumeName       = "fluentbit-buffer"
@@ -223,10 +230,14 @@ const (
 // SetDefaults fills empty attributes
 func (l *Logging) SetDefaults() error {
 	if l.Spec.ClusterDomain == nil {
-		l.Spec.ClusterDomain = util.StringPointer("cluster.local.")
+		l.Spec.ClusterDomain = new("cluster.local.")
 	}
 	if !l.Spec.FlowConfigCheckDisabled && l.Status.ConfigCheckResults == nil {
 		l.Status.ConfigCheckResults = make(map[string]bool)
+	}
+	// Default/compatibility mapping for fluentbit agents namespace
+	if l.Spec.FluentbitAgentNamespace == "" {
+		l.Spec.FluentbitAgentNamespace = l.Spec.ControlNamespace
 	}
 	if len(l.Status.FluentdConfigName) == 0 {
 		if err := l.Spec.FluentdSpec.SetDefaults(); err != nil {
@@ -245,9 +256,20 @@ func (l *Logging) SetDefaults() error {
 	return nil
 }
 
+// AggregatorLevelConfigCheck lets the aggregator level configCheck override the
+// logging level one. Each field is overridden on its own, so an aggregator that
+// sets a single field does not discard the rest of the logging level settings.
 func (l *Logging) AggregatorLevelConfigCheck(check *ConfigCheck) {
 	if check != nil {
-		l.Spec.ConfigCheck = *check
+		if check.Strategy != "" {
+			l.Spec.ConfigCheck.Strategy = check.Strategy
+		}
+		if check.TimeoutSeconds != 0 {
+			l.Spec.ConfigCheck.TimeoutSeconds = check.TimeoutSeconds
+		}
+		if check.Labels != nil {
+			l.Spec.ConfigCheck.Labels = check.Labels
+		}
 		l.configCheckDefaults()
 	}
 }
@@ -264,11 +286,15 @@ func (logging *Logging) WatchAllNamespaces() bool {
 	return len(watchNamespaces) == 0 && nsLabelSelector == nil
 }
 
-func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
+func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error { //nolint: gocyclo
 	if fluentbitSpec != nil { //nolint:nestif
 		// Set default value for DisableVarLibDockerContainers to false (meaning volume is mounted by default)
 		if fluentbitSpec.DisableVarLibDockerContainers == nil {
-			fluentbitSpec.DisableVarLibDockerContainers = util.BoolPointer(false)
+			fluentbitSpec.DisableVarLibDockerContainers = new(false)
+		}
+		// Set default value for DisableVarLog to false (meaning volume is mounted by default)
+		if fluentbitSpec.DisableVarLog == nil {
+			fluentbitSpec.DisableVarLog = new(false)
 		}
 		if fluentbitSpec.PosisionDBLegacy != nil {
 			return errors.New("`position_db` field is deprecated, use `positiondb`")
@@ -318,11 +344,14 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 		if fluentbitSpec.InputTail.SkipLongLines == "" {
 			fluentbitSpec.InputTail.SkipLongLines = "On"
 		}
+		if fluentbitSpec.InputTail.FileCacheAdvise == "" {
+			fluentbitSpec.InputTail.FileCacheAdvise = "On"
+		}
 		if fluentbitSpec.InputTail.DB == nil {
-			fluentbitSpec.InputTail.DB = util.StringPointer("/tail-db/tail-containers-state.db")
+			fluentbitSpec.InputTail.DB = new("/tail-db/tail-containers-state.db")
 		}
 		if fluentbitSpec.InputTail.DBLocking == nil {
-			fluentbitSpec.InputTail.DBLocking = util.BoolPointer(true)
+			fluentbitSpec.InputTail.DBLocking = new(true)
 		}
 		if fluentbitSpec.InputTail.MemBufLimit == "" {
 			fluentbitSpec.InputTail.MemBufLimit = "5MB"
@@ -340,7 +369,7 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 			fluentbitSpec.Security = &Security{}
 		}
 		if fluentbitSpec.Security.RoleBasedAccessControlCreate == nil {
-			fluentbitSpec.Security.RoleBasedAccessControlCreate = util.BoolPointer(true)
+			fluentbitSpec.Security.RoleBasedAccessControlCreate = new(true)
 		}
 		if fluentbitSpec.BufferVolumeImage.Repository == "" {
 			fluentbitSpec.BufferVolumeImage.Repository = DefaultFluentbitBufferVolumeImageRepository
@@ -388,7 +417,7 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 		if fluentbitSpec.Security.PodSecurityContext == nil {
 			fluentbitSpec.Security.PodSecurityContext = &corev1.PodSecurityContext{}
 		}
-		if fluentbitSpec.Metrics != nil {
+		if fluentbitSpec.Metrics != nil && fluentbitSpec.Metrics.IsEnabled() {
 			if fluentbitSpec.Metrics.Path == "" {
 				fluentbitSpec.Metrics.Path = "/api/v1/metrics/prometheus"
 			}
@@ -421,7 +450,8 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 							Port: intstr.IntOrString{
 								IntVal: fluentbitSpec.Metrics.Port,
 							},
-						}},
+						},
+					},
 					InitialDelaySeconds: 10,
 					TimeoutSeconds:      0,
 					PeriodSeconds:       10,
@@ -442,34 +472,35 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 				fluentbitSpec.FilterAws.ImdsVersion = "v2"
 			}
 			if fluentbitSpec.FilterAws.AZ == nil {
-				fluentbitSpec.FilterAws.AZ = util.BoolPointer(true)
+				fluentbitSpec.FilterAws.AZ = new(true)
 			}
 			if fluentbitSpec.FilterAws.Ec2InstanceID == nil {
-				fluentbitSpec.FilterAws.Ec2InstanceID = util.BoolPointer(true)
+				fluentbitSpec.FilterAws.Ec2InstanceID = new(true)
 			}
 			if fluentbitSpec.FilterAws.Ec2InstanceType == nil {
-				fluentbitSpec.FilterAws.Ec2InstanceType = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.Ec2InstanceType = new(false)
 			}
 			if fluentbitSpec.FilterAws.PrivateIP == nil {
-				fluentbitSpec.FilterAws.PrivateIP = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.PrivateIP = new(false)
 			}
 			if fluentbitSpec.FilterAws.AmiID == nil {
-				fluentbitSpec.FilterAws.AmiID = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.AmiID = new(false)
 			}
 			if fluentbitSpec.FilterAws.AccountID == nil {
-				fluentbitSpec.FilterAws.AccountID = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.AccountID = new(false)
 			}
 			if fluentbitSpec.FilterAws.Hostname == nil {
-				fluentbitSpec.FilterAws.Hostname = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.Hostname = new(false)
 			}
 			if fluentbitSpec.FilterAws.VpcID == nil {
-				fluentbitSpec.FilterAws.VpcID = util.BoolPointer(false)
+				fluentbitSpec.FilterAws.VpcID = new(false)
 			}
 		}
 		if len(fluentbitSpec.FilterKubernetes.UseKubelet) == 0 {
 			fluentbitSpec.FilterKubernetes.UseKubelet = "Off"
 		}
-		if fluentbitSpec.FilterKubernetes.UseKubelet == "On" {
+		// For backwards compatibility
+		if (fluentbitSpec.FilterKubernetes.UseKubelet == "On") && (fluentbitSpec.FilterKubernetes.KubeletHost == "") {
 			fluentbitSpec.DNSPolicy = "ClusterFirstWithHostNet"
 			fluentbitSpec.HostNetwork = true
 		}
@@ -479,11 +510,17 @@ func FluentBitDefaults(fluentbitSpec *FluentbitSpec) error {
 		if fluentbitSpec.ForwardOptions.RetryLimit == "" {
 			fluentbitSpec.ForwardOptions.RetryLimit = "False"
 		}
+		// fluent-bit >= 5.0.5 defaults Retain_Metadata_In_Forward_Mode to true, but fluentd does not
+		// understand the metadata-extended format and drops these records as "invalid event".
+		// Default to false so the standard fluent-bit -> fluentd forwarding keeps working.
+		if fluentbitSpec.ForwardOptions.RetainMetadataInForwardMode == nil {
+			fluentbitSpec.ForwardOptions.RetainMetadataInForwardMode = new(false)
+		}
 		if fluentbitSpec.TLS == nil {
 			fluentbitSpec.TLS = &FluentbitTLS{}
 		}
 		if fluentbitSpec.TLS.Enabled == nil {
-			fluentbitSpec.TLS.Enabled = util.BoolPointer(false)
+			fluentbitSpec.TLS.Enabled = new(false)
 		}
 		if fluentbitSpec.ConfigHotReload != nil {
 			if fluentbitSpec.ConfigHotReload.Image.Repository == "" {
@@ -533,10 +570,6 @@ func (l *Logging) ClusterDomainAsSuffix() string {
 	return fmt.Sprintf(".%s", *l.Spec.ClusterDomain)
 }
 
-func init() {
-	SchemeBuilder.Register(&Logging{}, &LoggingList{})
-}
-
 func persistentVolumeModePointer(mode corev1.PersistentVolumeMode) *corev1.PersistentVolumeMode {
 	return &mode
 }
@@ -548,7 +581,7 @@ func (l *Logging) FluentdObjectMeta(name, component string, f FluentdSpec, fc *F
 		Kind:       l.Kind,
 		Name:       l.Name,
 		UID:        l.UID,
-		Controller: util.BoolPointer(true),
+		Controller: new(true),
 	}
 
 	if fc != nil {
@@ -557,7 +590,7 @@ func (l *Logging) FluentdObjectMeta(name, component string, f FluentdSpec, fc *F
 			Kind:       fc.Kind,
 			Name:       fc.Name,
 			UID:        fc.UID,
-			Controller: util.BoolPointer(true),
+			Controller: new(true),
 		}
 	}
 	o := metav1.ObjectMeta{
@@ -573,8 +606,8 @@ func (l *Logging) GetFluentdLabels(component string, f FluentdSpec) map[string]s
 	return util.MergeLabels(
 		f.Labels,
 		map[string]string{
-			"app.kubernetes.io/name":      "fluentd",
-			"app.kubernetes.io/component": component,
+			types.NameLabel:      "fluentd",
+			types.ComponentLabel: component,
 		},
 		GenerateLoggingRefLabels(l.GetName()),
 	)
@@ -587,7 +620,7 @@ func (l *Logging) SyslogNGObjectMeta(name, component string, sc *SyslogNGConfig)
 		Kind:       l.Kind,
 		Name:       l.Name,
 		UID:        l.UID,
-		Controller: util.BoolPointer(true),
+		Controller: new(true),
 	}
 	if sc != nil {
 		ownerReference = metav1.OwnerReference{
@@ -595,7 +628,7 @@ func (l *Logging) SyslogNGObjectMeta(name, component string, sc *SyslogNGConfig)
 			Kind:       sc.Kind,
 			Name:       sc.Name,
 			UID:        sc.UID,
-			Controller: util.BoolPointer(true),
+			Controller: new(true),
 		}
 	}
 	o := metav1.ObjectMeta{
@@ -610,15 +643,15 @@ func (l *Logging) SyslogNGObjectMeta(name, component string, sc *SyslogNGConfig)
 func (l *Logging) GetSyslogNGLabels(component string) map[string]string {
 	return util.MergeLabels(
 		map[string]string{
-			"app.kubernetes.io/name":      "syslog-ng",
-			"app.kubernetes.io/component": component,
+			types.NameLabel:      "syslog-ng",
+			types.ComponentLabel: component,
 		},
 		GenerateLoggingRefLabels(l.GetName()),
 	)
 }
 
 func GenerateLoggingRefLabels(loggingRef string) map[string]string {
-	return map[string]string{"app.kubernetes.io/managed-by": loggingRef}
+	return map[string]string{types.ManagedByLabel: loggingRef}
 }
 
 func (l *Logging) AreMultipleAggregatorsSet() bool {

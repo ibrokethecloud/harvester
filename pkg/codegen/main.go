@@ -122,6 +122,7 @@ func main() {
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,
+				GenerateOpenAPI: true,
 			},
 			longhornv1.SchemeGroupVersion.Group: {
 				Types: []interface{}{

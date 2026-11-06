@@ -8,7 +8,7 @@ import (
 	dashboardapi "github.com/kubernetes/dashboard/src/app/backend/auth/api"
 	"github.com/rancher/lasso/pkg/controller"
 	catalogv1 "github.com/rancher/rancher/pkg/generated/controllers/catalog.cattle.io"
-	"github.com/rancher/rancher/pkg/generated/controllers/cluster.cattle.io"
+	"github.com/rancher/rancher/pkg/generated/controllers/cluster.x-k8s.io"
 	rancherv3 "github.com/rancher/rancher/pkg/generated/controllers/management.cattle.io"
 	provisioningv1 "github.com/rancher/rancher/pkg/generated/controllers/provisioning.cattle.io"
 	rkev1 "github.com/rancher/rancher/pkg/generated/controllers/rke.cattle.io"

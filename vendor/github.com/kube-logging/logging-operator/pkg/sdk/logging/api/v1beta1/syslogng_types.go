@@ -34,9 +34,9 @@ type _metaSyslogNGSpec interface{} //nolint:deadcode,unused
 
 const (
 	defaultSyslogngImageRepository           = "ghcr.io/axoflow/axosyslog"
-	defaultSyslogngImageTag                  = "4.11.0"
+	defaultSyslogngImageTag                  = "4.25.0"
 	defaultPrometheusExporterImageRepository = "ghcr.io/axoflow/axosyslog-metrics-exporter"
-	defaultPrometheusExporterImageTag        = "0.0.9"
+	defaultPrometheusExporterImageTag        = "0.0.15"
 	defaultConfigReloaderImageRepository     = "ghcr.io/kube-logging/logging-operator/syslog-ng-reloader"
 	defaultConfigReloaderImageTag            = "latest"
 	defaultBufferVolumeImageRepository       = "ghcr.io/kube-logging/logging-operator/node-exporter"
@@ -54,6 +54,7 @@ type SyslogNGSpec struct {
 	TLS                                 SyslogNGTLS                  `json:"tls,omitempty"`
 	ReadinessDefaultCheck               ReadinessDefaultCheck        `json:"readinessDefaultCheck,omitempty"`
 	SkipRBACCreate                      bool                         `json:"skipRBACCreate,omitempty"`
+	EnabledIPv6                         bool                         `json:"enabledIPv6,omitempty"`
 	StatefulSetOverrides                *typeoverride.StatefulSet    `json:"statefulSet,omitempty"`
 	ServiceOverrides                    *typeoverride.Service        `json:"service,omitempty"`
 	ServiceAccountOverrides             *typeoverride.ServiceAccount `json:"serviceAccount,omitempty"`
@@ -79,8 +80,11 @@ type SyslogNGSpec struct {
 	// Create [custom log metrics for sources and outputs]({{< relref "/docs/examples/custom-syslog-ng-metrics.md" >}}).
 	SourceMetrics []filter.MetricsProbe `json:"sourceMetrics,omitempty"`
 	// Overrides the default logging level configCheck setup.
-	// This field is not used directly, just copied over the field in the logging resource if defined.
+	// This field is not used directly, its fields are copied over the ones in the logging resource, field by field, so setting one field here does not discard the others set on the logging resource.
 	ConfigCheck *ConfigCheck `json:"configCheck,omitempty"`
+	// Duration in seconds for graceful pod termination. Set higher than expected cleanup time.
+	// +kubebuilder:validation:Minimum=0
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 //
@@ -116,6 +120,9 @@ type GlobalOptions struct {
 	Stats *Stats `json:"stats,omitempty"`
 	// See the [AxoSyslog Core documentation](https://axoflow.com/docs/axosyslog-core/chapter-global-options/reference-options/#global-options-log-level).
 	LogLevel *string `json:"log_level,omitempty"`
+	// The maximum size of a message in bytes. Defaults to syslog-ng's built-in default of 8192 when unset.
+	// See the [AxoSyslog Core documentation](https://axoflow.com/docs/axosyslog-core/chapter-global-options/reference-options/#global-option-log-msg-size).
+	LogMsgSize *int `json:"log_msg_size,omitempty"`
 }
 
 type Stats struct {
@@ -143,10 +150,13 @@ func (s *SyslogNGSpec) SetDefaults() {
 			}
 		}
 		if s.SyslogNGImage == nil {
-			s.SyslogNGImage = &BasicImageSpec{
-				Repository: defaultSyslogngImageRepository,
-				Tag:        defaultSyslogngImageTag,
-			}
+			s.SyslogNGImage = &BasicImageSpec{}
+		}
+		if s.SyslogNGImage.Repository == "" {
+			s.SyslogNGImage.Repository = defaultSyslogngImageRepository
+		}
+		if s.SyslogNGImage.Tag == "" {
+			s.SyslogNGImage.Tag = defaultSyslogngImageTag
 		}
 		if s.ConfigReloadImage == nil {
 			s.ConfigReloadImage = &BasicImageSpec{}
@@ -162,10 +172,13 @@ func (s *SyslogNGSpec) SetDefaults() {
 			}
 		}
 		if s.MetricsExporterImage == nil {
-			s.MetricsExporterImage = &BasicImageSpec{
-				Repository: defaultPrometheusExporterImageRepository,
-				Tag:        defaultPrometheusExporterImageTag,
-			}
+			s.MetricsExporterImage = &BasicImageSpec{}
+		}
+		if s.MetricsExporterImage.Repository == "" {
+			s.MetricsExporterImage.Repository = defaultPrometheusExporterImageRepository
+		}
+		if s.MetricsExporterImage.Tag == "" {
+			s.MetricsExporterImage.Tag = defaultPrometheusExporterImageTag
 		}
 		if s.BufferVolumeMetricsImage == nil {
 			s.BufferVolumeMetricsImage = &BasicImageSpec{}

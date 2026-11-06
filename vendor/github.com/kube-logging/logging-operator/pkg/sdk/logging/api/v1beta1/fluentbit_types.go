@@ -80,6 +80,9 @@ type FluentbitSpec struct {
 	// DisableVarLibDockerContainers controls whether the /var/lib/docker/containers volume is mounted.
 	// If true, the volume is NOT mounted. If false (default), the volume is mounted.
 	DisableVarLibDockerContainers *bool `json:"disableVarLibDockerContainers,omitempty"`
+	// DisableVarLog controls whether the /var/log volume is mounted.
+	// If true, the volume is NOT mounted. If false (default), the volume is mounted.
+	DisableVarLog *bool `json:"disableVarLog,omitempty"`
 	// HotReload pauses all inputs and waits until they finish. In certain situations this is unacceptable, for example if an output is down for a longer time.
 	// An undocumented option called "Hot_Reload.Ensure_Thread_Safety Off" can be used at the [SERVICE] config to force hotreload after the grace period.
 	// Please note that it might result in a SIGSEGV, but worst case kubelet will restart the container.
@@ -114,26 +117,29 @@ type FluentbitSpec struct {
 	DisableKubernetesFilter *bool         `json:"disableKubernetesFilter,omitempty"`
 	BufferStorage           BufferStorage `json:"bufferStorage,omitempty"`
 	// +docLink:"volume.KubernetesVolume,https://github.com/cisco-open/operator-tools/tree/master/docs/types"
-	BufferStorageVolume       volume.KubernetesVolume        `json:"bufferStorageVolume,omitempty"`
-	BufferVolumeMetrics       *Metrics                       `json:"bufferVolumeMetrics,omitempty"`
-	BufferVolumeImage         ImageSpec                      `json:"bufferVolumeImage,omitempty"`
-	BufferVolumeArgs          []string                       `json:"bufferVolumeArgs,omitempty"`
-	BufferVolumeResources     corev1.ResourceRequirements    `json:"bufferVolumeResources,omitempty"`
-	BufferVolumeLivenessProbe *corev1.Probe                  `json:"bufferVolumeLivenessProbe,omitempty"`
-	CustomConfigSecret        string                         `json:"customConfigSecret,omitempty"`
-	PodPriorityClassName      string                         `json:"podPriorityClassName,omitempty"`
-	LivenessProbe             *corev1.Probe                  `json:"livenessProbe,omitempty"`
-	LivenessDefaultCheck      bool                           `json:"livenessDefaultCheck,omitempty"`
-	ReadinessProbe            *corev1.Probe                  `json:"readinessProbe,omitempty"`
-	Network                   *FluentbitNetwork              `json:"network,omitempty"`
-	ForwardOptions            *ForwardOptions                `json:"forwardOptions,omitempty"`
-	EnableUpstream            bool                           `json:"enableUpstream,omitempty"`
-	ServiceAccountOverrides   *typeoverride.ServiceAccount   `json:"serviceAccount,omitempty"`
-	DNSPolicy                 corev1.DNSPolicy               `json:"dnsPolicy,omitempty"`
-	DNSConfig                 *corev1.PodDNSConfig           `json:"dnsConfig,omitempty"`
-	HostNetwork               bool                           `json:"HostNetwork,omitempty"`
-	SyslogNGOutput            *FluentbitTCPOutput            `json:"syslogng_output,omitempty"`
-	UpdateStrategy            appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
+	BufferStorageVolume       volume.KubernetesVolume     `json:"bufferStorageVolume,omitempty"`
+	BufferVolumeMetrics       *Metrics                    `json:"bufferVolumeMetrics,omitempty"`
+	BufferVolumeImage         ImageSpec                   `json:"bufferVolumeImage,omitempty"`
+	BufferVolumeArgs          []string                    `json:"bufferVolumeArgs,omitempty"`
+	BufferVolumeResources     corev1.ResourceRequirements `json:"bufferVolumeResources,omitempty"`
+	BufferVolumeLivenessProbe *corev1.Probe               `json:"bufferVolumeLivenessProbe,omitempty"`
+	CustomConfigSecret        string                      `json:"customConfigSecret,omitempty"`
+	PodPriorityClassName      string                      `json:"podPriorityClassName,omitempty"`
+	// Duration in seconds for graceful pod termination. Set higher than expected cleanup time.
+	// +kubebuilder:validation:Minimum=0
+	TerminationGracePeriodSeconds *int64                         `json:"terminationGracePeriodSeconds,omitempty"`
+	LivenessProbe                 *corev1.Probe                  `json:"livenessProbe,omitempty"`
+	LivenessDefaultCheck          bool                           `json:"livenessDefaultCheck,omitempty"`
+	ReadinessProbe                *corev1.Probe                  `json:"readinessProbe,omitempty"`
+	Network                       *FluentbitNetwork              `json:"network,omitempty"`
+	ForwardOptions                *ForwardOptions                `json:"forwardOptions,omitempty"`
+	EnableUpstream                bool                           `json:"enableUpstream,omitempty"`
+	ServiceAccountOverrides       *typeoverride.ServiceAccount   `json:"serviceAccount,omitempty"`
+	DNSPolicy                     corev1.DNSPolicy               `json:"dnsPolicy,omitempty"`
+	DNSConfig                     *corev1.PodDNSConfig           `json:"dnsConfig,omitempty"`
+	HostNetwork                   bool                           `json:"HostNetwork,omitempty"`
+	SyslogNGOutput                *FluentbitTCPOutput            `json:"syslogng_output,omitempty"`
+	UpdateStrategy                appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 	// Available in Logging operator version 4.2 and later.
 	// Specify a custom parser file to load in addition to the default parsers file.
 	// It must be a valid key in the configmap specified by customConfig.
@@ -144,8 +150,7 @@ type FluentbitSpec struct {
 }
 
 // FluentbitStatus defines the resource status for FluentbitAgent
-type FluentbitStatus struct {
-}
+type FluentbitStatus struct{}
 
 // +kubebuilder:object:generate=true
 
@@ -217,6 +222,8 @@ type BufferStorage struct {
 	StorageDeleteIrrecoverableChunks string `json:"storage.delete_irrecoverable_chunks,omitempty"`
 	// If storage.path is set, Fluent Bit will look for data chunks that were not delivered and are still in the storage layer, these are called backlog data. This option configure a hint of maximum value of memory to use when processing these records. (default:5M)
 	StorageBacklogMemLimit string `json:"storage.backlog.mem_limit,omitempty"`
+	// If enabled, Fluent Bit attempts to flush all backlog filesystem chunks to their destination during the shutdown process. This avoids losing buffered records when a node is drained or a spot instance is reclaimed. (default:Off)
+	StorageBacklogFlushOnShutdown string `json:"storage.backlog.flush_on_shutdown,omitempty"`
 	// Available in Logging operator version 4.4 and later. If the `http_server` option has been enabled in the main Service configuration section, this option registers a new endpoint where internal metrics of the storage layer can be consumed. (default:Off)
 	StorageMetrics string `json:"storage.metrics,omitempty"`
 	// If the input plugin has enabled filesystem storage type, this property sets the maximum number of Chunks that can be up in memory. This is the setting to use to control memory usage when you enable storage.type filesystem. (default: 128)
@@ -259,6 +266,8 @@ type InputTail struct {
 	RefreshInterval string `json:"Refresh_Interval,omitempty"`
 	// Specify the number of extra time in seconds to monitor a file once is rotated in case some pending data is flushed. (default:5)
 	RotateWait string `json:"Rotate_Wait,omitempty"`
+	// Use posix_fadvise for file access. Advise not to use kernel file cache (Linux only). (default:On)
+	FileCacheAdvise string `json:"File_Cache_Advise,omitempty"`
 	// Ignores files that have been last modified before this time in seconds. Supports m,h,d (minutes, hours,days) syntax. Default behavior is to read all specified files.
 	IgnoreOlder string `json:"Ignore_Older,omitempty"`
 	// When a monitored file reach it buffer capacity due to a very long line (Buffer_Max_Size), the default behavior is to stop monitoring that file. Skip_Long_Lines alter that behavior and instruct Fluent Bit to skip long lines and continue processing other lines that fits into the buffer size. (default:Off)
@@ -340,7 +349,36 @@ type FilterKubernetes struct {
 	CacheUseDockerId string `json:"Cache_Use_Docker_Id,omitempty"`
 	// Set an alternative Parser to process record Tag and extract pod_name, namespace_name, container_name and docker_id. The parser must be registered in a parsers file (refer to parser filter-kube-test as an example).
 	RegexParser string `json:"Regex_Parser,omitempty"`
-	// Allow Kubernetes Pods to suggest a pre-defined Parser (read more about it in Kubernetes Annotations section) (default:Off)
+	/*
+	   Allow Kubernetes Pods to suggest a pre-defined Parser through annotations.
+	   (Read more about it in the Kubernetes Annotations section.)
+
+	   Default: Off
+
+	   Important: When enabling this setting, you must also configure
+	   `inputTail.multiline.parser` with appropriate parsers (typically including `cri` for
+	   Container Runtime Interface logs). Without this configuration, the annotation-based
+	   parsing will not work correctly.
+
+	   ### Example Configuration
+
+	   ```yaml
+	   apiVersion: logging.banzaicloud.io/v1beta1
+	   kind: FluentbitAgent
+	   metadata:
+	     name: example-fluentbit
+	   spec:
+	     inputTail:
+	       multiline.parser: [cri]  # Required when K8S-Logging.Parser is enabled
+	     filterKubernetes:
+	       K8S-Logging.Parser: "On"
+	       Merge_Log_Key: "parsed"  # Optional but recommended to prevent key conflicts
+
+	       # Once configured, you can use annotations on your pods:
+	       annotations:
+	         fluentbit.io/parser: "my-custom-parser"
+	   ```
+	*/
 	K8SLoggingParser string `json:"K8S-Logging.Parser,omitempty"`
 	// Allow Kubernetes Pods to exclude their logs from the log processor (read more about it in Kubernetes Annotations section). (default:On)
 	K8SLoggingExclude string `json:"K8S-Logging.Exclude,omitempty"`
@@ -364,6 +402,8 @@ type FilterKubernetes struct {
 	DNSWaitTime string `json:"DNS_Wait_Time,omitempty"`
 	// This is an optional feature flag to get metadata information from kubelet instead of calling Kube Server API to enhance the log. (default:Off)
 	UseKubelet string `json:"Use_Kubelet,omitempty"`
+	// Kubelet host to use for HTTP requests. This only works when Use_Kubelet is set to On (default: 127.0.0.1)
+	KubeletHost string `json:"Kubelet_Host,omitempty"`
 	// kubelet port using for HTTP request, this only works when Use_Kubelet  set to On (default:10250)
 	KubeletPort string `json:"Kubelet_Port,omitempty"`
 	// Configurable TTL for K8s cached metadata. By default, it is set to 0 which means TTL for cache entries is disabled and cache entries are evicted at random when capacity is reached. In order to enable this option, you should set the number to a time interval. For example, set this value to 60 or 60s and cache entries which have been created more than 60s will be evicted. (default:0)
@@ -496,6 +536,7 @@ func getOperation(c interface{}) (result Operation) {
 func (c FilterModifyCondition) Operation() (result Operation) {
 	return getOperation(c)
 }
+
 func (r FilterModifyRule) Operation() (result Operation) {
 	return getOperation(r)
 }
@@ -532,8 +573,9 @@ type ForwardOptions struct {
 	// Available in Logging operator version 4.4 and later.
 	// Enables dedicated thread(s) for this output. Default value (2) is set since version 1.8.13. For previous versions is 0.
 	Workers *int `json:"Workers,omitempty"`
-}
-
-func init() {
-	SchemeBuilder.Register(&FluentbitAgent{}, &FluentbitAgentList{})
+	// `Retain_Metadata_In_Forward_Mode` controls whether fluent-bit appends log event metadata when forwarding records.
+	// Available since fluent-bit 5.0.4, defaults to `true` in fluent-bit >= 5.0.5 — but fluentd does not understand the
+	// metadata format and drops these records as "invalid event", so the operator defaults it to `false` for Forward mode
+	// targets. Set this to `true` only when forwarding between fluent-bit instances.
+	RetainMetadataInForwardMode *bool `json:"Retain_Metadata_In_Forward_Mode,omitempty"`
 }
