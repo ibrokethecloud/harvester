@@ -25,11 +25,9 @@ import (
 	kubeletconfigv1 "k8s.io/kubelet/config/v1beta1"
 	kubeletstatsv1 "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	"github.com/harvester/harvester/pkg/controller/master/upgrade"
-	ctlclusterv1 "github.com/harvester/harvester/pkg/generated/controllers/cluster.x-k8s.io/v1beta1"
 	ctldiscoveryv1 "github.com/harvester/harvester/pkg/generated/controllers/discovery.k8s.io/v1"
 	ctlharvesterv1 "github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
 	ctlkubevirtv1 "github.com/harvester/harvester/pkg/generated/controllers/kubevirt.io/v1"
@@ -60,8 +58,6 @@ func NewValidator(
 	addons ctlharvesterv1.AddonCache,
 	nodes v1.NodeCache,
 	lhVolumes ctllhv1.VolumeCache,
-	clusters ctlclusterv1.ClusterCache,
-	machines ctlclusterv1.MachineCache,
 	managedChartCache mgmtv3.ManagedChartCache,
 	versionCache ctlharvesterv1.VersionCache,
 	vmBackupCache ctlharvesterv1.VirtualMachineBackupCache,
@@ -77,8 +73,6 @@ func NewValidator(
 		addons:             addons,
 		nodes:              nodes,
 		lhVolumes:          lhVolumes,
-		clusters:           clusters,
-		machines:           machines,
 		managedChartCache:  managedChartCache,
 		versionCache:       versionCache,
 		vmBackupCache:      vmBackupCache,
@@ -98,8 +92,6 @@ type upgradeValidator struct {
 	addons             ctlharvesterv1.AddonCache
 	nodes              v1.NodeCache
 	lhVolumes          ctllhv1.VolumeCache
-	clusters           ctlclusterv1.ClusterCache
-	machines           ctlclusterv1.MachineCache
 	managedChartCache  mgmtv3.ManagedChartCache
 	versionCache       ctlharvesterv1.VersionCache
 	vmBackupCache      ctlharvesterv1.VirtualMachineBackupCache
@@ -231,15 +223,6 @@ func (v *upgradeValidator) checkResources(upgrade *v1beta1.Upgrade) error {
 		return werror.NewBadRequest("there are degraded volumes, please check all volumes are healthy")
 	}
 
-	cluster, err := v.clusters.Get(util.FleetLocalNamespaceName, util.LocalClusterName)
-	if err != nil {
-		return werror.NewInternalError(fmt.Sprintf("can't find %s/%s cluster, err: %+v", util.FleetLocalNamespaceName, util.LocalClusterName, err))
-	}
-
-	if cluster.Status.Phase != string(clusterv1.ClusterPhaseProvisioned) {
-		return werror.NewBadRequest(fmt.Sprintf("cluster %s/%s status is %s, please wait for it to be provisioned", util.FleetLocalNamespaceName, util.LocalClusterName, cluster.Status.Phase))
-	}
-
 	if err := v.checkVMBackups(); err != nil {
 		return err
 	}
@@ -257,14 +240,6 @@ func (v *upgradeValidator) checkResources(upgrade *v1beta1.Upgrade) error {
 	}
 
 	if err := v.checkNodes(upgrade); err != nil {
-		return err
-	}
-
-	if err := v.checkMachines(); err != nil {
-		return err
-	}
-
-	if err := v.checkNodeMachineMatching(); err != nil {
 		return err
 	}
 
@@ -469,21 +444,6 @@ func (v *upgradeValidator) checkDiskSpace(node *corev1.Node) error {
 	return nil
 }
 
-func (v *upgradeValidator) checkMachines() error {
-	machines, err := v.machines.List(util.FleetLocalNamespaceName, labels.Everything())
-	if err != nil {
-		return werror.NewInternalError(fmt.Sprintf("can't list machines, err: %+v", err))
-	}
-
-	for _, machine := range machines {
-		if machine.Status.GetTypedPhase() != clusterv1.MachinePhaseRunning {
-			return werror.NewInternalError(fmt.Sprintf("machine %s/%s is not running", machine.Namespace, machine.Name))
-		}
-	}
-
-	return nil
-}
-
 func (v *upgradeValidator) checkNodeMachineMatching() error {
 	nodes, err := v.nodes.List(labels.Everything())
 	if err != nil {
@@ -496,57 +456,6 @@ func (v *upgradeValidator) checkNodeMachineMatching() error {
 	}
 
 	return isNodeMachineMatching(nodes, machines)
-}
-
-func isNodeMachineMatching(nodes []*corev1.Node, machines []*clusterv1.Machine) error {
-	if len(nodes) == 0 {
-		return werror.NewInternalError("no node was listed, this shall not happen")
-	}
-
-	if len(nodes) != len(machines) {
-		return werror.NewInternalError(fmt.Sprintf("nodes(%v) and machines(%v) do not match, check the cluster provision", len(nodes), len(machines)))
-	}
-
-	// machine refers to node via .Status.NodeRef
-	machineMap := make(map[string]string, len(nodes))
-	for _, m := range machines {
-		if m.Status.NodeRef == nil {
-			return werror.NewInternalError(fmt.Sprintf("machine %v has empty NodeRef, check the cluster provision", m.Name))
-		}
-		machineMap[m.Name] = m.Status.NodeRef.Name
-	}
-
-	for _, node := range nodes {
-		if node.Labels == nil {
-			return werror.NewInternalError(fmt.Sprintf("node %v has no labels", node.Name))
-		}
-
-		// each node should have this
-		if node.Labels[util.HarvesterManagedNodeLabelKey] != "true" {
-			return werror.NewInternalError(fmt.Sprintf("node %v has no expected label %v", node.Name, util.HarvesterManagedNodeLabelKey))
-		}
-
-		if node.Annotations == nil {
-			return werror.NewInternalError(fmt.Sprintf("node %v has no nnnotations", node.Name))
-		}
-
-		// each node should have this when it is correctly provisioned
-		mc := node.Annotations[clusterv1.MachineAnnotation]
-		if mc == "" {
-			return werror.NewInternalError(fmt.Sprintf("node %v has no expected annotation %v, check the cluster provision", node.Name, clusterv1.MachineAnnotation))
-		}
-
-		nRef, ok := machineMap[mc]
-		if !ok {
-			return werror.NewInternalError(fmt.Sprintf("node %v refers to machine %v, but the machine does not exist", node.Name, mc))
-		}
-
-		if node.Name != nRef {
-			return werror.NewInternalError(fmt.Sprintf("node %v refers to machine %v, but the machine refers to another node %v", node.Name, mc, nRef))
-		}
-	}
-
-	return nil
 }
 
 func skipSingleReplicaDetachedVolCheck(upgrade *v1beta1.Upgrade) bool {

@@ -29,7 +29,6 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	cdiuploadv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/upload/v1beta1"
-	capi "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	harvesterv1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
@@ -148,14 +147,6 @@ func main() {
 				GenerateTypes:   false,
 				GenerateClients: true,
 			},
-			capi.GroupVersion.Group: {
-				Types: []interface{}{
-					capi.Cluster{},
-					capi.Machine{},
-				},
-				GenerateTypes:   false,
-				GenerateClients: true,
-			},
 			corev1.GroupName: {
 				Types: []interface{}{
 					corev1.Node{},
@@ -252,7 +243,6 @@ func main() {
 		},
 	})
 	nadControllerInterfaceRefactor()
-	capiWorkaround()
 	loggingWorkaround()
 	coreWorkaround()
 }
@@ -273,31 +263,6 @@ func nadControllerInterfaceRefactor() {
 	// absPath is derived from a hardcoded generated-file path, not from user input.
 	if err = os.WriteFile(absPath, output, 0600); err != nil { //nolint:gosec // not user-controlled, see comment above
 		logrus.Fatalf("failed to update the network-attachment-definition file: %v", err)
-	}
-}
-
-// capiWorkaround replaces the variable `SchemeGroupVersion` with `GroupVersion` in clusters.cluster.x-k8s.io client because
-// `SchemeGroupVersion` is not declared in the vendor package but wrangler uses it.
-// https://github.com/kubernetes-sigs/cluster-api/blob/56f9e9db7a9e9ca625ffe4bdc1e5e93a14d5e96c/api/v1beta1/groupversion_info.go#L29
-func capiWorkaround() {
-	files := []string{
-		"pkg/generated/clientset/versioned/typed/cluster.x-k8s.io/v1beta1/cluster.x-k8s.io_client.go",
-		"pkg/generated/clientset/versioned/typed/cluster.x-k8s.io/v1beta1/fake/fake_machine.go",
-		"pkg/generated/clientset/versioned/typed/cluster.x-k8s.io/v1beta1/fake/fake_cluster.go",
-	}
-
-	// Replace the variable `SchemeGroupVersion` with `GroupVersion` in the above files path
-	for _, absPath := range files {
-		input, err := os.ReadFile(absPath)
-		if err != nil {
-			logrus.Fatalf("failed to read the clusters.cluster.x-k8s.io client file: %v", err)
-		}
-		output := bytes.ReplaceAll(input, []byte("v1beta1.SchemeGroupVersion"), []byte("v1beta1.GroupVersion"))
-
-		// absPath comes from the fixed `files` list above, not from user input.
-		if err = os.WriteFile(absPath, output, 0600); err != nil { //nolint:gosec // not user-controlled, see comment above
-			logrus.Fatalf("failed to update the clusters.cluster.x-k8s.io client file: %v", err)
-		}
 	}
 }
 

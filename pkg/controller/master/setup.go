@@ -12,7 +12,6 @@ import (
 	"github.com/harvester/harvester/pkg/controller/master/image"
 	"github.com/harvester/harvester/pkg/controller/master/keypair"
 	"github.com/harvester/harvester/pkg/controller/master/kubevirt"
-	"github.com/harvester/harvester/pkg/controller/master/machine"
 	"github.com/harvester/harvester/pkg/controller/master/mcmsettings"
 	"github.com/harvester/harvester/pkg/controller/master/migration"
 	"github.com/harvester/harvester/pkg/controller/master/node"
@@ -26,7 +25,6 @@ import (
 	"github.com/harvester/harvester/pkg/controller/master/storagenetwork"
 	"github.com/harvester/harvester/pkg/controller/master/supportbundle"
 	"github.com/harvester/harvester/pkg/controller/master/template"
-	"github.com/harvester/harvester/pkg/controller/master/upgrade"
 	"github.com/harvester/harvester/pkg/controller/master/upgradelog"
 	"github.com/harvester/harvester/pkg/controller/master/virtualmachine"
 	"github.com/harvester/harvester/pkg/controller/master/vmimagedownloader"
@@ -45,7 +43,6 @@ var registerFuncs = []registerFunc{
 	image.Register,
 	keypair.Register,
 	kubevirt.Register,
-	machine.ControlPlaneRegister,
 	mcmsettings.Register,
 	migration.Register,
 	node.CPUManagerRegister,
@@ -53,7 +50,6 @@ var registerFuncs = []registerFunc{
 	node.DownRegister,
 	node.MaintainRegister,
 	node.PromoteRegister,
-	node.RemoveRegister,
 	node.VolumeDetachRegister,
 	nodedrain.Register,
 	pvc.Register,
@@ -65,7 +61,6 @@ var registerFuncs = []registerFunc{
 	storagenetwork.Register,
 	supportbundle.Register,
 	template.Register,
-	upgrade.Register,
 	upgradelog.Register,
 	virtualmachine.Register,
 	vmimagedownloader.Register,

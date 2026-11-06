@@ -14,14 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/dynamic"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 
 	"github.com/harvester/harvester/pkg/config"
-	"github.com/harvester/harvester/pkg/controller/master/upgrade"
 	ctlharvesterv1 "github.com/harvester/harvester/pkg/generated/controllers/harvesterhci.io/v1beta1"
 	"github.com/harvester/harvester/pkg/settings"
 	"github.com/harvester/harvester/pkg/util"
@@ -334,29 +331,6 @@ func isOnUpgrade(upgrades ctlharvesterv1.UpgradeClient, dynamicClient dynamic.In
 		return true
 	}
 	return isOnUpgradeV2(dynamicClient)
-}
-
-// isOnUpgradeV1 checks for in-progress harvesterhci.io/v1beta1 Upgrade CRs
-// created by the legacy (in-tree) upgrade controller.
-func isOnUpgradeV1(upgrades ctlharvesterv1.UpgradeClient) bool {
-	req, err := labels.NewRequirement(util.LabelHarvesterUpgradeState, selection.NotIn, []string{upgrade.StateSucceeded, upgrade.StateFailed})
-	if err != nil {
-		logrus.Warnf("Failed to create label requirement for %s: %v", util.LabelHarvesterUpgradeState, err)
-		return false
-	}
-
-	upgradesItems, err := upgrades.List(util.HarvesterSystemNamespaceName, metav1.ListOptions{
-		LabelSelector: labels.NewSelector().Add(*req).String(),
-	})
-	if err != nil {
-		logrus.Warnf("Failed to list upgrades with label %s: %v", util.LabelHarvesterUpgradeState, err)
-		return false
-	}
-	if len(upgradesItems.Items) > 0 {
-		logrus.Debugf("There are ongoing upgrades: %v.", upgradesItems.Items[0].Name)
-		return true
-	}
-	return false
 }
 
 // isOnUpgradeV2 checks for in-progress management.harvesterhci.io/v1beta1
