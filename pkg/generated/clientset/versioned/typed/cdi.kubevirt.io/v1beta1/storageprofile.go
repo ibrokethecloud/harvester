@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type StorageProfileInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.StorageProfileList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.StorageProfile, err error)
+	Apply(ctx context.Context, storageProfile *applyconfigurationcorev1beta1.StorageProfileApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.StorageProfile, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, storageProfile *applyconfigurationcorev1beta1.StorageProfileApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.StorageProfile, err error)
 	StorageProfileExpansion
 }
 
 // storageProfiles implements StorageProfileInterface
 type storageProfiles struct {
-	*gentype.ClientWithList[*corev1beta1.StorageProfile, *corev1beta1.StorageProfileList]
+	*gentype.ClientWithListAndApply[*corev1beta1.StorageProfile, *corev1beta1.StorageProfileList, *applyconfigurationcorev1beta1.StorageProfileApplyConfiguration]
 }
 
 // newStorageProfiles returns a StorageProfiles
 func newStorageProfiles(c *CdiV1beta1Client) *storageProfiles {
 	return &storageProfiles{
-		gentype.NewClientWithList[*corev1beta1.StorageProfile, *corev1beta1.StorageProfileList](
+		gentype.NewClientWithListAndApply[*corev1beta1.StorageProfile, *corev1beta1.StorageProfileList, *applyconfigurationcorev1beta1.StorageProfileApplyConfiguration](
 			"storageprofiles",
 			c.RESTClient(),
 			scheme.ParameterCodec,

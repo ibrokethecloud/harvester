@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type PreferenceInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.PreferenceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Preference, err error)
+	Apply(ctx context.Context, preference *applyconfigurationmanagementcattleiov3.PreferenceApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Preference, err error)
 	PreferenceExpansion
 }
 
 // preferences implements PreferenceInterface
 type preferences struct {
-	*gentype.ClientWithList[*managementcattleiov3.Preference, *managementcattleiov3.PreferenceList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Preference, *managementcattleiov3.PreferenceList, *applyconfigurationmanagementcattleiov3.PreferenceApplyConfiguration]
 }
 
 // newPreferences returns a Preferences
 func newPreferences(c *ManagementV3Client, namespace string) *preferences {
 	return &preferences{
-		gentype.NewClientWithList[*managementcattleiov3.Preference, *managementcattleiov3.PreferenceList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Preference, *managementcattleiov3.PreferenceList, *applyconfigurationmanagementcattleiov3.PreferenceApplyConfiguration](
 			"preferences",
 			c.RESTClient(),
 			scheme.ParameterCodec,

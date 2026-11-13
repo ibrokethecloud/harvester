@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type SamlProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.SamlProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.SamlProvider, err error)
+	Apply(ctx context.Context, samlProvider *applyconfigurationmanagementcattleiov3.SamlProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.SamlProvider, err error)
 	SamlProviderExpansion
 }
 
 // samlProviders implements SamlProviderInterface
 type samlProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.SamlProvider, *managementcattleiov3.SamlProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.SamlProvider, *managementcattleiov3.SamlProviderList, *applyconfigurationmanagementcattleiov3.SamlProviderApplyConfiguration]
 }
 
 // newSamlProviders returns a SamlProviders
 func newSamlProviders(c *ManagementV3Client) *samlProviders {
 	return &samlProviders{
-		gentype.NewClientWithList[*managementcattleiov3.SamlProvider, *managementcattleiov3.SamlProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.SamlProvider, *managementcattleiov3.SamlProviderList, *applyconfigurationmanagementcattleiov3.SamlProviderApplyConfiguration](
 			"samlproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

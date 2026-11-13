@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	context "context"
 
+	applyconfigurationwhereaboutscnicncfiov1alpha1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/whereabouts.cni.cncf.io/v1alpha1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	whereaboutscnicncfiov1alpha1 "github.com/k8snetworkplumbingwg/whereabouts/pkg/api/whereabouts.cni.cncf.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type IPPoolInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*whereaboutscnicncfiov1alpha1.IPPoolList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *whereaboutscnicncfiov1alpha1.IPPool, err error)
+	Apply(ctx context.Context, iPPool *applyconfigurationwhereaboutscnicncfiov1alpha1.IPPoolApplyConfiguration, opts v1.ApplyOptions) (result *whereaboutscnicncfiov1alpha1.IPPool, err error)
 	IPPoolExpansion
 }
 
 // iPPools implements IPPoolInterface
 type iPPools struct {
-	*gentype.ClientWithList[*whereaboutscnicncfiov1alpha1.IPPool, *whereaboutscnicncfiov1alpha1.IPPoolList]
+	*gentype.ClientWithListAndApply[*whereaboutscnicncfiov1alpha1.IPPool, *whereaboutscnicncfiov1alpha1.IPPoolList, *applyconfigurationwhereaboutscnicncfiov1alpha1.IPPoolApplyConfiguration]
 }
 
 // newIPPools returns a IPPools
 func newIPPools(c *WhereaboutsV1alpha1Client) *iPPools {
 	return &iPPools{
-		gentype.NewClientWithList[*whereaboutscnicncfiov1alpha1.IPPool, *whereaboutscnicncfiov1alpha1.IPPoolList](
+		gentype.NewClientWithListAndApply[*whereaboutscnicncfiov1alpha1.IPPool, *whereaboutscnicncfiov1alpha1.IPPoolList, *applyconfigurationwhereaboutscnicncfiov1alpha1.IPPoolApplyConfiguration](
 			"ippools",
 			c.RESTClient(),
 			scheme.ParameterCodec,

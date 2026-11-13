@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +33,7 @@ import (
 // SamlTokensGetter has a method to return a SamlTokenInterface.
 // A group's client should implement this interface.
 type SamlTokensGetter interface {
-	SamlTokens() SamlTokenInterface
+	SamlTokens(namespace string) SamlTokenInterface
 }
 
 // SamlTokenInterface has methods to work with SamlToken resources.
@@ -45,22 +46,23 @@ type SamlTokenInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.SamlTokenList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.SamlToken, err error)
+	Apply(ctx context.Context, samlToken *applyconfigurationmanagementcattleiov3.SamlTokenApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.SamlToken, err error)
 	SamlTokenExpansion
 }
 
 // samlTokens implements SamlTokenInterface
 type samlTokens struct {
-	*gentype.ClientWithList[*managementcattleiov3.SamlToken, *managementcattleiov3.SamlTokenList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.SamlToken, *managementcattleiov3.SamlTokenList, *applyconfigurationmanagementcattleiov3.SamlTokenApplyConfiguration]
 }
 
 // newSamlTokens returns a SamlTokens
-func newSamlTokens(c *ManagementV3Client) *samlTokens {
+func newSamlTokens(c *ManagementV3Client, namespace string) *samlTokens {
 	return &samlTokens{
-		gentype.NewClientWithList[*managementcattleiov3.SamlToken, *managementcattleiov3.SamlTokenList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.SamlToken, *managementcattleiov3.SamlTokenList, *applyconfigurationmanagementcattleiov3.SamlTokenApplyConfiguration](
 			"samltokens",
 			c.RESTClient(),
 			scheme.ParameterCodec,
-			"",
+			namespace,
 			func() *managementcattleiov3.SamlToken { return &managementcattleiov3.SamlToken{} },
 			func() *managementcattleiov3.SamlTokenList { return &managementcattleiov3.SamlTokenList{} },
 		),

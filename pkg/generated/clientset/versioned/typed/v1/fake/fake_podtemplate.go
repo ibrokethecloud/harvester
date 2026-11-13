@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakePodTemplates implements PodTemplateInterface
 type fakePodTemplates struct {
-	*gentype.FakeClientWithList[*v1.PodTemplate, *v1.PodTemplateList]
+	*gentype.FakeClientWithListAndApply[*v1.PodTemplate, *v1.PodTemplateList, *corev1.PodTemplateApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakePodTemplates(fake *FakeCoreV1, namespace string) typedv1.PodTemplateInterface {
 	return &fakePodTemplates{
-		gentype.NewFakeClientWithList[*v1.PodTemplate, *v1.PodTemplateList](
+		gentype.NewFakeClientWithListAndApply[*v1.PodTemplate, *v1.PodTemplateList, *corev1.PodTemplateApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("podtemplates"),

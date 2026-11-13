@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeKeyPairs implements KeyPairInterface
 type fakeKeyPairs struct {
-	*gentype.FakeClientWithList[*v1beta1.KeyPair, *v1beta1.KeyPairList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.KeyPair, *v1beta1.KeyPairList, *harvesterhciiov1beta1.KeyPairApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeKeyPairs(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.KeyPairInterface {
+func newFakeKeyPairs(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.KeyPairInterface {
 	return &fakeKeyPairs{
-		gentype.NewFakeClientWithList[*v1beta1.KeyPair, *v1beta1.KeyPairList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.KeyPair, *v1beta1.KeyPairList, *harvesterhciiov1beta1.KeyPairApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("keypairs"),

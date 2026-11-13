@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VolumeAttachmentInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.VolumeAttachmentList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.VolumeAttachment, err error)
+	Apply(ctx context.Context, volumeAttachment *applyconfigurationlonghornv1beta2.VolumeAttachmentApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.VolumeAttachment, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, volumeAttachment *applyconfigurationlonghornv1beta2.VolumeAttachmentApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.VolumeAttachment, err error)
 	VolumeAttachmentExpansion
 }
 
 // volumeAttachments implements VolumeAttachmentInterface
 type volumeAttachments struct {
-	*gentype.ClientWithList[*longhornv1beta2.VolumeAttachment, *longhornv1beta2.VolumeAttachmentList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.VolumeAttachment, *longhornv1beta2.VolumeAttachmentList, *applyconfigurationlonghornv1beta2.VolumeAttachmentApplyConfiguration]
 }
 
 // newVolumeAttachments returns a VolumeAttachments
 func newVolumeAttachments(c *LonghornV1beta2Client, namespace string) *volumeAttachments {
 	return &volumeAttachments{
-		gentype.NewClientWithList[*longhornv1beta2.VolumeAttachment, *longhornv1beta2.VolumeAttachmentList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.VolumeAttachment, *longhornv1beta2.VolumeAttachmentList, *applyconfigurationlonghornv1beta2.VolumeAttachmentApplyConfiguration](
 			"volumeattachments",
 			c.RESTClient(),
 			scheme.ParameterCodec,

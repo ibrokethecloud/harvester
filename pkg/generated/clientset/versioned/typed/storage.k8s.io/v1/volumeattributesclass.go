@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type VolumeAttributesClassInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.VolumeAttributesClassList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.VolumeAttributesClass, err error)
+	Apply(ctx context.Context, volumeAttributesClass *applyconfigurationstoragev1.VolumeAttributesClassApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.VolumeAttributesClass, err error)
 	VolumeAttributesClassExpansion
 }
 
 // volumeAttributesClasses implements VolumeAttributesClassInterface
 type volumeAttributesClasses struct {
-	*gentype.ClientWithList[*storagev1.VolumeAttributesClass, *storagev1.VolumeAttributesClassList]
+	*gentype.ClientWithListAndApply[*storagev1.VolumeAttributesClass, *storagev1.VolumeAttributesClassList, *applyconfigurationstoragev1.VolumeAttributesClassApplyConfiguration]
 }
 
 // newVolumeAttributesClasses returns a VolumeAttributesClasses
 func newVolumeAttributesClasses(c *StorageV1Client) *volumeAttributesClasses {
 	return &volumeAttributesClasses{
-		gentype.NewClientWithList[*storagev1.VolumeAttributesClass, *storagev1.VolumeAttributesClassList](
+		gentype.NewClientWithListAndApply[*storagev1.VolumeAttributesClass, *storagev1.VolumeAttributesClassList, *applyconfigurationstoragev1.VolumeAttributesClassApplyConfiguration](
 			"volumeattributesclasses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GroupMemberInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GroupMemberList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GroupMember, err error)
+	Apply(ctx context.Context, groupMember *applyconfigurationmanagementcattleiov3.GroupMemberApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GroupMember, err error)
 	GroupMemberExpansion
 }
 
 // groupMembers implements GroupMemberInterface
 type groupMembers struct {
-	*gentype.ClientWithList[*managementcattleiov3.GroupMember, *managementcattleiov3.GroupMemberList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GroupMember, *managementcattleiov3.GroupMemberList, *applyconfigurationmanagementcattleiov3.GroupMemberApplyConfiguration]
 }
 
 // newGroupMembers returns a GroupMembers
 func newGroupMembers(c *ManagementV3Client) *groupMembers {
 	return &groupMembers{
-		gentype.NewClientWithList[*managementcattleiov3.GroupMember, *managementcattleiov3.GroupMemberList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GroupMember, *managementcattleiov3.GroupMemberList, *applyconfigurationmanagementcattleiov3.GroupMemberApplyConfiguration](
 			"groupmembers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

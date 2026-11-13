@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationmonitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,24 +40,29 @@ type PodMonitorsGetter interface {
 type PodMonitorInterface interface {
 	Create(ctx context.Context, podMonitor *monitoringv1.PodMonitor, opts metav1.CreateOptions) (*monitoringv1.PodMonitor, error)
 	Update(ctx context.Context, podMonitor *monitoringv1.PodMonitor, opts metav1.UpdateOptions) (*monitoringv1.PodMonitor, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, podMonitor *monitoringv1.PodMonitor, opts metav1.UpdateOptions) (*monitoringv1.PodMonitor, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*monitoringv1.PodMonitor, error)
 	List(ctx context.Context, opts metav1.ListOptions) (*monitoringv1.PodMonitorList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *monitoringv1.PodMonitor, err error)
+	Apply(ctx context.Context, podMonitor *applyconfigurationmonitoringv1.PodMonitorApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.PodMonitor, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, podMonitor *applyconfigurationmonitoringv1.PodMonitorApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.PodMonitor, err error)
 	PodMonitorExpansion
 }
 
 // podMonitors implements PodMonitorInterface
 type podMonitors struct {
-	*gentype.ClientWithList[*monitoringv1.PodMonitor, *monitoringv1.PodMonitorList]
+	*gentype.ClientWithListAndApply[*monitoringv1.PodMonitor, *monitoringv1.PodMonitorList, *applyconfigurationmonitoringv1.PodMonitorApplyConfiguration]
 }
 
 // newPodMonitors returns a PodMonitors
 func newPodMonitors(c *MonitoringV1Client, namespace string) *podMonitors {
 	return &podMonitors{
-		gentype.NewClientWithList[*monitoringv1.PodMonitor, *monitoringv1.PodMonitorList](
+		gentype.NewClientWithListAndApply[*monitoringv1.PodMonitor, *monitoringv1.PodMonitorList, *applyconfigurationmonitoringv1.PodMonitorApplyConfiguration](
 			"podmonitors",
 			c.RESTClient(),
 			scheme.ParameterCodec,

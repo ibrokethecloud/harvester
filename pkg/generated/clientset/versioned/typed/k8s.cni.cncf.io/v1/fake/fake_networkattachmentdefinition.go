@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	k8scnicncfiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/k8s.cni.cncf.io/v1"
+	k8scnicncfiov1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/k8s.cni.cncf.io/v1"
+	typedk8scnicncfiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/k8s.cni.cncf.io/v1"
 	v1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeNetworkAttachmentDefinitions implements NetworkAttachmentDefinitionInterface
 type fakeNetworkAttachmentDefinitions struct {
-	*gentype.FakeClientWithList[*v1.NetworkAttachmentDefinition, *v1.NetworkAttachmentDefinitionList]
+	*gentype.FakeClientWithListAndApply[*v1.NetworkAttachmentDefinition, *v1.NetworkAttachmentDefinitionList, *k8scnicncfiov1.NetworkAttachmentDefinitionApplyConfiguration]
 	Fake *FakeK8sCniCncfIoV1
 }
 
-func newFakeNetworkAttachmentDefinitions(fake *FakeK8sCniCncfIoV1, namespace string) k8scnicncfiov1.NetworkAttachmentDefinitionInterface {
+func newFakeNetworkAttachmentDefinitions(fake *FakeK8sCniCncfIoV1, namespace string) typedk8scnicncfiov1.NetworkAttachmentDefinitionInterface {
 	return &fakeNetworkAttachmentDefinitions{
-		gentype.NewFakeClientWithList[*v1.NetworkAttachmentDefinition, *v1.NetworkAttachmentDefinitionList](
+		gentype.NewFakeClientWithListAndApply[*v1.NetworkAttachmentDefinition, *v1.NetworkAttachmentDefinitionList, *k8scnicncfiov1.NetworkAttachmentDefinitionApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("network-attachment-definitions"),

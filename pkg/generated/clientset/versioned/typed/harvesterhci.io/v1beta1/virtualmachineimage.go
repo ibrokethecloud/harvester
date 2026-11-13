@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineImageInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.VirtualMachineImageList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.VirtualMachineImage, err error)
+	Apply(ctx context.Context, virtualMachineImage *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineImage, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineImage *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineImage, err error)
 	VirtualMachineImageExpansion
 }
 
 // virtualMachineImages implements VirtualMachineImageInterface
 type virtualMachineImages struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.VirtualMachineImage, *harvesterhciiov1beta1.VirtualMachineImageList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineImage, *harvesterhciiov1beta1.VirtualMachineImageList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageApplyConfiguration]
 }
 
 // newVirtualMachineImages returns a VirtualMachineImages
 func newVirtualMachineImages(c *HarvesterhciV1beta1Client, namespace string) *virtualMachineImages {
 	return &virtualMachineImages{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.VirtualMachineImage, *harvesterhciiov1beta1.VirtualMachineImageList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineImage, *harvesterhciiov1beta1.VirtualMachineImageList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageApplyConfiguration](
 			"virtualmachineimages",
 			c.RESTClient(),
 			scheme.ParameterCodec,

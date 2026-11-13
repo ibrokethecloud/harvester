@@ -30,8 +30,12 @@ import (
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	cdiuploadv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/upload/v1beta1"
 
-	harvesterv1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
+
+	harvesterv1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	_ "k8s.io/client-go/applyconfigurations/meta/v1"
+	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 )
 
 func main() {
@@ -154,6 +158,7 @@ func main() {
 					corev1.PersistentVolume{},
 					corev1.PersistentVolumeClaim{},
 					corev1.ResourceQuota{},
+					corev1.LocalObjectReference{},
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,
@@ -237,6 +242,23 @@ func main() {
 			kubeovnv1.SchemeGroupVersion.Group: {
 				Types: []interface{}{
 					kubeovnv1.Subnet{},
+				},
+				GenerateTypes:   false,
+				GenerateClients: true,
+			},
+			// added to ensure applyconfiguration for embedded types works
+			"api.sdk.kubevirt.io": {
+				Types: []interface{}{
+					api.Status{},
+					api.NodePlacement{},
+				},
+				GenerateTypes:     false,
+				GenerateClients:   true,
+				GenerateInformers: true,
+			},
+			metav1.GroupName: {
+				Types: []interface{}{
+					metav1.ObjectMeta{},
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,

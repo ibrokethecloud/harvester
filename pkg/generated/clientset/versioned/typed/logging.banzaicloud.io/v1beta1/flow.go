@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationapiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	apiv1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type FlowInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*apiv1beta1.FlowList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *apiv1beta1.Flow, err error)
+	Apply(ctx context.Context, flow *applyconfigurationapiv1beta1.FlowApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.Flow, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, flow *applyconfigurationapiv1beta1.FlowApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.Flow, err error)
 	FlowExpansion
 }
 
 // flows implements FlowInterface
 type flows struct {
-	*gentype.ClientWithList[*apiv1beta1.Flow, *apiv1beta1.FlowList]
+	*gentype.ClientWithListAndApply[*apiv1beta1.Flow, *apiv1beta1.FlowList, *applyconfigurationapiv1beta1.FlowApplyConfiguration]
 }
 
 // newFlows returns a Flows
 func newFlows(c *LoggingV1beta1Client) *flows {
 	return &flows{
-		gentype.NewClientWithList[*apiv1beta1.Flow, *apiv1beta1.FlowList](
+		gentype.NewClientWithListAndApply[*apiv1beta1.Flow, *apiv1beta1.FlowList, *applyconfigurationapiv1beta1.FlowApplyConfiguration](
 			"flows",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationnetworkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type IPAddressInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.IPAddressList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.IPAddress, err error)
+	Apply(ctx context.Context, iPAddress *applyconfigurationnetworkingv1.IPAddressApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.IPAddress, err error)
 	IPAddressExpansion
 }
 
 // iPAddresses implements IPAddressInterface
 type iPAddresses struct {
-	*gentype.ClientWithList[*networkingv1.IPAddress, *networkingv1.IPAddressList]
+	*gentype.ClientWithListAndApply[*networkingv1.IPAddress, *networkingv1.IPAddressList, *applyconfigurationnetworkingv1.IPAddressApplyConfiguration]
 }
 
 // newIPAddresses returns a IPAddresses
 func newIPAddresses(c *NetworkingV1Client) *iPAddresses {
 	return &iPAddresses{
-		gentype.NewClientWithList[*networkingv1.IPAddress, *networkingv1.IPAddressList](
+		gentype.NewClientWithListAndApply[*networkingv1.IPAddress, *networkingv1.IPAddressList, *applyconfigurationnetworkingv1.IPAddressApplyConfiguration](
 			"ipaddresses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

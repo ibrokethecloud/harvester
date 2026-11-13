@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeResourceQuotas implements ResourceQuotaInterface
 type fakeResourceQuotas struct {
-	*gentype.FakeClientWithList[*v1.ResourceQuota, *v1.ResourceQuotaList]
+	*gentype.FakeClientWithListAndApply[*v1.ResourceQuota, *v1.ResourceQuotaList, *corev1.ResourceQuotaApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeResourceQuotas(fake *FakeCoreV1, namespace string) typedv1.ResourceQuotaInterface {
 	return &fakeResourceQuotas{
-		gentype.NewFakeClientWithList[*v1.ResourceQuota, *v1.ResourceQuotaList](
+		gentype.NewFakeClientWithListAndApply[*v1.ResourceQuota, *v1.ResourceQuotaList, *corev1.ResourceQuotaApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("resourcequotas"),

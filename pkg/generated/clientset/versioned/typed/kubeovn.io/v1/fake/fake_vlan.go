@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeVlans implements VlanInterface
 type fakeVlans struct {
-	*gentype.FakeClientWithList[*v1.Vlan, *v1.VlanList]
+	*gentype.FakeClientWithListAndApply[*v1.Vlan, *v1.VlanList, *kubeovnv1.VlanApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeVlans(fake *FakeKubeovnV1) kubeovniov1.VlanInterface {
 	return &fakeVlans{
-		gentype.NewFakeClientWithList[*v1.Vlan, *v1.VlanList](
+		gentype.NewFakeClientWithListAndApply[*v1.Vlan, *v1.VlanList, *kubeovnv1.VlanApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("vlans"),

@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusterRegistrationTokens implements ClusterRegistrationTokenInterface
 type fakeClusterRegistrationTokens struct {
-	*gentype.FakeClientWithList[*v3.ClusterRegistrationToken, *v3.ClusterRegistrationTokenList]
+	*gentype.FakeClientWithListAndApply[*v3.ClusterRegistrationToken, *v3.ClusterRegistrationTokenList, *managementcattleiov3.ClusterRegistrationTokenApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeClusterRegistrationTokens(fake *FakeManagementV3, namespace string) managementcattleiov3.ClusterRegistrationTokenInterface {
+func newFakeClusterRegistrationTokens(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ClusterRegistrationTokenInterface {
 	return &fakeClusterRegistrationTokens{
-		gentype.NewFakeClientWithList[*v3.ClusterRegistrationToken, *v3.ClusterRegistrationTokenList](
+		gentype.NewFakeClientWithListAndApply[*v3.ClusterRegistrationToken, *v3.ClusterRegistrationTokenList, *managementcattleiov3.ClusterRegistrationTokenApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("clusterregistrationtokens"),

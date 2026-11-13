@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GithubProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GithubProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GithubProvider, err error)
+	Apply(ctx context.Context, githubProvider *applyconfigurationmanagementcattleiov3.GithubProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GithubProvider, err error)
 	GithubProviderExpansion
 }
 
 // githubProviders implements GithubProviderInterface
 type githubProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.GithubProvider, *managementcattleiov3.GithubProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GithubProvider, *managementcattleiov3.GithubProviderList, *applyconfigurationmanagementcattleiov3.GithubProviderApplyConfiguration]
 }
 
 // newGithubProviders returns a GithubProviders
 func newGithubProviders(c *ManagementV3Client) *githubProviders {
 	return &githubProviders{
-		gentype.NewClientWithList[*managementcattleiov3.GithubProvider, *managementcattleiov3.GithubProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GithubProvider, *managementcattleiov3.GithubProviderList, *applyconfigurationmanagementcattleiov3.GithubProviderApplyConfiguration](
 			"githubproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

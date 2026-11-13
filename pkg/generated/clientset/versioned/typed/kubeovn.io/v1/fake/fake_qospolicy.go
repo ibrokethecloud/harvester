@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeQoSPolicies implements QoSPolicyInterface
 type fakeQoSPolicies struct {
-	*gentype.FakeClientWithList[*v1.QoSPolicy, *v1.QoSPolicyList]
+	*gentype.FakeClientWithListAndApply[*v1.QoSPolicy, *v1.QoSPolicyList, *kubeovnv1.QoSPolicyApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeQoSPolicies(fake *FakeKubeovnV1) kubeovniov1.QoSPolicyInterface {
 	return &fakeQoSPolicies{
-		gentype.NewFakeClientWithList[*v1.QoSPolicy, *v1.QoSPolicyList](
+		gentype.NewFakeClientWithListAndApply[*v1.QoSPolicy, *v1.QoSPolicyList, *kubeovnv1.QoSPolicyApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("qos-policies"),

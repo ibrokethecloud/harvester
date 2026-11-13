@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	monitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	monitoringcoreoscomv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakePrometheusRules implements PrometheusRuleInterface
 type fakePrometheusRules struct {
-	*gentype.FakeClientWithList[*v1.PrometheusRule, *v1.PrometheusRuleList]
+	*gentype.FakeClientWithListAndApply[*v1.PrometheusRule, *v1.PrometheusRuleList, *monitoringv1.PrometheusRuleApplyConfiguration]
 	Fake *FakeMonitoringV1
 }
 
 func newFakePrometheusRules(fake *FakeMonitoringV1, namespace string) monitoringcoreoscomv1.PrometheusRuleInterface {
 	return &fakePrometheusRules{
-		gentype.NewFakeClientWithList[*v1.PrometheusRule, *v1.PrometheusRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1.PrometheusRule, *v1.PrometheusRuleList, *monitoringv1.PrometheusRuleApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("prometheusrules"),

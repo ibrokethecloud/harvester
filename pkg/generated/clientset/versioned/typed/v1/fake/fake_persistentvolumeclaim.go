@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakePersistentVolumeClaims implements PersistentVolumeClaimInterface
 type fakePersistentVolumeClaims struct {
-	*gentype.FakeClientWithList[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList]
+	*gentype.FakeClientWithListAndApply[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList, *corev1.PersistentVolumeClaimApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakePersistentVolumeClaims(fake *FakeCoreV1, namespace string) typedv1.PersistentVolumeClaimInterface {
 	return &fakePersistentVolumeClaims{
-		gentype.NewFakeClientWithList[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList](
+		gentype.NewFakeClientWithListAndApply[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList, *corev1.PersistentVolumeClaimApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("persistentvolumeclaims"),

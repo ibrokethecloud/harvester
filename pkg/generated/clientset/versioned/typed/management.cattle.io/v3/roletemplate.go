@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type RoleTemplateInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.RoleTemplateList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.RoleTemplate, err error)
+	Apply(ctx context.Context, roleTemplate *applyconfigurationmanagementcattleiov3.RoleTemplateApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.RoleTemplate, err error)
 	RoleTemplateExpansion
 }
 
 // roleTemplates implements RoleTemplateInterface
 type roleTemplates struct {
-	*gentype.ClientWithList[*managementcattleiov3.RoleTemplate, *managementcattleiov3.RoleTemplateList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.RoleTemplate, *managementcattleiov3.RoleTemplateList, *applyconfigurationmanagementcattleiov3.RoleTemplateApplyConfiguration]
 }
 
 // newRoleTemplates returns a RoleTemplates
 func newRoleTemplates(c *ManagementV3Client) *roleTemplates {
 	return &roleTemplates{
-		gentype.NewClientWithList[*managementcattleiov3.RoleTemplate, *managementcattleiov3.RoleTemplateList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.RoleTemplate, *managementcattleiov3.RoleTemplateList, *applyconfigurationmanagementcattleiov3.RoleTemplateApplyConfiguration](
 			"roletemplates",
 			c.RESTClient(),
 			scheme.ParameterCodec,

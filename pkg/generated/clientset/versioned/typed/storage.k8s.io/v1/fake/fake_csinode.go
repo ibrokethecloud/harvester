@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	storagev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	storagek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/storage.k8s.io/v1"
 	v1 "k8s.io/api/storage/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeCSINodes implements CSINodeInterface
 type fakeCSINodes struct {
-	*gentype.FakeClientWithList[*v1.CSINode, *v1.CSINodeList]
+	*gentype.FakeClientWithListAndApply[*v1.CSINode, *v1.CSINodeList, *storagev1.CSINodeApplyConfiguration]
 	Fake *FakeStorageV1
 }
 
 func newFakeCSINodes(fake *FakeStorageV1) storagek8siov1.CSINodeInterface {
 	return &fakeCSINodes{
-		gentype.NewFakeClientWithList[*v1.CSINode, *v1.CSINodeList](
+		gentype.NewFakeClientWithListAndApply[*v1.CSINode, *v1.CSINodeList, *storagev1.CSINodeApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("csinodes"),

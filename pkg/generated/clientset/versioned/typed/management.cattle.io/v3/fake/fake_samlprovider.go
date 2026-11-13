@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeSamlProviders implements SamlProviderInterface
 type fakeSamlProviders struct {
-	*gentype.FakeClientWithList[*v3.SamlProvider, *v3.SamlProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.SamlProvider, *v3.SamlProviderList, *managementcattleiov3.SamlProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeSamlProviders(fake *FakeManagementV3) managementcattleiov3.SamlProviderInterface {
+func newFakeSamlProviders(fake *FakeManagementV3) typedmanagementcattleiov3.SamlProviderInterface {
 	return &fakeSamlProviders{
-		gentype.NewFakeClientWithList[*v3.SamlProvider, *v3.SamlProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.SamlProvider, *v3.SamlProviderList, *managementcattleiov3.SamlProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("samlproviders"),

@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type GlobalRoleBindingInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GlobalRoleBindingList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GlobalRoleBinding, err error)
+	Apply(ctx context.Context, globalRoleBinding *applyconfigurationmanagementcattleiov3.GlobalRoleBindingApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GlobalRoleBinding, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, globalRoleBinding *applyconfigurationmanagementcattleiov3.GlobalRoleBindingApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GlobalRoleBinding, err error)
 	GlobalRoleBindingExpansion
 }
 
 // globalRoleBindings implements GlobalRoleBindingInterface
 type globalRoleBindings struct {
-	*gentype.ClientWithList[*managementcattleiov3.GlobalRoleBinding, *managementcattleiov3.GlobalRoleBindingList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GlobalRoleBinding, *managementcattleiov3.GlobalRoleBindingList, *applyconfigurationmanagementcattleiov3.GlobalRoleBindingApplyConfiguration]
 }
 
 // newGlobalRoleBindings returns a GlobalRoleBindings
 func newGlobalRoleBindings(c *ManagementV3Client) *globalRoleBindings {
 	return &globalRoleBindings{
-		gentype.NewClientWithList[*managementcattleiov3.GlobalRoleBinding, *managementcattleiov3.GlobalRoleBindingList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GlobalRoleBinding, *managementcattleiov3.GlobalRoleBindingList, *applyconfigurationmanagementcattleiov3.GlobalRoleBindingApplyConfiguration](
 			"globalrolebindings",
 			c.RESTClient(),
 			scheme.ParameterCodec,

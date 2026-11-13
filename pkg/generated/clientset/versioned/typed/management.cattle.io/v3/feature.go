@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type FeatureInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.FeatureList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Feature, err error)
+	Apply(ctx context.Context, feature *applyconfigurationmanagementcattleiov3.FeatureApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Feature, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, feature *applyconfigurationmanagementcattleiov3.FeatureApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Feature, err error)
 	FeatureExpansion
 }
 
 // features implements FeatureInterface
 type features struct {
-	*gentype.ClientWithList[*managementcattleiov3.Feature, *managementcattleiov3.FeatureList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Feature, *managementcattleiov3.FeatureList, *applyconfigurationmanagementcattleiov3.FeatureApplyConfiguration]
 }
 
 // newFeatures returns a Features
 func newFeatures(c *ManagementV3Client) *features {
 	return &features{
-		gentype.NewClientWithList[*managementcattleiov3.Feature, *managementcattleiov3.FeatureList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Feature, *managementcattleiov3.FeatureList, *applyconfigurationmanagementcattleiov3.FeatureApplyConfiguration](
 			"features",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeScheduleVMBackups implements ScheduleVMBackupInterface
 type fakeScheduleVMBackups struct {
-	*gentype.FakeClientWithList[*v1beta1.ScheduleVMBackup, *v1beta1.ScheduleVMBackupList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.ScheduleVMBackup, *v1beta1.ScheduleVMBackupList, *harvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeScheduleVMBackups(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.ScheduleVMBackupInterface {
+func newFakeScheduleVMBackups(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.ScheduleVMBackupInterface {
 	return &fakeScheduleVMBackups{
-		gentype.NewFakeClientWithList[*v1beta1.ScheduleVMBackup, *v1beta1.ScheduleVMBackupList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.ScheduleVMBackup, *v1beta1.ScheduleVMBackupList, *harvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("schedulevmbackups"),

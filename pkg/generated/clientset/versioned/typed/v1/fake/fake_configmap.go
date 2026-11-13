@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeConfigMaps implements ConfigMapInterface
 type fakeConfigMaps struct {
-	*gentype.FakeClientWithList[*v1.ConfigMap, *v1.ConfigMapList]
+	*gentype.FakeClientWithListAndApply[*v1.ConfigMap, *v1.ConfigMapList, *corev1.ConfigMapApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeConfigMaps(fake *FakeCoreV1, namespace string) typedv1.ConfigMapInterface {
 	return &fakeConfigMaps{
-		gentype.NewFakeClientWithList[*v1.ConfigMap, *v1.ConfigMapList](
+		gentype.NewFakeClientWithListAndApply[*v1.ConfigMap, *v1.ConfigMapList, *corev1.ConfigMapApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("configmaps"),

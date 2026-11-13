@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationuploadv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/upload/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type UploadTokenRequestInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*uploadv1beta1.UploadTokenRequestList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *uploadv1beta1.UploadTokenRequest, err error)
+	Apply(ctx context.Context, uploadTokenRequest *applyconfigurationuploadv1beta1.UploadTokenRequestApplyConfiguration, opts v1.ApplyOptions) (result *uploadv1beta1.UploadTokenRequest, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, uploadTokenRequest *applyconfigurationuploadv1beta1.UploadTokenRequestApplyConfiguration, opts v1.ApplyOptions) (result *uploadv1beta1.UploadTokenRequest, err error)
 	UploadTokenRequestExpansion
 }
 
 // uploadTokenRequests implements UploadTokenRequestInterface
 type uploadTokenRequests struct {
-	*gentype.ClientWithList[*uploadv1beta1.UploadTokenRequest, *uploadv1beta1.UploadTokenRequestList]
+	*gentype.ClientWithListAndApply[*uploadv1beta1.UploadTokenRequest, *uploadv1beta1.UploadTokenRequestList, *applyconfigurationuploadv1beta1.UploadTokenRequestApplyConfiguration]
 }
 
 // newUploadTokenRequests returns a UploadTokenRequests
 func newUploadTokenRequests(c *UploadV1beta1Client, namespace string) *uploadTokenRequests {
 	return &uploadTokenRequests{
-		gentype.NewClientWithList[*uploadv1beta1.UploadTokenRequest, *uploadv1beta1.UploadTokenRequestList](
+		gentype.NewClientWithListAndApply[*uploadv1beta1.UploadTokenRequest, *uploadv1beta1.UploadTokenRequestList, *applyconfigurationuploadv1beta1.UploadTokenRequestApplyConfiguration](
 			"uploadtokenrequests",
 			c.RESTClient(),
 			scheme.ParameterCodec,

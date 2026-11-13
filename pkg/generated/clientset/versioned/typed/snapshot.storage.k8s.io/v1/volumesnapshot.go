@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationvolumesnapshotv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/volumesnapshot/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	volumesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VolumeSnapshotInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*volumesnapshotv1.VolumeSnapshotList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *volumesnapshotv1.VolumeSnapshot, err error)
+	Apply(ctx context.Context, volumeSnapshot *applyconfigurationvolumesnapshotv1.VolumeSnapshotApplyConfiguration, opts metav1.ApplyOptions) (result *volumesnapshotv1.VolumeSnapshot, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, volumeSnapshot *applyconfigurationvolumesnapshotv1.VolumeSnapshotApplyConfiguration, opts metav1.ApplyOptions) (result *volumesnapshotv1.VolumeSnapshot, err error)
 	VolumeSnapshotExpansion
 }
 
 // volumeSnapshots implements VolumeSnapshotInterface
 type volumeSnapshots struct {
-	*gentype.ClientWithList[*volumesnapshotv1.VolumeSnapshot, *volumesnapshotv1.VolumeSnapshotList]
+	*gentype.ClientWithListAndApply[*volumesnapshotv1.VolumeSnapshot, *volumesnapshotv1.VolumeSnapshotList, *applyconfigurationvolumesnapshotv1.VolumeSnapshotApplyConfiguration]
 }
 
 // newVolumeSnapshots returns a VolumeSnapshots
 func newVolumeSnapshots(c *SnapshotV1Client, namespace string) *volumeSnapshots {
 	return &volumeSnapshots{
-		gentype.NewClientWithList[*volumesnapshotv1.VolumeSnapshot, *volumesnapshotv1.VolumeSnapshotList](
+		gentype.NewClientWithListAndApply[*volumesnapshotv1.VolumeSnapshot, *volumesnapshotv1.VolumeSnapshotList, *applyconfigurationvolumesnapshotv1.VolumeSnapshotApplyConfiguration](
 			"volumesnapshots",
 			c.RESTClient(),
 			scheme.ParameterCodec,

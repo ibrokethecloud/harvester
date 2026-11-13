@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationnetworkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type IngressInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.IngressList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.Ingress, err error)
+	Apply(ctx context.Context, ingress *applyconfigurationnetworkingv1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.Ingress, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, ingress *applyconfigurationnetworkingv1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.Ingress, err error)
 	IngressExpansion
 }
 
 // ingresses implements IngressInterface
 type ingresses struct {
-	*gentype.ClientWithList[*networkingv1.Ingress, *networkingv1.IngressList]
+	*gentype.ClientWithListAndApply[*networkingv1.Ingress, *networkingv1.IngressList, *applyconfigurationnetworkingv1.IngressApplyConfiguration]
 }
 
 // newIngresses returns a Ingresses
 func newIngresses(c *NetworkingV1Client, namespace string) *ingresses {
 	return &ingresses{
-		gentype.NewClientWithList[*networkingv1.Ingress, *networkingv1.IngressList](
+		gentype.NewClientWithListAndApply[*networkingv1.Ingress, *networkingv1.IngressList, *applyconfigurationnetworkingv1.IngressApplyConfiguration](
 			"ingresses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

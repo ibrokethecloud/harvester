@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	cdikubevirtiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/cdi.kubevirt.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 	v1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -26,13 +27,13 @@ import (
 
 // fakeStorageProfiles implements StorageProfileInterface
 type fakeStorageProfiles struct {
-	*gentype.FakeClientWithList[*v1beta1.StorageProfile, *v1beta1.StorageProfileList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.StorageProfile, *v1beta1.StorageProfileList, *corev1beta1.StorageProfileApplyConfiguration]
 	Fake *FakeCdiV1beta1
 }
 
 func newFakeStorageProfiles(fake *FakeCdiV1beta1) cdikubevirtiov1beta1.StorageProfileInterface {
 	return &fakeStorageProfiles{
-		gentype.NewFakeClientWithList[*v1beta1.StorageProfile, *v1beta1.StorageProfileList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.StorageProfile, *v1beta1.StorageProfileList, *corev1beta1.StorageProfileApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("storageprofiles"),

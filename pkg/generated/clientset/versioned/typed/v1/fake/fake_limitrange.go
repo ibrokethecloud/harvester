@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeLimitRanges implements LimitRangeInterface
 type fakeLimitRanges struct {
-	*gentype.FakeClientWithList[*v1.LimitRange, *v1.LimitRangeList]
+	*gentype.FakeClientWithListAndApply[*v1.LimitRange, *v1.LimitRangeList, *corev1.LimitRangeApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeLimitRanges(fake *FakeCoreV1, namespace string) typedv1.LimitRangeInterface {
 	return &fakeLimitRanges{
-		gentype.NewFakeClientWithList[*v1.LimitRange, *v1.LimitRangeList](
+		gentype.NewFakeClientWithListAndApply[*v1.LimitRange, *v1.LimitRangeList, *corev1.LimitRangeApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("limitranges"),

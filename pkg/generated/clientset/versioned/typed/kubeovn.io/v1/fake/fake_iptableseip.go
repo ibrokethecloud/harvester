@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIptablesEIPs implements IptablesEIPInterface
 type fakeIptablesEIPs struct {
-	*gentype.FakeClientWithList[*v1.IptablesEIP, *v1.IptablesEIPList]
+	*gentype.FakeClientWithListAndApply[*v1.IptablesEIP, *v1.IptablesEIPList, *kubeovnv1.IptablesEIPApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeIptablesEIPs(fake *FakeKubeovnV1) kubeovniov1.IptablesEIPInterface {
 	return &fakeIptablesEIPs{
-		gentype.NewFakeClientWithList[*v1.IptablesEIP, *v1.IptablesEIPList](
+		gentype.NewFakeClientWithListAndApply[*v1.IptablesEIP, *v1.IptablesEIPList, *kubeovnv1.IptablesEIPApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("iptables-eips"),

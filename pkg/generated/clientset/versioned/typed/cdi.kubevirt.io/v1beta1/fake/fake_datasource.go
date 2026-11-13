@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	cdikubevirtiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/cdi.kubevirt.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 	v1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -26,13 +27,13 @@ import (
 
 // fakeDataSources implements DataSourceInterface
 type fakeDataSources struct {
-	*gentype.FakeClientWithList[*v1beta1.DataSource, *v1beta1.DataSourceList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.DataSource, *v1beta1.DataSourceList, *corev1beta1.DataSourceApplyConfiguration]
 	Fake *FakeCdiV1beta1
 }
 
 func newFakeDataSources(fake *FakeCdiV1beta1, namespace string) cdikubevirtiov1beta1.DataSourceInterface {
 	return &fakeDataSources{
-		gentype.NewFakeClientWithList[*v1beta1.DataSource, *v1beta1.DataSourceList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.DataSource, *v1beta1.DataSourceList, *corev1beta1.DataSourceApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("datasources"),

@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
+	appsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	typedappsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeDaemonSets implements DaemonSetInterface
 type fakeDaemonSets struct {
-	*gentype.FakeClientWithList[*v1.DaemonSet, *v1.DaemonSetList]
+	*gentype.FakeClientWithListAndApply[*v1.DaemonSet, *v1.DaemonSetList, *appsv1.DaemonSetApplyConfiguration]
 	Fake *FakeAppsV1
 }
 
-func newFakeDaemonSets(fake *FakeAppsV1, namespace string) appsv1.DaemonSetInterface {
+func newFakeDaemonSets(fake *FakeAppsV1, namespace string) typedappsv1.DaemonSetInterface {
 	return &fakeDaemonSets{
-		gentype.NewFakeClientWithList[*v1.DaemonSet, *v1.DaemonSetList](
+		gentype.NewFakeClientWithListAndApply[*v1.DaemonSet, *v1.DaemonSetList, *appsv1.DaemonSetApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("daemonsets"),

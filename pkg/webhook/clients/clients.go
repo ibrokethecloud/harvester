@@ -184,7 +184,6 @@ func New(ctx context.Context, rest *rest.Config, threadiness int, crdExists bool
 		FleetFactory:             fleetFactory,
 		StorageFactory:           storageFactory,
 		LonghornFactory:          longhornFactory,
-		ClusterFactory:           clusterFactory,
 		RancherManagementFactory: rancherFactory,
 		CoreFactory:              coreFactory,
 		DiscoveryFactory:         discoveryFactory,

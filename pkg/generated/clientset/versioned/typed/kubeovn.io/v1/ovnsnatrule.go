@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type OvnSnatRuleInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.OvnSnatRuleList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.OvnSnatRule, err error)
+	Apply(ctx context.Context, ovnSnatRule *applyconfigurationkubeovnv1.OvnSnatRuleApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.OvnSnatRule, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, ovnSnatRule *applyconfigurationkubeovnv1.OvnSnatRuleApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.OvnSnatRule, err error)
 	OvnSnatRuleExpansion
 }
 
 // ovnSnatRules implements OvnSnatRuleInterface
 type ovnSnatRules struct {
-	*gentype.ClientWithList[*kubeovnv1.OvnSnatRule, *kubeovnv1.OvnSnatRuleList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.OvnSnatRule, *kubeovnv1.OvnSnatRuleList, *applyconfigurationkubeovnv1.OvnSnatRuleApplyConfiguration]
 }
 
 // newOvnSnatRules returns a OvnSnatRules
 func newOvnSnatRules(c *KubeovnV1Client) *ovnSnatRules {
 	return &ovnSnatRules{
-		gentype.NewClientWithList[*kubeovnv1.OvnSnatRule, *kubeovnv1.OvnSnatRuleList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.OvnSnatRule, *kubeovnv1.OvnSnatRuleList, *applyconfigurationkubeovnv1.OvnSnatRuleApplyConfiguration](
 			"ovn-snat-rules",
 			c.RESTClient(),
 			scheme.ParameterCodec,

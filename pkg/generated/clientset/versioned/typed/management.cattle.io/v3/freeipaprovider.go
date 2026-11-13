@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type FreeIpaProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.FreeIpaProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.FreeIpaProvider, err error)
+	Apply(ctx context.Context, freeIpaProvider *applyconfigurationmanagementcattleiov3.FreeIpaProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.FreeIpaProvider, err error)
 	FreeIpaProviderExpansion
 }
 
 // freeIpaProviders implements FreeIpaProviderInterface
 type freeIpaProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.FreeIpaProvider, *managementcattleiov3.FreeIpaProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.FreeIpaProvider, *managementcattleiov3.FreeIpaProviderList, *applyconfigurationmanagementcattleiov3.FreeIpaProviderApplyConfiguration]
 }
 
 // newFreeIpaProviders returns a FreeIpaProviders
 func newFreeIpaProviders(c *ManagementV3Client) *freeIpaProviders {
 	return &freeIpaProviders{
-		gentype.NewClientWithList[*managementcattleiov3.FreeIpaProvider, *managementcattleiov3.FreeIpaProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.FreeIpaProvider, *managementcattleiov3.FreeIpaProviderList, *applyconfigurationmanagementcattleiov3.FreeIpaProviderApplyConfiguration](
 			"freeipaproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

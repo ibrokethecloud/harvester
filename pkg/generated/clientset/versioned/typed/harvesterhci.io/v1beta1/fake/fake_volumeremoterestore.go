@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVolumeRemoteRestores implements VolumeRemoteRestoreInterface
 type fakeVolumeRemoteRestores struct {
-	*gentype.FakeClientWithList[*v1beta1.VolumeRemoteRestore, *v1beta1.VolumeRemoteRestoreList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VolumeRemoteRestore, *v1beta1.VolumeRemoteRestoreList, *harvesterhciiov1beta1.VolumeRemoteRestoreApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeVolumeRemoteRestores(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.VolumeRemoteRestoreInterface {
+func newFakeVolumeRemoteRestores(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.VolumeRemoteRestoreInterface {
 	return &fakeVolumeRemoteRestores{
-		gentype.NewFakeClientWithList[*v1beta1.VolumeRemoteRestore, *v1beta1.VolumeRemoteRestoreList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VolumeRemoteRestore, *v1beta1.VolumeRemoteRestoreList, *harvesterhciiov1beta1.VolumeRemoteRestoreApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("volumeremoterestores"),

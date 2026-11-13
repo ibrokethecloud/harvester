@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GenericOIDCProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GenericOIDCProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GenericOIDCProvider, err error)
+	Apply(ctx context.Context, genericOIDCProvider *applyconfigurationmanagementcattleiov3.GenericOIDCProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GenericOIDCProvider, err error)
 	GenericOIDCProviderExpansion
 }
 
 // genericOIDCProviders implements GenericOIDCProviderInterface
 type genericOIDCProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.GenericOIDCProvider, *managementcattleiov3.GenericOIDCProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GenericOIDCProvider, *managementcattleiov3.GenericOIDCProviderList, *applyconfigurationmanagementcattleiov3.GenericOIDCProviderApplyConfiguration]
 }
 
 // newGenericOIDCProviders returns a GenericOIDCProviders
 func newGenericOIDCProviders(c *ManagementV3Client) *genericOIDCProviders {
 	return &genericOIDCProviders{
-		gentype.NewClientWithList[*managementcattleiov3.GenericOIDCProvider, *managementcattleiov3.GenericOIDCProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GenericOIDCProvider, *managementcattleiov3.GenericOIDCProviderList, *applyconfigurationmanagementcattleiov3.GenericOIDCProviderApplyConfiguration](
 			"genericoidcproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

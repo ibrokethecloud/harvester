@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	networkharvesterhciiov1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
+	applyconfigurationnetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type VlanConfigInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*networkharvesterhciiov1beta1.VlanConfigList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *networkharvesterhciiov1beta1.VlanConfig, err error)
+	Apply(ctx context.Context, vlanConfig *applyconfigurationnetworkharvesterhciiov1beta1.VlanConfigApplyConfiguration, opts v1.ApplyOptions) (result *networkharvesterhciiov1beta1.VlanConfig, err error)
 	VlanConfigExpansion
 }
 
 // vlanConfigs implements VlanConfigInterface
 type vlanConfigs struct {
-	*gentype.ClientWithList[*networkharvesterhciiov1beta1.VlanConfig, *networkharvesterhciiov1beta1.VlanConfigList]
+	*gentype.ClientWithListAndApply[*networkharvesterhciiov1beta1.VlanConfig, *networkharvesterhciiov1beta1.VlanConfigList, *applyconfigurationnetworkharvesterhciiov1beta1.VlanConfigApplyConfiguration]
 }
 
 // newVlanConfigs returns a VlanConfigs
 func newVlanConfigs(c *NetworkV1beta1Client) *vlanConfigs {
 	return &vlanConfigs{
-		gentype.NewClientWithList[*networkharvesterhciiov1beta1.VlanConfig, *networkharvesterhciiov1beta1.VlanConfigList](
+		gentype.NewClientWithListAndApply[*networkharvesterhciiov1beta1.VlanConfig, *networkharvesterhciiov1beta1.VlanConfigList, *applyconfigurationnetworkharvesterhciiov1beta1.VlanConfigApplyConfiguration](
 			"vlanconfigs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

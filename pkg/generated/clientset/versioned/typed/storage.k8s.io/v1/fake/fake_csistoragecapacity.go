@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	storagev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	storagek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/storage.k8s.io/v1"
 	v1 "k8s.io/api/storage/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeCSIStorageCapacities implements CSIStorageCapacityInterface
 type fakeCSIStorageCapacities struct {
-	*gentype.FakeClientWithList[*v1.CSIStorageCapacity, *v1.CSIStorageCapacityList]
+	*gentype.FakeClientWithListAndApply[*v1.CSIStorageCapacity, *v1.CSIStorageCapacityList, *storagev1.CSIStorageCapacityApplyConfiguration]
 	Fake *FakeStorageV1
 }
 
 func newFakeCSIStorageCapacities(fake *FakeStorageV1, namespace string) storagek8siov1.CSIStorageCapacityInterface {
 	return &fakeCSIStorageCapacities{
-		gentype.NewFakeClientWithList[*v1.CSIStorageCapacity, *v1.CSIStorageCapacityList](
+		gentype.NewFakeClientWithListAndApply[*v1.CSIStorageCapacity, *v1.CSIStorageCapacityList, *storagev1.CSIStorageCapacityApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("csistoragecapacities"),

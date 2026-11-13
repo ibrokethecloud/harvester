@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
-	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
+	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
+	typednetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVlanConfigs implements VlanConfigInterface
 type fakeVlanConfigs struct {
-	*gentype.FakeClientWithList[*v1beta1.VlanConfig, *v1beta1.VlanConfigList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VlanConfig, *v1beta1.VlanConfigList, *networkharvesterhciiov1beta1.VlanConfigApplyConfiguration]
 	Fake *FakeNetworkV1beta1
 }
 
-func newFakeVlanConfigs(fake *FakeNetworkV1beta1) networkharvesterhciiov1beta1.VlanConfigInterface {
+func newFakeVlanConfigs(fake *FakeNetworkV1beta1) typednetworkharvesterhciiov1beta1.VlanConfigInterface {
 	return &fakeVlanConfigs{
-		gentype.NewFakeClientWithList[*v1beta1.VlanConfig, *v1beta1.VlanConfigList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VlanConfig, *v1beta1.VlanConfigList, *networkharvesterhciiov1beta1.VlanConfigApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("vlanconfigs"),

@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type EngineImageInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.EngineImageList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.EngineImage, err error)
+	Apply(ctx context.Context, engineImage *applyconfigurationlonghornv1beta2.EngineImageApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.EngineImage, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, engineImage *applyconfigurationlonghornv1beta2.EngineImageApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.EngineImage, err error)
 	EngineImageExpansion
 }
 
 // engineImages implements EngineImageInterface
 type engineImages struct {
-	*gentype.ClientWithList[*longhornv1beta2.EngineImage, *longhornv1beta2.EngineImageList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.EngineImage, *longhornv1beta2.EngineImageList, *applyconfigurationlonghornv1beta2.EngineImageApplyConfiguration]
 }
 
 // newEngineImages returns a EngineImages
 func newEngineImages(c *LonghornV1beta2Client, namespace string) *engineImages {
 	return &engineImages{
-		gentype.NewClientWithList[*longhornv1beta2.EngineImage, *longhornv1beta2.EngineImageList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.EngineImage, *longhornv1beta2.EngineImageList, *applyconfigurationlonghornv1beta2.EngineImageApplyConfiguration](
 			"engineimages",
 			c.RESTClient(),
 			scheme.ParameterCodec,

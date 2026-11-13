@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusters implements ClusterInterface
 type fakeClusters struct {
-	*gentype.FakeClientWithList[*v3.Cluster, *v3.ClusterList]
+	*gentype.FakeClientWithListAndApply[*v3.Cluster, *v3.ClusterList, *managementcattleiov3.ClusterApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeClusters(fake *FakeManagementV3) managementcattleiov3.ClusterInterface {
+func newFakeClusters(fake *FakeManagementV3) typedmanagementcattleiov3.ClusterInterface {
 	return &fakeClusters{
-		gentype.NewFakeClientWithList[*v3.Cluster, *v3.ClusterList](
+		gentype.NewFakeClientWithListAndApply[*v3.Cluster, *v3.ClusterList, *managementcattleiov3.ClusterApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("clusters"),

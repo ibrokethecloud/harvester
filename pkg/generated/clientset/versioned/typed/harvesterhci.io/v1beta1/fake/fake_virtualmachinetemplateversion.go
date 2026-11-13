@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVirtualMachineTemplateVersions implements VirtualMachineTemplateVersionInterface
 type fakeVirtualMachineTemplateVersions struct {
-	*gentype.FakeClientWithList[*v1beta1.VirtualMachineTemplateVersion, *v1beta1.VirtualMachineTemplateVersionList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VirtualMachineTemplateVersion, *v1beta1.VirtualMachineTemplateVersionList, *harvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeVirtualMachineTemplateVersions(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.VirtualMachineTemplateVersionInterface {
+func newFakeVirtualMachineTemplateVersions(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.VirtualMachineTemplateVersionInterface {
 	return &fakeVirtualMachineTemplateVersions{
-		gentype.NewFakeClientWithList[*v1beta1.VirtualMachineTemplateVersion, *v1beta1.VirtualMachineTemplateVersionList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VirtualMachineTemplateVersion, *v1beta1.VirtualMachineTemplateVersionList, *harvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("virtualmachinetemplateversions"),

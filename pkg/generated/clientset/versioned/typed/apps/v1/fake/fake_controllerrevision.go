@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
+	appsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	typedappsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeControllerRevisions implements ControllerRevisionInterface
 type fakeControllerRevisions struct {
-	*gentype.FakeClientWithList[*v1.ControllerRevision, *v1.ControllerRevisionList]
+	*gentype.FakeClientWithListAndApply[*v1.ControllerRevision, *v1.ControllerRevisionList, *appsv1.ControllerRevisionApplyConfiguration]
 	Fake *FakeAppsV1
 }
 
-func newFakeControllerRevisions(fake *FakeAppsV1, namespace string) appsv1.ControllerRevisionInterface {
+func newFakeControllerRevisions(fake *FakeAppsV1, namespace string) typedappsv1.ControllerRevisionInterface {
 	return &fakeControllerRevisions{
-		gentype.NewFakeClientWithList[*v1.ControllerRevision, *v1.ControllerRevisionList](
+		gentype.NewFakeClientWithListAndApply[*v1.ControllerRevision, *v1.ControllerRevisionList, *appsv1.ControllerRevisionApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("controllerrevisions"),

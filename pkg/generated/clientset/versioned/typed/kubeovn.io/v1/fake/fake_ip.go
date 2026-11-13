@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIPs implements IPInterface
 type fakeIPs struct {
-	*gentype.FakeClientWithList[*v1.IP, *v1.IPList]
+	*gentype.FakeClientWithListAndApply[*v1.IP, *v1.IPList, *kubeovnv1.IPApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeIPs(fake *FakeKubeovnV1) kubeovniov1.IPInterface {
 	return &fakeIPs{
-		gentype.NewFakeClientWithList[*v1.IP, *v1.IPList](
+		gentype.NewFakeClientWithListAndApply[*v1.IP, *v1.IPList, *kubeovnv1.IPApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("ips"),

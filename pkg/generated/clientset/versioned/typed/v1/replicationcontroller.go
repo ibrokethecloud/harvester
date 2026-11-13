@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,9 @@ type ReplicationControllerInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ReplicationControllerList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ReplicationController, err error)
+	Apply(ctx context.Context, replicationController *applyconfigurationcorev1.ReplicationControllerApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ReplicationController, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, replicationController *applyconfigurationcorev1.ReplicationControllerApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ReplicationController, err error)
 	GetScale(ctx context.Context, replicationControllerName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(ctx context.Context, replicationControllerName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
 
@@ -56,13 +60,13 @@ type ReplicationControllerInterface interface {
 
 // replicationControllers implements ReplicationControllerInterface
 type replicationControllers struct {
-	*gentype.ClientWithList[*corev1.ReplicationController, *corev1.ReplicationControllerList]
+	*gentype.ClientWithListAndApply[*corev1.ReplicationController, *corev1.ReplicationControllerList, *applyconfigurationcorev1.ReplicationControllerApplyConfiguration]
 }
 
 // newReplicationControllers returns a ReplicationControllers
 func newReplicationControllers(c *CoreV1Client, namespace string) *replicationControllers {
 	return &replicationControllers{
-		gentype.NewClientWithList[*corev1.ReplicationController, *corev1.ReplicationControllerList](
+		gentype.NewClientWithListAndApply[*corev1.ReplicationController, *corev1.ReplicationControllerList, *applyconfigurationcorev1.ReplicationControllerApplyConfiguration](
 			"replicationcontrollers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

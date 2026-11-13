@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGroupMembers implements GroupMemberInterface
 type fakeGroupMembers struct {
-	*gentype.FakeClientWithList[*v3.GroupMember, *v3.GroupMemberList]
+	*gentype.FakeClientWithListAndApply[*v3.GroupMember, *v3.GroupMemberList, *managementcattleiov3.GroupMemberApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGroupMembers(fake *FakeManagementV3) managementcattleiov3.GroupMemberInterface {
+func newFakeGroupMembers(fake *FakeManagementV3) typedmanagementcattleiov3.GroupMemberInterface {
 	return &fakeGroupMembers{
-		gentype.NewFakeClientWithList[*v3.GroupMember, *v3.GroupMemberList](
+		gentype.NewFakeClientWithListAndApply[*v3.GroupMember, *v3.GroupMemberList, *managementcattleiov3.GroupMemberApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("groupmembers"),

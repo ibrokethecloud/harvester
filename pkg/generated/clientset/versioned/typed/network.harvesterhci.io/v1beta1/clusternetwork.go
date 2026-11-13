@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	networkharvesterhciiov1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
+	applyconfigurationnetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ClusterNetworkInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*networkharvesterhciiov1beta1.ClusterNetworkList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *networkharvesterhciiov1beta1.ClusterNetwork, err error)
+	Apply(ctx context.Context, clusterNetwork *applyconfigurationnetworkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration, opts v1.ApplyOptions) (result *networkharvesterhciiov1beta1.ClusterNetwork, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, clusterNetwork *applyconfigurationnetworkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration, opts v1.ApplyOptions) (result *networkharvesterhciiov1beta1.ClusterNetwork, err error)
 	ClusterNetworkExpansion
 }
 
 // clusterNetworks implements ClusterNetworkInterface
 type clusterNetworks struct {
-	*gentype.ClientWithList[*networkharvesterhciiov1beta1.ClusterNetwork, *networkharvesterhciiov1beta1.ClusterNetworkList]
+	*gentype.ClientWithListAndApply[*networkharvesterhciiov1beta1.ClusterNetwork, *networkharvesterhciiov1beta1.ClusterNetworkList, *applyconfigurationnetworkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration]
 }
 
 // newClusterNetworks returns a ClusterNetworks
 func newClusterNetworks(c *NetworkV1beta1Client) *clusterNetworks {
 	return &clusterNetworks{
-		gentype.NewClientWithList[*networkharvesterhciiov1beta1.ClusterNetwork, *networkharvesterhciiov1beta1.ClusterNetworkList](
+		gentype.NewClientWithListAndApply[*networkharvesterhciiov1beta1.ClusterNetwork, *networkharvesterhciiov1beta1.ClusterNetworkList, *applyconfigurationnetworkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration](
 			"clusternetworks",
 			c.RESTClient(),
 			scheme.ParameterCodec,

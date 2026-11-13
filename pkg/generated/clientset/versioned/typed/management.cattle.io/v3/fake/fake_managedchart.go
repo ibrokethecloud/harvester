@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeManagedCharts implements ManagedChartInterface
 type fakeManagedCharts struct {
-	*gentype.FakeClientWithList[*v3.ManagedChart, *v3.ManagedChartList]
+	*gentype.FakeClientWithListAndApply[*v3.ManagedChart, *v3.ManagedChartList, *managementcattleiov3.ManagedChartApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeManagedCharts(fake *FakeManagementV3, namespace string) managementcattleiov3.ManagedChartInterface {
+func newFakeManagedCharts(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ManagedChartInterface {
 	return &fakeManagedCharts{
-		gentype.NewFakeClientWithList[*v3.ManagedChart, *v3.ManagedChartList](
+		gentype.NewFakeClientWithListAndApply[*v3.ManagedChart, *v3.ManagedChartList, *managementcattleiov3.ManagedChartApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("managedcharts"),

@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type ComponentStatusInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ComponentStatusList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ComponentStatus, err error)
+	Apply(ctx context.Context, componentStatus *applyconfigurationcorev1.ComponentStatusApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ComponentStatus, err error)
 	ComponentStatusExpansion
 }
 
 // componentStatuses implements ComponentStatusInterface
 type componentStatuses struct {
-	*gentype.ClientWithList[*corev1.ComponentStatus, *corev1.ComponentStatusList]
+	*gentype.ClientWithListAndApply[*corev1.ComponentStatus, *corev1.ComponentStatusList, *applyconfigurationcorev1.ComponentStatusApplyConfiguration]
 }
 
 // newComponentStatuses returns a ComponentStatuses
 func newComponentStatuses(c *CoreV1Client) *componentStatuses {
 	return &componentStatuses{
-		gentype.NewClientWithList[*corev1.ComponentStatus, *corev1.ComponentStatusList](
+		gentype.NewClientWithListAndApply[*corev1.ComponentStatus, *corev1.ComponentStatusList, *applyconfigurationcorev1.ComponentStatusApplyConfiguration](
 			"componentstatuses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

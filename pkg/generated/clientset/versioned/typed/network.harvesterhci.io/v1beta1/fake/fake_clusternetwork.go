@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
-	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
+	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
+	typednetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusterNetworks implements ClusterNetworkInterface
 type fakeClusterNetworks struct {
-	*gentype.FakeClientWithList[*v1beta1.ClusterNetwork, *v1beta1.ClusterNetworkList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.ClusterNetwork, *v1beta1.ClusterNetworkList, *networkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration]
 	Fake *FakeNetworkV1beta1
 }
 
-func newFakeClusterNetworks(fake *FakeNetworkV1beta1) networkharvesterhciiov1beta1.ClusterNetworkInterface {
+func newFakeClusterNetworks(fake *FakeNetworkV1beta1) typednetworkharvesterhciiov1beta1.ClusterNetworkInterface {
 	return &fakeClusterNetworks{
-		gentype.NewFakeClientWithList[*v1beta1.ClusterNetwork, *v1beta1.ClusterNetworkList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.ClusterNetwork, *v1beta1.ClusterNetworkList, *networkharvesterhciiov1beta1.ClusterNetworkApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("clusternetworks"),

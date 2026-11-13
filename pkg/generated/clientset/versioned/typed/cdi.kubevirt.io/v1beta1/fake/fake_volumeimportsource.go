@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	cdikubevirtiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/cdi.kubevirt.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 	v1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -26,13 +27,13 @@ import (
 
 // fakeVolumeImportSources implements VolumeImportSourceInterface
 type fakeVolumeImportSources struct {
-	*gentype.FakeClientWithList[*v1beta1.VolumeImportSource, *v1beta1.VolumeImportSourceList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VolumeImportSource, *v1beta1.VolumeImportSourceList, *corev1beta1.VolumeImportSourceApplyConfiguration]
 	Fake *FakeCdiV1beta1
 }
 
 func newFakeVolumeImportSources(fake *FakeCdiV1beta1) cdikubevirtiov1beta1.VolumeImportSourceInterface {
 	return &fakeVolumeImportSources{
-		gentype.NewFakeClientWithList[*v1beta1.VolumeImportSource, *v1beta1.VolumeImportSourceList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VolumeImportSource, *v1beta1.VolumeImportSourceList, *corev1beta1.VolumeImportSourceApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("volumeimportsources"),

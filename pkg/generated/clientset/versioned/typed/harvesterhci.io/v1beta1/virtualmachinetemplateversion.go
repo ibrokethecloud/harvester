@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineTemplateVersionInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.VirtualMachineTemplateVersionList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.VirtualMachineTemplateVersion, err error)
+	Apply(ctx context.Context, virtualMachineTemplateVersion *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineTemplateVersion, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineTemplateVersion *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineTemplateVersion, err error)
 	VirtualMachineTemplateVersionExpansion
 }
 
 // virtualMachineTemplateVersions implements VirtualMachineTemplateVersionInterface
 type virtualMachineTemplateVersions struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.VirtualMachineTemplateVersion, *harvesterhciiov1beta1.VirtualMachineTemplateVersionList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineTemplateVersion, *harvesterhciiov1beta1.VirtualMachineTemplateVersionList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration]
 }
 
 // newVirtualMachineTemplateVersions returns a VirtualMachineTemplateVersions
 func newVirtualMachineTemplateVersions(c *HarvesterhciV1beta1Client, namespace string) *virtualMachineTemplateVersions {
 	return &virtualMachineTemplateVersions{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.VirtualMachineTemplateVersion, *harvesterhciiov1beta1.VirtualMachineTemplateVersionList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineTemplateVersion, *harvesterhciiov1beta1.VirtualMachineTemplateVersionList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateVersionApplyConfiguration](
 			"virtualmachinetemplateversions",
 			c.RESTClient(),
 			scheme.ParameterCodec,

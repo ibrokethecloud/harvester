@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationk8scnicncfiov1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/k8s.cni.cncf.io/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	k8scnicncfiov1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type NetworkAttachmentDefinitionInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*k8scnicncfiov1.NetworkAttachmentDefinitionList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *k8scnicncfiov1.NetworkAttachmentDefinition, err error)
+	Apply(ctx context.Context, networkAttachmentDefinition *applyconfigurationk8scnicncfiov1.NetworkAttachmentDefinitionApplyConfiguration, opts metav1.ApplyOptions) (result *k8scnicncfiov1.NetworkAttachmentDefinition, err error)
 	NetworkAttachmentDefinitionExpansion
 }
 
 // networkAttachmentDefinitions implements NetworkAttachmentDefinitionInterface
 type networkAttachmentDefinitions struct {
-	*gentype.ClientWithList[*k8scnicncfiov1.NetworkAttachmentDefinition, *k8scnicncfiov1.NetworkAttachmentDefinitionList]
+	*gentype.ClientWithListAndApply[*k8scnicncfiov1.NetworkAttachmentDefinition, *k8scnicncfiov1.NetworkAttachmentDefinitionList, *applyconfigurationk8scnicncfiov1.NetworkAttachmentDefinitionApplyConfiguration]
 }
 
 // newNetworkAttachmentDefinitions returns a NetworkAttachmentDefinitions
 func newNetworkAttachmentDefinitions(c *K8sCniCncfIoV1Client, namespace string) *networkAttachmentDefinitions {
 	return &networkAttachmentDefinitions{
-		gentype.NewClientWithList[*k8scnicncfiov1.NetworkAttachmentDefinition, *k8scnicncfiov1.NetworkAttachmentDefinitionList](
+		gentype.NewClientWithListAndApply[*k8scnicncfiov1.NetworkAttachmentDefinition, *k8scnicncfiov1.NetworkAttachmentDefinitionList, *applyconfigurationk8scnicncfiov1.NetworkAttachmentDefinitionApplyConfiguration](
 			"network-attachment-definitions",
 			c.RESTClient(),
 			scheme.ParameterCodec,

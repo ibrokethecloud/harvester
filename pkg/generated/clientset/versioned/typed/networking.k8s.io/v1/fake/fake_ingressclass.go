@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	networkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	networkingk8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/networking.k8s.io/v1"
 	v1 "k8s.io/api/networking/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIngressClasses implements IngressClassInterface
 type fakeIngressClasses struct {
-	*gentype.FakeClientWithList[*v1.IngressClass, *v1.IngressClassList]
+	*gentype.FakeClientWithListAndApply[*v1.IngressClass, *v1.IngressClassList, *networkingv1.IngressClassApplyConfiguration]
 	Fake *FakeNetworkingV1
 }
 
 func newFakeIngressClasses(fake *FakeNetworkingV1) networkingk8siov1.IngressClassInterface {
 	return &fakeIngressClasses{
-		gentype.NewFakeClientWithList[*v1.IngressClass, *v1.IngressClassList](
+		gentype.NewFakeClientWithListAndApply[*v1.IngressClass, *v1.IngressClassList, *networkingv1.IngressClassApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("ingressclasses"),

@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVersions implements VersionInterface
 type fakeVersions struct {
-	*gentype.FakeClientWithList[*v1beta1.Version, *v1beta1.VersionList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.Version, *v1beta1.VersionList, *harvesterhciiov1beta1.VersionApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeVersions(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.VersionInterface {
+func newFakeVersions(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.VersionInterface {
 	return &fakeVersions{
-		gentype.NewFakeClientWithList[*v1beta1.Version, *v1beta1.VersionList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.Version, *v1beta1.VersionList, *harvesterhciiov1beta1.VersionApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("versions"),

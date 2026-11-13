@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeNamespaces implements NamespaceInterface
 type fakeNamespaces struct {
-	*gentype.FakeClientWithList[*v1.Namespace, *v1.NamespaceList]
+	*gentype.FakeClientWithListAndApply[*v1.Namespace, *v1.NamespaceList, *corev1.NamespaceApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeNamespaces(fake *FakeCoreV1) typedv1.NamespaceInterface {
 	return &fakeNamespaces{
-		gentype.NewFakeClientWithList[*v1.Namespace, *v1.NamespaceList](
+		gentype.NewFakeClientWithListAndApply[*v1.Namespace, *v1.NamespaceList, *corev1.NamespaceApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("namespaces"),

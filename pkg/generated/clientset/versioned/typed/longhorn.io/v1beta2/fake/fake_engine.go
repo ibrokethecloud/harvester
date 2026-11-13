@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeEngines implements EngineInterface
 type fakeEngines struct {
-	*gentype.FakeClientWithList[*v1beta2.Engine, *v1beta2.EngineList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.Engine, *v1beta2.EngineList, *longhornv1beta2.EngineApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeEngines(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.EngineInterface {
 	return &fakeEngines{
-		gentype.NewFakeClientWithList[*v1beta2.Engine, *v1beta2.EngineList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.Engine, *v1beta2.EngineList, *longhornv1beta2.EngineApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("engines"),

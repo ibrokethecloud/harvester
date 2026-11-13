@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type VolumeImportSourceInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.VolumeImportSourceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.VolumeImportSource, err error)
+	Apply(ctx context.Context, volumeImportSource *applyconfigurationcorev1beta1.VolumeImportSourceApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.VolumeImportSource, err error)
 	VolumeImportSourceExpansion
 }
 
 // volumeImportSources implements VolumeImportSourceInterface
 type volumeImportSources struct {
-	*gentype.ClientWithList[*corev1beta1.VolumeImportSource, *corev1beta1.VolumeImportSourceList]
+	*gentype.ClientWithListAndApply[*corev1beta1.VolumeImportSource, *corev1beta1.VolumeImportSourceList, *applyconfigurationcorev1beta1.VolumeImportSourceApplyConfiguration]
 }
 
 // newVolumeImportSources returns a VolumeImportSources
 func newVolumeImportSources(c *CdiV1beta1Client) *volumeImportSources {
 	return &volumeImportSources{
-		gentype.NewClientWithList[*corev1beta1.VolumeImportSource, *corev1beta1.VolumeImportSourceList](
+		gentype.NewClientWithListAndApply[*corev1beta1.VolumeImportSource, *corev1beta1.VolumeImportSourceList, *applyconfigurationcorev1beta1.VolumeImportSourceApplyConfiguration](
 			"volumeimportsources",
 			c.RESTClient(),
 			scheme.ParameterCodec,

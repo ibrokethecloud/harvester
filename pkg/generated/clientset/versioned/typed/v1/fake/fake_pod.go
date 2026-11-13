@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,13 +31,13 @@ import (
 
 // fakePods implements PodInterface
 type fakePods struct {
-	*gentype.FakeClientWithList[*v1.Pod, *v1.PodList]
+	*gentype.FakeClientWithListAndApply[*v1.Pod, *v1.PodList, *corev1.PodApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakePods(fake *FakeCoreV1, namespace string) typedv1.PodInterface {
 	return &fakePods{
-		gentype.NewFakeClientWithList[*v1.Pod, *v1.PodList](
+		gentype.NewFakeClientWithListAndApply[*v1.Pod, *v1.PodList, *corev1.PodApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("pods"),

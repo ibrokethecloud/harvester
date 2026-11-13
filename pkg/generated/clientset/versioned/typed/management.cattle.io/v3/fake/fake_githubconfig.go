@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGithubConfigs implements GithubConfigInterface
 type fakeGithubConfigs struct {
-	*gentype.FakeClientWithList[*v3.GithubConfig, *v3.GithubConfigList]
+	*gentype.FakeClientWithListAndApply[*v3.GithubConfig, *v3.GithubConfigList, *managementcattleiov3.GithubConfigApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGithubConfigs(fake *FakeManagementV3) managementcattleiov3.GithubConfigInterface {
+func newFakeGithubConfigs(fake *FakeManagementV3) typedmanagementcattleiov3.GithubConfigInterface {
 	return &fakeGithubConfigs{
-		gentype.NewFakeClientWithList[*v3.GithubConfig, *v3.GithubConfigList](
+		gentype.NewFakeClientWithListAndApply[*v3.GithubConfig, *v3.GithubConfigList, *managementcattleiov3.GithubConfigApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("githubconfigs"),

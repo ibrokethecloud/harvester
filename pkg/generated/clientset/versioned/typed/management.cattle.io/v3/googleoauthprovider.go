@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GoogleOAuthProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GoogleOAuthProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GoogleOAuthProvider, err error)
+	Apply(ctx context.Context, googleOAuthProvider *applyconfigurationmanagementcattleiov3.GoogleOAuthProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GoogleOAuthProvider, err error)
 	GoogleOAuthProviderExpansion
 }
 
 // googleOAuthProviders implements GoogleOAuthProviderInterface
 type googleOAuthProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.GoogleOAuthProvider, *managementcattleiov3.GoogleOAuthProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GoogleOAuthProvider, *managementcattleiov3.GoogleOAuthProviderList, *applyconfigurationmanagementcattleiov3.GoogleOAuthProviderApplyConfiguration]
 }
 
 // newGoogleOAuthProviders returns a GoogleOAuthProviders
 func newGoogleOAuthProviders(c *ManagementV3Client) *googleOAuthProviders {
 	return &googleOAuthProviders{
-		gentype.NewClientWithList[*managementcattleiov3.GoogleOAuthProvider, *managementcattleiov3.GoogleOAuthProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GoogleOAuthProvider, *managementcattleiov3.GoogleOAuthProviderList, *applyconfigurationmanagementcattleiov3.GoogleOAuthProviderApplyConfiguration](
 			"googleoauthproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

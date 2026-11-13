@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	batchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
+	batchv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/batch/v1"
+	typedbatchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
 	v1 "k8s.io/api/batch/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeJobs implements JobInterface
 type fakeJobs struct {
-	*gentype.FakeClientWithList[*v1.Job, *v1.JobList]
+	*gentype.FakeClientWithListAndApply[*v1.Job, *v1.JobList, *batchv1.JobApplyConfiguration]
 	Fake *FakeBatchV1
 }
 
-func newFakeJobs(fake *FakeBatchV1, namespace string) batchv1.JobInterface {
+func newFakeJobs(fake *FakeBatchV1, namespace string) typedbatchv1.JobInterface {
 	return &fakeJobs{
-		gentype.NewFakeClientWithList[*v1.Job, *v1.JobList](
+		gentype.NewFakeClientWithListAndApply[*v1.Job, *v1.JobList, *batchv1.JobApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("jobs"),

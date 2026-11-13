@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeBackingImageManagers implements BackingImageManagerInterface
 type fakeBackingImageManagers struct {
-	*gentype.FakeClientWithList[*v1beta2.BackingImageManager, *v1beta2.BackingImageManagerList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.BackingImageManager, *v1beta2.BackingImageManagerList, *longhornv1beta2.BackingImageManagerApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeBackingImageManagers(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.BackingImageManagerInterface {
 	return &fakeBackingImageManagers{
-		gentype.NewFakeClientWithList[*v1beta2.BackingImageManager, *v1beta2.BackingImageManagerList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.BackingImageManager, *v1beta2.BackingImageManagerList, *longhornv1beta2.BackingImageManagerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("backingimagemanagers"),

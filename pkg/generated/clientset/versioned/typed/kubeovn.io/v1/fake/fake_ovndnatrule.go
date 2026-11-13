@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeOvnDnatRules implements OvnDnatRuleInterface
 type fakeOvnDnatRules struct {
-	*gentype.FakeClientWithList[*v1.OvnDnatRule, *v1.OvnDnatRuleList]
+	*gentype.FakeClientWithListAndApply[*v1.OvnDnatRule, *v1.OvnDnatRuleList, *kubeovnv1.OvnDnatRuleApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeOvnDnatRules(fake *FakeKubeovnV1) kubeovniov1.OvnDnatRuleInterface {
 	return &fakeOvnDnatRules{
-		gentype.NewFakeClientWithList[*v1.OvnDnatRule, *v1.OvnDnatRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1.OvnDnatRule, *v1.OvnDnatRuleList, *kubeovnv1.OvnDnatRuleApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("ovn-dnat-rules"),

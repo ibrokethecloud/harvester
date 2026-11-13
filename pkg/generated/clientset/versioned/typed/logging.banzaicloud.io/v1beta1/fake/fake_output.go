@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	apiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	loggingbanzaicloudiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/logging.banzaicloud.io/v1beta1"
 	v1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeOutputs implements OutputInterface
 type fakeOutputs struct {
-	*gentype.FakeClientWithList[*v1beta1.Output, *v1beta1.OutputList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.Output, *v1beta1.OutputList, *apiv1beta1.OutputApplyConfiguration]
 	Fake *FakeLoggingV1beta1
 }
 
 func newFakeOutputs(fake *FakeLoggingV1beta1) loggingbanzaicloudiov1beta1.OutputInterface {
 	return &fakeOutputs{
-		gentype.NewFakeClientWithList[*v1beta1.Output, *v1beta1.OutputList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.Output, *v1beta1.OutputList, *apiv1beta1.OutputApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.GroupVersion.WithResource("outputs"),

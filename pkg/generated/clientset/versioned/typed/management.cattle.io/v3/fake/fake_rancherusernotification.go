@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeRancherUserNotifications implements RancherUserNotificationInterface
 type fakeRancherUserNotifications struct {
-	*gentype.FakeClientWithList[*v3.RancherUserNotification, *v3.RancherUserNotificationList]
+	*gentype.FakeClientWithListAndApply[*v3.RancherUserNotification, *v3.RancherUserNotificationList, *managementcattleiov3.RancherUserNotificationApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeRancherUserNotifications(fake *FakeManagementV3) managementcattleiov3.RancherUserNotificationInterface {
+func newFakeRancherUserNotifications(fake *FakeManagementV3) typedmanagementcattleiov3.RancherUserNotificationInterface {
 	return &fakeRancherUserNotifications{
-		gentype.NewFakeClientWithList[*v3.RancherUserNotification, *v3.RancherUserNotificationList](
+		gentype.NewFakeClientWithListAndApply[*v3.RancherUserNotification, *v3.RancherUserNotificationList, *managementcattleiov3.RancherUserNotificationApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("rancherusernotifications"),

@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ProjectNetworkPolicyInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ProjectNetworkPolicyList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.ProjectNetworkPolicy, err error)
+	Apply(ctx context.Context, projectNetworkPolicy *applyconfigurationmanagementcattleiov3.ProjectNetworkPolicyApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ProjectNetworkPolicy, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, projectNetworkPolicy *applyconfigurationmanagementcattleiov3.ProjectNetworkPolicyApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ProjectNetworkPolicy, err error)
 	ProjectNetworkPolicyExpansion
 }
 
 // projectNetworkPolicies implements ProjectNetworkPolicyInterface
 type projectNetworkPolicies struct {
-	*gentype.ClientWithList[*managementcattleiov3.ProjectNetworkPolicy, *managementcattleiov3.ProjectNetworkPolicyList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.ProjectNetworkPolicy, *managementcattleiov3.ProjectNetworkPolicyList, *applyconfigurationmanagementcattleiov3.ProjectNetworkPolicyApplyConfiguration]
 }
 
 // newProjectNetworkPolicies returns a ProjectNetworkPolicies
 func newProjectNetworkPolicies(c *ManagementV3Client, namespace string) *projectNetworkPolicies {
 	return &projectNetworkPolicies{
-		gentype.NewClientWithList[*managementcattleiov3.ProjectNetworkPolicy, *managementcattleiov3.ProjectNetworkPolicyList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.ProjectNetworkPolicy, *managementcattleiov3.ProjectNetworkPolicyList, *applyconfigurationmanagementcattleiov3.ProjectNetworkPolicyApplyConfiguration](
 			"projectnetworkpolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,

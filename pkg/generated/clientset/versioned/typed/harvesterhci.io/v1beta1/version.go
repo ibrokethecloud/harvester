@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type VersionInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.VersionList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.Version, err error)
+	Apply(ctx context.Context, version *applyconfigurationharvesterhciiov1beta1.VersionApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.Version, err error)
 	VersionExpansion
 }
 
 // versions implements VersionInterface
 type versions struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.Version, *harvesterhciiov1beta1.VersionList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.Version, *harvesterhciiov1beta1.VersionList, *applyconfigurationharvesterhciiov1beta1.VersionApplyConfiguration]
 }
 
 // newVersions returns a Versions
 func newVersions(c *HarvesterhciV1beta1Client, namespace string) *versions {
 	return &versions{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.Version, *harvesterhciiov1beta1.VersionList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.Version, *harvesterhciiov1beta1.VersionList, *applyconfigurationharvesterhciiov1beta1.VersionApplyConfiguration](
 			"versions",
 			c.RESTClient(),
 			scheme.ParameterCodec,

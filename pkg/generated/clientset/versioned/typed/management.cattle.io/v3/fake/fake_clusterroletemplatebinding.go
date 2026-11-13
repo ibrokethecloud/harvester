@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusterRoleTemplateBindings implements ClusterRoleTemplateBindingInterface
 type fakeClusterRoleTemplateBindings struct {
-	*gentype.FakeClientWithList[*v3.ClusterRoleTemplateBinding, *v3.ClusterRoleTemplateBindingList]
+	*gentype.FakeClientWithListAndApply[*v3.ClusterRoleTemplateBinding, *v3.ClusterRoleTemplateBindingList, *managementcattleiov3.ClusterRoleTemplateBindingApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeClusterRoleTemplateBindings(fake *FakeManagementV3, namespace string) managementcattleiov3.ClusterRoleTemplateBindingInterface {
+func newFakeClusterRoleTemplateBindings(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ClusterRoleTemplateBindingInterface {
 	return &fakeClusterRoleTemplateBindings{
-		gentype.NewFakeClientWithList[*v3.ClusterRoleTemplateBinding, *v3.ClusterRoleTemplateBindingList](
+		gentype.NewFakeClientWithListAndApply[*v3.ClusterRoleTemplateBinding, *v3.ClusterRoleTemplateBindingList, *managementcattleiov3.ClusterRoleTemplateBindingApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("clusterroletemplatebindings"),

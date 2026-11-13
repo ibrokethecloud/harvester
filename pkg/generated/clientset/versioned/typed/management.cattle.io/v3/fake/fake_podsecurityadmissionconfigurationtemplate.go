@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakePodSecurityAdmissionConfigurationTemplates implements PodSecurityAdmissionConfigurationTemplateInterface
 type fakePodSecurityAdmissionConfigurationTemplates struct {
-	*gentype.FakeClientWithList[*v3.PodSecurityAdmissionConfigurationTemplate, *v3.PodSecurityAdmissionConfigurationTemplateList]
+	*gentype.FakeClientWithListAndApply[*v3.PodSecurityAdmissionConfigurationTemplate, *v3.PodSecurityAdmissionConfigurationTemplateList, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakePodSecurityAdmissionConfigurationTemplates(fake *FakeManagementV3) managementcattleiov3.PodSecurityAdmissionConfigurationTemplateInterface {
+func newFakePodSecurityAdmissionConfigurationTemplates(fake *FakeManagementV3) typedmanagementcattleiov3.PodSecurityAdmissionConfigurationTemplateInterface {
 	return &fakePodSecurityAdmissionConfigurationTemplates{
-		gentype.NewFakeClientWithList[*v3.PodSecurityAdmissionConfigurationTemplate, *v3.PodSecurityAdmissionConfigurationTemplateList](
+		gentype.NewFakeClientWithListAndApply[*v3.PodSecurityAdmissionConfigurationTemplate, *v3.PodSecurityAdmissionConfigurationTemplateList, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("podsecurityadmissionconfigurationtemplates"),

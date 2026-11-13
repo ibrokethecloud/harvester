@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeRoleTemplates implements RoleTemplateInterface
 type fakeRoleTemplates struct {
-	*gentype.FakeClientWithList[*v3.RoleTemplate, *v3.RoleTemplateList]
+	*gentype.FakeClientWithListAndApply[*v3.RoleTemplate, *v3.RoleTemplateList, *managementcattleiov3.RoleTemplateApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeRoleTemplates(fake *FakeManagementV3) managementcattleiov3.RoleTemplateInterface {
+func newFakeRoleTemplates(fake *FakeManagementV3) typedmanagementcattleiov3.RoleTemplateInterface {
 	return &fakeRoleTemplates{
-		gentype.NewFakeClientWithList[*v3.RoleTemplate, *v3.RoleTemplateList](
+		gentype.NewFakeClientWithListAndApply[*v3.RoleTemplate, *v3.RoleTemplateList, *managementcattleiov3.RoleTemplateApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("roletemplates"),

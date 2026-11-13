@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ResourceQuotaInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.ResourceQuotaList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.ResourceQuota, err error)
+	Apply(ctx context.Context, resourceQuota *applyconfigurationharvesterhciiov1beta1.ResourceQuotaApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.ResourceQuota, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, resourceQuota *applyconfigurationharvesterhciiov1beta1.ResourceQuotaApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.ResourceQuota, err error)
 	ResourceQuotaExpansion
 }
 
 // resourceQuotas implements ResourceQuotaInterface
 type resourceQuotas struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.ResourceQuota, *harvesterhciiov1beta1.ResourceQuotaList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.ResourceQuota, *harvesterhciiov1beta1.ResourceQuotaList, *applyconfigurationharvesterhciiov1beta1.ResourceQuotaApplyConfiguration]
 }
 
 // newResourceQuotas returns a ResourceQuotas
 func newResourceQuotas(c *HarvesterhciV1beta1Client, namespace string) *resourceQuotas {
 	return &resourceQuotas{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.ResourceQuota, *harvesterhciiov1beta1.ResourceQuotaList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.ResourceQuota, *harvesterhciiov1beta1.ResourceQuotaList, *applyconfigurationharvesterhciiov1beta1.ResourceQuotaApplyConfiguration](
 			"resourcequotas",
 			c.RESTClient(),
 			scheme.ParameterCodec,

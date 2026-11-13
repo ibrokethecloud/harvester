@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GithubConfigInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GithubConfigList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GithubConfig, err error)
+	Apply(ctx context.Context, githubConfig *applyconfigurationmanagementcattleiov3.GithubConfigApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GithubConfig, err error)
 	GithubConfigExpansion
 }
 
 // githubConfigs implements GithubConfigInterface
 type githubConfigs struct {
-	*gentype.ClientWithList[*managementcattleiov3.GithubConfig, *managementcattleiov3.GithubConfigList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GithubConfig, *managementcattleiov3.GithubConfigList, *applyconfigurationmanagementcattleiov3.GithubConfigApplyConfiguration]
 }
 
 // newGithubConfigs returns a GithubConfigs
 func newGithubConfigs(c *ManagementV3Client) *githubConfigs {
 	return &githubConfigs{
-		gentype.NewClientWithList[*managementcattleiov3.GithubConfig, *managementcattleiov3.GithubConfigList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GithubConfig, *managementcattleiov3.GithubConfigList, *applyconfigurationmanagementcattleiov3.GithubConfigApplyConfiguration](
 			"githubconfigs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

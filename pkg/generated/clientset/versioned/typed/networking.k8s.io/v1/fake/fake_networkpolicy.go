@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	networkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	networkingk8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/networking.k8s.io/v1"
 	v1 "k8s.io/api/networking/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeNetworkPolicies implements NetworkPolicyInterface
 type fakeNetworkPolicies struct {
-	*gentype.FakeClientWithList[*v1.NetworkPolicy, *v1.NetworkPolicyList]
+	*gentype.FakeClientWithListAndApply[*v1.NetworkPolicy, *v1.NetworkPolicyList, *networkingv1.NetworkPolicyApplyConfiguration]
 	Fake *FakeNetworkingV1
 }
 
 func newFakeNetworkPolicies(fake *FakeNetworkingV1, namespace string) networkingk8siov1.NetworkPolicyInterface {
 	return &fakeNetworkPolicies{
-		gentype.NewFakeClientWithList[*v1.NetworkPolicy, *v1.NetworkPolicyList](
+		gentype.NewFakeClientWithListAndApply[*v1.NetworkPolicy, *v1.NetworkPolicyList, *networkingv1.NetworkPolicyApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("networkpolicies"),

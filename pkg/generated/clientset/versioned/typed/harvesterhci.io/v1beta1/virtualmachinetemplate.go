@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineTemplateInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.VirtualMachineTemplateList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.VirtualMachineTemplate, err error)
+	Apply(ctx context.Context, virtualMachineTemplate *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineTemplate, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineTemplate *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineTemplate, err error)
 	VirtualMachineTemplateExpansion
 }
 
 // virtualMachineTemplates implements VirtualMachineTemplateInterface
 type virtualMachineTemplates struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.VirtualMachineTemplate, *harvesterhciiov1beta1.VirtualMachineTemplateList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineTemplate, *harvesterhciiov1beta1.VirtualMachineTemplateList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateApplyConfiguration]
 }
 
 // newVirtualMachineTemplates returns a VirtualMachineTemplates
 func newVirtualMachineTemplates(c *HarvesterhciV1beta1Client, namespace string) *virtualMachineTemplates {
 	return &virtualMachineTemplates{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.VirtualMachineTemplate, *harvesterhciiov1beta1.VirtualMachineTemplateList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineTemplate, *harvesterhciiov1beta1.VirtualMachineTemplateList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineTemplateApplyConfiguration](
 			"virtualmachinetemplates",
 			c.RESTClient(),
 			scheme.ParameterCodec,

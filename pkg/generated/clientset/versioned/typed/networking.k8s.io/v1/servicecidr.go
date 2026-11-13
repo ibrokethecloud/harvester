@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationnetworkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ServiceCIDRInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.ServiceCIDRList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.ServiceCIDR, err error)
+	Apply(ctx context.Context, serviceCIDR *applyconfigurationnetworkingv1.ServiceCIDRApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.ServiceCIDR, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, serviceCIDR *applyconfigurationnetworkingv1.ServiceCIDRApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.ServiceCIDR, err error)
 	ServiceCIDRExpansion
 }
 
 // serviceCIDRs implements ServiceCIDRInterface
 type serviceCIDRs struct {
-	*gentype.ClientWithList[*networkingv1.ServiceCIDR, *networkingv1.ServiceCIDRList]
+	*gentype.ClientWithListAndApply[*networkingv1.ServiceCIDR, *networkingv1.ServiceCIDRList, *applyconfigurationnetworkingv1.ServiceCIDRApplyConfiguration]
 }
 
 // newServiceCIDRs returns a ServiceCIDRs
 func newServiceCIDRs(c *NetworkingV1Client) *serviceCIDRs {
 	return &serviceCIDRs{
-		gentype.NewClientWithList[*networkingv1.ServiceCIDR, *networkingv1.ServiceCIDRList](
+		gentype.NewClientWithListAndApply[*networkingv1.ServiceCIDR, *networkingv1.ServiceCIDRList, *applyconfigurationnetworkingv1.ServiceCIDRApplyConfiguration](
 			"servicecidrs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

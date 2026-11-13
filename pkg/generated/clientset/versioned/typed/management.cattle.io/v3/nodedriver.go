@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type NodeDriverInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.NodeDriverList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.NodeDriver, err error)
+	Apply(ctx context.Context, nodeDriver *applyconfigurationmanagementcattleiov3.NodeDriverApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.NodeDriver, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, nodeDriver *applyconfigurationmanagementcattleiov3.NodeDriverApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.NodeDriver, err error)
 	NodeDriverExpansion
 }
 
 // nodeDrivers implements NodeDriverInterface
 type nodeDrivers struct {
-	*gentype.ClientWithList[*managementcattleiov3.NodeDriver, *managementcattleiov3.NodeDriverList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.NodeDriver, *managementcattleiov3.NodeDriverList, *applyconfigurationmanagementcattleiov3.NodeDriverApplyConfiguration]
 }
 
 // newNodeDrivers returns a NodeDrivers
 func newNodeDrivers(c *ManagementV3Client) *nodeDrivers {
 	return &nodeDrivers{
-		gentype.NewClientWithList[*managementcattleiov3.NodeDriver, *managementcattleiov3.NodeDriverList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.NodeDriver, *managementcattleiov3.NodeDriverList, *applyconfigurationmanagementcattleiov3.NodeDriverApplyConfiguration](
 			"nodedrivers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

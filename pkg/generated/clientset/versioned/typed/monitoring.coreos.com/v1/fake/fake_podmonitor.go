@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	monitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	monitoringcoreoscomv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakePodMonitors implements PodMonitorInterface
 type fakePodMonitors struct {
-	*gentype.FakeClientWithList[*v1.PodMonitor, *v1.PodMonitorList]
+	*gentype.FakeClientWithListAndApply[*v1.PodMonitor, *v1.PodMonitorList, *monitoringv1.PodMonitorApplyConfiguration]
 	Fake *FakeMonitoringV1
 }
 
 func newFakePodMonitors(fake *FakeMonitoringV1, namespace string) monitoringcoreoscomv1.PodMonitorInterface {
 	return &fakePodMonitors{
-		gentype.NewFakeClientWithList[*v1.PodMonitor, *v1.PodMonitorList](
+		gentype.NewFakeClientWithListAndApply[*v1.PodMonitor, *v1.PodMonitorList, *monitoringv1.PodMonitorApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("podmonitors"),

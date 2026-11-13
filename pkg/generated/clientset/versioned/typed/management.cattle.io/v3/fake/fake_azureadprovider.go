@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeAzureADProviders implements AzureADProviderInterface
 type fakeAzureADProviders struct {
-	*gentype.FakeClientWithList[*v3.AzureADProvider, *v3.AzureADProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.AzureADProvider, *v3.AzureADProviderList, *managementcattleiov3.AzureADProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeAzureADProviders(fake *FakeManagementV3) managementcattleiov3.AzureADProviderInterface {
+func newFakeAzureADProviders(fake *FakeManagementV3) typedmanagementcattleiov3.AzureADProviderInterface {
 	return &fakeAzureADProviders{
-		gentype.NewFakeClientWithList[*v3.AzureADProvider, *v3.AzureADProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.AzureADProvider, *v3.AzureADProviderList, *managementcattleiov3.AzureADProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("azureadproviders"),

@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeOpenLdapProviders implements OpenLdapProviderInterface
 type fakeOpenLdapProviders struct {
-	*gentype.FakeClientWithList[*v3.OpenLdapProvider, *v3.OpenLdapProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.OpenLdapProvider, *v3.OpenLdapProviderList, *managementcattleiov3.OpenLdapProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeOpenLdapProviders(fake *FakeManagementV3) managementcattleiov3.OpenLdapProviderInterface {
+func newFakeOpenLdapProviders(fake *FakeManagementV3) typedmanagementcattleiov3.OpenLdapProviderInterface {
 	return &fakeOpenLdapProviders{
-		gentype.NewFakeClientWithList[*v3.OpenLdapProvider, *v3.OpenLdapProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.OpenLdapProvider, *v3.OpenLdapProviderList, *managementcattleiov3.OpenLdapProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("openldapproviders"),

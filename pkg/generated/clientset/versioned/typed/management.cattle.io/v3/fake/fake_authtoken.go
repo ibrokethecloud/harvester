@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeAuthTokens implements AuthTokenInterface
 type fakeAuthTokens struct {
-	*gentype.FakeClientWithList[*v3.AuthToken, *v3.AuthTokenList]
+	*gentype.FakeClientWithListAndApply[*v3.AuthToken, *v3.AuthTokenList, *managementcattleiov3.AuthTokenApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeAuthTokens(fake *FakeManagementV3) managementcattleiov3.AuthTokenInterface {
+func newFakeAuthTokens(fake *FakeManagementV3) typedmanagementcattleiov3.AuthTokenInterface {
 	return &fakeAuthTokens{
-		gentype.NewFakeClientWithList[*v3.AuthToken, *v3.AuthTokenList](
+		gentype.NewFakeClientWithListAndApply[*v3.AuthToken, *v3.AuthTokenList, *managementcattleiov3.AuthTokenApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("authtokens"),

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	discoveryv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/discovery/v1"
 	discoveryk8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/discovery.k8s.io/v1"
 	v1 "k8s.io/api/discovery/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeEndpointSlices implements EndpointSliceInterface
 type fakeEndpointSlices struct {
-	*gentype.FakeClientWithList[*v1.EndpointSlice, *v1.EndpointSliceList]
+	*gentype.FakeClientWithListAndApply[*v1.EndpointSlice, *v1.EndpointSliceList, *discoveryv1.EndpointSliceApplyConfiguration]
 	Fake *FakeDiscoveryV1
 }
 
 func newFakeEndpointSlices(fake *FakeDiscoveryV1, namespace string) discoveryk8siov1.EndpointSliceInterface {
 	return &fakeEndpointSlices{
-		gentype.NewFakeClientWithList[*v1.EndpointSlice, *v1.EndpointSliceList](
+		gentype.NewFakeClientWithListAndApply[*v1.EndpointSlice, *v1.EndpointSliceList, *discoveryv1.EndpointSliceApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("endpointslices"),

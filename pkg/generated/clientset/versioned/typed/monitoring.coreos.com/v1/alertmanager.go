@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationmonitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -48,6 +49,9 @@ type AlertmanagerInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*monitoringv1.AlertmanagerList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *monitoringv1.Alertmanager, err error)
+	Apply(ctx context.Context, alertmanager *applyconfigurationmonitoringv1.AlertmanagerApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.Alertmanager, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, alertmanager *applyconfigurationmonitoringv1.AlertmanagerApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.Alertmanager, err error)
 	GetScale(ctx context.Context, alertmanagerName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(ctx context.Context, alertmanagerName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
 
@@ -56,13 +60,13 @@ type AlertmanagerInterface interface {
 
 // alertmanagers implements AlertmanagerInterface
 type alertmanagers struct {
-	*gentype.ClientWithList[*monitoringv1.Alertmanager, *monitoringv1.AlertmanagerList]
+	*gentype.ClientWithListAndApply[*monitoringv1.Alertmanager, *monitoringv1.AlertmanagerList, *applyconfigurationmonitoringv1.AlertmanagerApplyConfiguration]
 }
 
 // newAlertmanagers returns a Alertmanagers
 func newAlertmanagers(c *MonitoringV1Client, namespace string) *alertmanagers {
 	return &alertmanagers{
-		gentype.NewClientWithList[*monitoringv1.Alertmanager, *monitoringv1.AlertmanagerList](
+		gentype.NewClientWithListAndApply[*monitoringv1.Alertmanager, *monitoringv1.AlertmanagerList, *applyconfigurationmonitoringv1.AlertmanagerApplyConfiguration](
 			"alertmanagers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

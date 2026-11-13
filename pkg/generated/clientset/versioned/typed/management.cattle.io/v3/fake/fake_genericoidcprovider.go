@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGenericOIDCProviders implements GenericOIDCProviderInterface
 type fakeGenericOIDCProviders struct {
-	*gentype.FakeClientWithList[*v3.GenericOIDCProvider, *v3.GenericOIDCProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.GenericOIDCProvider, *v3.GenericOIDCProviderList, *managementcattleiov3.GenericOIDCProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGenericOIDCProviders(fake *FakeManagementV3) managementcattleiov3.GenericOIDCProviderInterface {
+func newFakeGenericOIDCProviders(fake *FakeManagementV3) typedmanagementcattleiov3.GenericOIDCProviderInterface {
 	return &fakeGenericOIDCProviders{
-		gentype.NewFakeClientWithList[*v3.GenericOIDCProvider, *v3.GenericOIDCProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.GenericOIDCProvider, *v3.GenericOIDCProviderList, *managementcattleiov3.GenericOIDCProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("genericoidcproviders"),

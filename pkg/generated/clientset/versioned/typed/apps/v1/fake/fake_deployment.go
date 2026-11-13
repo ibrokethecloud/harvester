@@ -20,24 +20,29 @@ package fake
 
 import (
 	context "context"
+	json "encoding/json"
+	fmt "fmt"
 
-	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
+	appsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	applyconfigurationautoscalingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/autoscaling/v1"
+	typedappsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	types "k8s.io/apimachinery/pkg/types"
 	gentype "k8s.io/client-go/gentype"
 	testing "k8s.io/client-go/testing"
 )
 
 // fakeDeployments implements DeploymentInterface
 type fakeDeployments struct {
-	*gentype.FakeClientWithList[*v1.Deployment, *v1.DeploymentList]
+	*gentype.FakeClientWithListAndApply[*v1.Deployment, *v1.DeploymentList, *appsv1.DeploymentApplyConfiguration]
 	Fake *FakeAppsV1
 }
 
-func newFakeDeployments(fake *FakeAppsV1, namespace string) appsv1.DeploymentInterface {
+func newFakeDeployments(fake *FakeAppsV1, namespace string) typedappsv1.DeploymentInterface {
 	return &fakeDeployments{
-		gentype.NewFakeClientWithList[*v1.Deployment, *v1.DeploymentList](
+		gentype.NewFakeClientWithListAndApply[*v1.Deployment, *v1.DeploymentList, *appsv1.DeploymentApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("deployments"),
@@ -69,6 +74,26 @@ func (c *fakeDeployments) UpdateScale(ctx context.Context, deploymentName string
 	emptyResult := &autoscalingv1.Scale{}
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceActionWithOptions(c.Resource(), "scale", c.Namespace(), scale, opts), &autoscalingv1.Scale{})
+
+	if obj == nil {
+		return emptyResult, err
+	}
+	return obj.(*autoscalingv1.Scale), err
+}
+
+// ApplyScale takes top resource name and the apply declarative configuration for scale,
+// applies it and returns the applied scale, and an error, if there is any.
+func (c *fakeDeployments) ApplyScale(ctx context.Context, deploymentName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.Scale, err error) {
+	if scale == nil {
+		return nil, fmt.Errorf("scale provided to ApplyScale must not be nil")
+	}
+	data, err := json.Marshal(scale)
+	if err != nil {
+		return nil, err
+	}
+	emptyResult := &autoscalingv1.Scale{}
+	obj, err := c.Fake.
+		Invokes(testing.NewPatchSubresourceActionWithOptions(c.Resource(), c.Namespace(), deploymentName, types.ApplyPatchType, data, opts.ToPatchOptions(), "scale"), emptyResult)
 
 	if obj == nil {
 		return emptyResult, err

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeEndpointses implements EndpointsInterface
 type fakeEndpointses struct {
-	*gentype.FakeClientWithList[*v1.Endpoints, *v1.EndpointsList]
+	*gentype.FakeClientWithListAndApply[*v1.Endpoints, *v1.EndpointsList, *corev1.EndpointsApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeEndpointses(fake *FakeCoreV1, namespace string) typedv1.EndpointsInterface {
 	return &fakeEndpointses{
-		gentype.NewFakeClientWithList[*v1.Endpoints, *v1.EndpointsList](
+		gentype.NewFakeClientWithListAndApply[*v1.Endpoints, *v1.EndpointsList, *corev1.EndpointsApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("endpointses"),

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeEvents implements EventInterface
 type fakeEvents struct {
-	*gentype.FakeClientWithList[*v1.Event, *v1.EventList]
+	*gentype.FakeClientWithListAndApply[*v1.Event, *v1.EventList, *corev1.EventApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeEvents(fake *FakeCoreV1, namespace string) typedv1.EventInterface {
 	return &fakeEvents{
-		gentype.NewFakeClientWithList[*v1.Event, *v1.EventList](
+		gentype.NewFakeClientWithListAndApply[*v1.Event, *v1.EventList, *corev1.EventApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("events"),

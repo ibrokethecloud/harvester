@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
-	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
+	networkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
+	typednetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeLinkMonitors implements LinkMonitorInterface
 type fakeLinkMonitors struct {
-	*gentype.FakeClientWithList[*v1beta1.LinkMonitor, *v1beta1.LinkMonitorList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.LinkMonitor, *v1beta1.LinkMonitorList, *networkharvesterhciiov1beta1.LinkMonitorApplyConfiguration]
 	Fake *FakeNetworkV1beta1
 }
 
-func newFakeLinkMonitors(fake *FakeNetworkV1beta1) networkharvesterhciiov1beta1.LinkMonitorInterface {
+func newFakeLinkMonitors(fake *FakeNetworkV1beta1) typednetworkharvesterhciiov1beta1.LinkMonitorInterface {
 	return &fakeLinkMonitors{
-		gentype.NewFakeClientWithList[*v1beta1.LinkMonitor, *v1beta1.LinkMonitorList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.LinkMonitor, *v1beta1.LinkMonitorList, *networkharvesterhciiov1beta1.LinkMonitorApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("linkmonitors"),

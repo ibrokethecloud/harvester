@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	batchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
+	batchv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/batch/v1"
+	typedbatchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
 	v1 "k8s.io/api/batch/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeCronJobs implements CronJobInterface
 type fakeCronJobs struct {
-	*gentype.FakeClientWithList[*v1.CronJob, *v1.CronJobList]
+	*gentype.FakeClientWithListAndApply[*v1.CronJob, *v1.CronJobList, *batchv1.CronJobApplyConfiguration]
 	Fake *FakeBatchV1
 }
 
-func newFakeCronJobs(fake *FakeBatchV1, namespace string) batchv1.CronJobInterface {
+func newFakeCronJobs(fake *FakeBatchV1, namespace string) typedbatchv1.CronJobInterface {
 	return &fakeCronJobs{
-		gentype.NewFakeClientWithList[*v1.CronJob, *v1.CronJobList](
+		gentype.NewFakeClientWithListAndApply[*v1.CronJob, *v1.CronJobList, *batchv1.CronJobApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("cronjobs"),

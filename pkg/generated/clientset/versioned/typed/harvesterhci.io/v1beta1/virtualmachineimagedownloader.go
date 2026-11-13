@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineImageDownloaderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.VirtualMachineImageDownloaderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.VirtualMachineImageDownloader, err error)
+	Apply(ctx context.Context, virtualMachineImageDownloader *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineImageDownloader, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineImageDownloader *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.VirtualMachineImageDownloader, err error)
 	VirtualMachineImageDownloaderExpansion
 }
 
 // virtualMachineImageDownloaders implements VirtualMachineImageDownloaderInterface
 type virtualMachineImageDownloaders struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.VirtualMachineImageDownloader, *harvesterhciiov1beta1.VirtualMachineImageDownloaderList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineImageDownloader, *harvesterhciiov1beta1.VirtualMachineImageDownloaderList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration]
 }
 
 // newVirtualMachineImageDownloaders returns a VirtualMachineImageDownloaders
 func newVirtualMachineImageDownloaders(c *HarvesterhciV1beta1Client, namespace string) *virtualMachineImageDownloaders {
 	return &virtualMachineImageDownloaders{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.VirtualMachineImageDownloader, *harvesterhciiov1beta1.VirtualMachineImageDownloaderList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.VirtualMachineImageDownloader, *harvesterhciiov1beta1.VirtualMachineImageDownloaderList, *applyconfigurationharvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration](
 			"virtualmachineimagedownloaders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

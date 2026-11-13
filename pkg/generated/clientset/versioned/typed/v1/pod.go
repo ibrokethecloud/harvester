@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +48,9 @@ type PodInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Pod, err error)
+	Apply(ctx context.Context, pod *applyconfigurationcorev1.PodApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Pod, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, pod *applyconfigurationcorev1.PodApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Pod, err error)
 	UpdateEphemeralContainers(ctx context.Context, podName string, pod *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error)
 	UpdateResize(ctx context.Context, podName string, pod *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error)
 
@@ -55,13 +59,13 @@ type PodInterface interface {
 
 // pods implements PodInterface
 type pods struct {
-	*gentype.ClientWithList[*corev1.Pod, *corev1.PodList]
+	*gentype.ClientWithListAndApply[*corev1.Pod, *corev1.PodList, *applyconfigurationcorev1.PodApplyConfiguration]
 }
 
 // newPods returns a Pods
 func newPods(c *CoreV1Client, namespace string) *pods {
 	return &pods{
-		gentype.NewClientWithList[*corev1.Pod, *corev1.PodList](
+		gentype.NewClientWithListAndApply[*corev1.Pod, *corev1.PodList, *applyconfigurationcorev1.PodApplyConfiguration](
 			"pods",
 			c.RESTClient(),
 			scheme.ParameterCodec,

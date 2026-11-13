@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	monitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	monitoringcoreoscomv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -31,13 +32,13 @@ import (
 
 // fakeAlertmanagers implements AlertmanagerInterface
 type fakeAlertmanagers struct {
-	*gentype.FakeClientWithList[*v1.Alertmanager, *v1.AlertmanagerList]
+	*gentype.FakeClientWithListAndApply[*v1.Alertmanager, *v1.AlertmanagerList, *monitoringv1.AlertmanagerApplyConfiguration]
 	Fake *FakeMonitoringV1
 }
 
 func newFakeAlertmanagers(fake *FakeMonitoringV1, namespace string) monitoringcoreoscomv1.AlertmanagerInterface {
 	return &fakeAlertmanagers{
-		gentype.NewFakeClientWithList[*v1.Alertmanager, *v1.AlertmanagerList](
+		gentype.NewFakeClientWithListAndApply[*v1.Alertmanager, *v1.AlertmanagerList, *monitoringv1.AlertmanagerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("alertmanagers"),

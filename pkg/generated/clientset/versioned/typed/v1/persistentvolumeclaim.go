@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type PersistentVolumeClaimInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PersistentVolumeClaimList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PersistentVolumeClaim, err error)
+	Apply(ctx context.Context, persistentVolumeClaim *applyconfigurationcorev1.PersistentVolumeClaimApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.PersistentVolumeClaim, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, persistentVolumeClaim *applyconfigurationcorev1.PersistentVolumeClaimApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.PersistentVolumeClaim, err error)
 	PersistentVolumeClaimExpansion
 }
 
 // persistentVolumeClaims implements PersistentVolumeClaimInterface
 type persistentVolumeClaims struct {
-	*gentype.ClientWithList[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList]
+	*gentype.ClientWithListAndApply[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList, *applyconfigurationcorev1.PersistentVolumeClaimApplyConfiguration]
 }
 
 // newPersistentVolumeClaims returns a PersistentVolumeClaims
 func newPersistentVolumeClaims(c *CoreV1Client, namespace string) *persistentVolumeClaims {
 	return &persistentVolumeClaims{
-		gentype.NewClientWithList[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList](
+		gentype.NewClientWithListAndApply[*corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaimList, *applyconfigurationcorev1.PersistentVolumeClaimApplyConfiguration](
 			"persistentvolumeclaims",
 			c.RESTClient(),
 			scheme.ParameterCodec,

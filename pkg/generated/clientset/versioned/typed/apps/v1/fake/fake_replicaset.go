@@ -20,24 +20,29 @@ package fake
 
 import (
 	context "context"
+	json "encoding/json"
+	fmt "fmt"
 
-	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
+	appsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	applyconfigurationautoscalingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/autoscaling/v1"
+	typedappsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	types "k8s.io/apimachinery/pkg/types"
 	gentype "k8s.io/client-go/gentype"
 	testing "k8s.io/client-go/testing"
 )
 
 // fakeReplicaSets implements ReplicaSetInterface
 type fakeReplicaSets struct {
-	*gentype.FakeClientWithList[*v1.ReplicaSet, *v1.ReplicaSetList]
+	*gentype.FakeClientWithListAndApply[*v1.ReplicaSet, *v1.ReplicaSetList, *appsv1.ReplicaSetApplyConfiguration]
 	Fake *FakeAppsV1
 }
 
-func newFakeReplicaSets(fake *FakeAppsV1, namespace string) appsv1.ReplicaSetInterface {
+func newFakeReplicaSets(fake *FakeAppsV1, namespace string) typedappsv1.ReplicaSetInterface {
 	return &fakeReplicaSets{
-		gentype.NewFakeClientWithList[*v1.ReplicaSet, *v1.ReplicaSetList](
+		gentype.NewFakeClientWithListAndApply[*v1.ReplicaSet, *v1.ReplicaSetList, *appsv1.ReplicaSetApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("replicasets"),
@@ -69,6 +74,26 @@ func (c *fakeReplicaSets) UpdateScale(ctx context.Context, replicaSetName string
 	emptyResult := &autoscalingv1.Scale{}
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceActionWithOptions(c.Resource(), "scale", c.Namespace(), scale, opts), &autoscalingv1.Scale{})
+
+	if obj == nil {
+		return emptyResult, err
+	}
+	return obj.(*autoscalingv1.Scale), err
+}
+
+// ApplyScale takes top resource name and the apply declarative configuration for scale,
+// applies it and returns the applied scale, and an error, if there is any.
+func (c *fakeReplicaSets) ApplyScale(ctx context.Context, replicaSetName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.Scale, err error) {
+	if scale == nil {
+		return nil, fmt.Errorf("scale provided to ApplyScale must not be nil")
+	}
+	data, err := json.Marshal(scale)
+	if err != nil {
+		return nil, err
+	}
+	emptyResult := &autoscalingv1.Scale{}
+	obj, err := c.Fake.
+		Invokes(testing.NewPatchSubresourceActionWithOptions(c.Resource(), c.Namespace(), replicaSetName, types.ApplyPatchType, data, opts.ToPatchOptions(), "scale"), emptyResult)
 
 	if obj == nil {
 		return emptyResult, err

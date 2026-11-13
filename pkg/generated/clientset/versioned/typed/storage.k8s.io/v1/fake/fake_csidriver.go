@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	storagev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	storagek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/storage.k8s.io/v1"
 	v1 "k8s.io/api/storage/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeCSIDrivers implements CSIDriverInterface
 type fakeCSIDrivers struct {
-	*gentype.FakeClientWithList[*v1.CSIDriver, *v1.CSIDriverList]
+	*gentype.FakeClientWithListAndApply[*v1.CSIDriver, *v1.CSIDriverList, *storagev1.CSIDriverApplyConfiguration]
 	Fake *FakeStorageV1
 }
 
 func newFakeCSIDrivers(fake *FakeStorageV1) storagek8siov1.CSIDriverInterface {
 	return &fakeCSIDrivers{
-		gentype.NewFakeClientWithList[*v1.CSIDriver, *v1.CSIDriverList](
+		gentype.NewFakeClientWithListAndApply[*v1.CSIDriver, *v1.CSIDriverList, *storagev1.CSIDriverApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("csidrivers"),

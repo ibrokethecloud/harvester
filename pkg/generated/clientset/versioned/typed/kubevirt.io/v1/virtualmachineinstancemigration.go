@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineInstanceMigrationInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.VirtualMachineInstanceMigrationList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.VirtualMachineInstanceMigration, err error)
+	Apply(ctx context.Context, virtualMachineInstanceMigration *applyconfigurationcorev1.VirtualMachineInstanceMigrationApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.VirtualMachineInstanceMigration, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineInstanceMigration *applyconfigurationcorev1.VirtualMachineInstanceMigrationApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.VirtualMachineInstanceMigration, err error)
 	VirtualMachineInstanceMigrationExpansion
 }
 
 // virtualMachineInstanceMigrations implements VirtualMachineInstanceMigrationInterface
 type virtualMachineInstanceMigrations struct {
-	*gentype.ClientWithList[*corev1.VirtualMachineInstanceMigration, *corev1.VirtualMachineInstanceMigrationList]
+	*gentype.ClientWithListAndApply[*corev1.VirtualMachineInstanceMigration, *corev1.VirtualMachineInstanceMigrationList, *applyconfigurationcorev1.VirtualMachineInstanceMigrationApplyConfiguration]
 }
 
 // newVirtualMachineInstanceMigrations returns a VirtualMachineInstanceMigrations
 func newVirtualMachineInstanceMigrations(c *KubevirtV1Client, namespace string) *virtualMachineInstanceMigrations {
 	return &virtualMachineInstanceMigrations{
-		gentype.NewClientWithList[*corev1.VirtualMachineInstanceMigration, *corev1.VirtualMachineInstanceMigrationList](
+		gentype.NewClientWithListAndApply[*corev1.VirtualMachineInstanceMigration, *corev1.VirtualMachineInstanceMigrationList, *applyconfigurationcorev1.VirtualMachineInstanceMigrationApplyConfiguration](
 			"virtualmachineinstancemigrations",
 			c.RESTClient(),
 			scheme.ParameterCodec,

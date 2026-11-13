@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type DataVolumeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.DataVolumeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.DataVolume, err error)
+	Apply(ctx context.Context, dataVolume *applyconfigurationcorev1beta1.DataVolumeApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.DataVolume, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, dataVolume *applyconfigurationcorev1beta1.DataVolumeApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.DataVolume, err error)
 	DataVolumeExpansion
 }
 
 // dataVolumes implements DataVolumeInterface
 type dataVolumes struct {
-	*gentype.ClientWithList[*corev1beta1.DataVolume, *corev1beta1.DataVolumeList]
+	*gentype.ClientWithListAndApply[*corev1beta1.DataVolume, *corev1beta1.DataVolumeList, *applyconfigurationcorev1beta1.DataVolumeApplyConfiguration]
 }
 
 // newDataVolumes returns a DataVolumes
 func newDataVolumes(c *CdiV1beta1Client) *dataVolumes {
 	return &dataVolumes{
-		gentype.NewClientWithList[*corev1beta1.DataVolume, *corev1beta1.DataVolumeList](
+		gentype.NewClientWithListAndApply[*corev1beta1.DataVolume, *corev1beta1.DataVolumeList, *applyconfigurationcorev1beta1.DataVolumeApplyConfiguration](
 			"datavolumes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

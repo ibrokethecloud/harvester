@@ -19,22 +19,23 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeSamlTokens implements SamlTokenInterface
 type fakeSamlTokens struct {
-	*gentype.FakeClientWithList[*v3.SamlToken, *v3.SamlTokenList]
+	*gentype.FakeClientWithListAndApply[*v3.SamlToken, *v3.SamlTokenList, *managementcattleiov3.SamlTokenApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeSamlTokens(fake *FakeManagementV3) managementcattleiov3.SamlTokenInterface {
+func newFakeSamlTokens(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.SamlTokenInterface {
 	return &fakeSamlTokens{
-		gentype.NewFakeClientWithList[*v3.SamlToken, *v3.SamlTokenList](
+		gentype.NewFakeClientWithListAndApply[*v3.SamlToken, *v3.SamlTokenList, *managementcattleiov3.SamlTokenApplyConfiguration](
 			fake.Fake,
-			"",
+			namespace,
 			v3.SchemeGroupVersion.WithResource("samltokens"),
 			v3.SchemeGroupVersion.WithKind("SamlToken"),
 			func() *v3.SamlToken { return &v3.SamlToken{} },

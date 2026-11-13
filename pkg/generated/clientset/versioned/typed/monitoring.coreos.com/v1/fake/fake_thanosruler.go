@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	monitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	monitoringcoreoscomv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeThanosRulers implements ThanosRulerInterface
 type fakeThanosRulers struct {
-	*gentype.FakeClientWithList[*v1.ThanosRuler, *v1.ThanosRulerList]
+	*gentype.FakeClientWithListAndApply[*v1.ThanosRuler, *v1.ThanosRulerList, *monitoringv1.ThanosRulerApplyConfiguration]
 	Fake *FakeMonitoringV1
 }
 
 func newFakeThanosRulers(fake *FakeMonitoringV1, namespace string) monitoringcoreoscomv1.ThanosRulerInterface {
 	return &fakeThanosRulers{
-		gentype.NewFakeClientWithList[*v1.ThanosRuler, *v1.ThanosRulerList](
+		gentype.NewFakeClientWithListAndApply[*v1.ThanosRuler, *v1.ThanosRulerList, *monitoringv1.ThanosRulerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("thanosrulers"),

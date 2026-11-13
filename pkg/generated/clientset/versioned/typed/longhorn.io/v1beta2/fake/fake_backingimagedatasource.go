@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeBackingImageDataSources implements BackingImageDataSourceInterface
 type fakeBackingImageDataSources struct {
-	*gentype.FakeClientWithList[*v1beta2.BackingImageDataSource, *v1beta2.BackingImageDataSourceList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.BackingImageDataSource, *v1beta2.BackingImageDataSourceList, *longhornv1beta2.BackingImageDataSourceApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeBackingImageDataSources(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.BackingImageDataSourceInterface {
 	return &fakeBackingImageDataSources{
-		gentype.NewFakeClientWithList[*v1beta2.BackingImageDataSource, *v1beta2.BackingImageDataSourceList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.BackingImageDataSource, *v1beta2.BackingImageDataSourceList, *longhornv1beta2.BackingImageDataSourceApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("backingimagedatasources"),

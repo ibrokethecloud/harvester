@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	context "context"
 
+	applyconfigurationwhereaboutscnicncfiov1alpha1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/whereabouts.cni.cncf.io/v1alpha1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	whereaboutscnicncfiov1alpha1 "github.com/k8snetworkplumbingwg/whereabouts/pkg/api/whereabouts.cni.cncf.io/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type OverlappingRangeIPReservationInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, err error)
+	Apply(ctx context.Context, overlappingRangeIPReservation *applyconfigurationwhereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationApplyConfiguration, opts v1.ApplyOptions) (result *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, err error)
 	OverlappingRangeIPReservationExpansion
 }
 
 // overlappingRangeIPReservations implements OverlappingRangeIPReservationInterface
 type overlappingRangeIPReservations struct {
-	*gentype.ClientWithList[*whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationList]
+	*gentype.ClientWithListAndApply[*whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationList, *applyconfigurationwhereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationApplyConfiguration]
 }
 
 // newOverlappingRangeIPReservations returns a OverlappingRangeIPReservations
 func newOverlappingRangeIPReservations(c *WhereaboutsV1alpha1Client, namespace string) *overlappingRangeIPReservations {
 	return &overlappingRangeIPReservations{
-		gentype.NewClientWithList[*whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationList](
+		gentype.NewClientWithListAndApply[*whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservation, *whereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationList, *applyconfigurationwhereaboutscnicncfiov1alpha1.OverlappingRangeIPReservationApplyConfiguration](
 			"overlappingrangeipreservations",
 			c.RESTClient(),
 			scheme.ParameterCodec,

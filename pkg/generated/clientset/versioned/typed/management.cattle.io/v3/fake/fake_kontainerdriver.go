@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeKontainerDrivers implements KontainerDriverInterface
 type fakeKontainerDrivers struct {
-	*gentype.FakeClientWithList[*v3.KontainerDriver, *v3.KontainerDriverList]
+	*gentype.FakeClientWithListAndApply[*v3.KontainerDriver, *v3.KontainerDriverList, *managementcattleiov3.KontainerDriverApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeKontainerDrivers(fake *FakeManagementV3) managementcattleiov3.KontainerDriverInterface {
+func newFakeKontainerDrivers(fake *FakeManagementV3) typedmanagementcattleiov3.KontainerDriverInterface {
 	return &fakeKontainerDrivers{
-		gentype.NewFakeClientWithList[*v3.KontainerDriver, *v3.KontainerDriverList](
+		gentype.NewFakeClientWithListAndApply[*v3.KontainerDriver, *v3.KontainerDriverList, *managementcattleiov3.KontainerDriverApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("kontainerdrivers"),

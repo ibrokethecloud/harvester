@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VpcDnsInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.VpcDnsList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.VpcDns, err error)
+	Apply(ctx context.Context, vpcDns *applyconfigurationkubeovnv1.VpcDnsApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.VpcDns, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, vpcDns *applyconfigurationkubeovnv1.VpcDnsApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.VpcDns, err error)
 	VpcDnsExpansion
 }
 
 // vpcDnses implements VpcDnsInterface
 type vpcDnses struct {
-	*gentype.ClientWithList[*kubeovnv1.VpcDns, *kubeovnv1.VpcDnsList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.VpcDns, *kubeovnv1.VpcDnsList, *applyconfigurationkubeovnv1.VpcDnsApplyConfiguration]
 }
 
 // newVpcDnses returns a VpcDnses
 func newVpcDnses(c *KubeovnV1Client) *vpcDnses {
 	return &vpcDnses{
-		gentype.NewClientWithList[*kubeovnv1.VpcDns, *kubeovnv1.VpcDnsList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.VpcDns, *kubeovnv1.VpcDnsList, *applyconfigurationkubeovnv1.VpcDnsApplyConfiguration](
 			"vpc-dnses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

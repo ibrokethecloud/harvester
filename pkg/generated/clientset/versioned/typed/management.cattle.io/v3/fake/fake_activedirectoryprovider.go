@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeActiveDirectoryProviders implements ActiveDirectoryProviderInterface
 type fakeActiveDirectoryProviders struct {
-	*gentype.FakeClientWithList[*v3.ActiveDirectoryProvider, *v3.ActiveDirectoryProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.ActiveDirectoryProvider, *v3.ActiveDirectoryProviderList, *managementcattleiov3.ActiveDirectoryProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeActiveDirectoryProviders(fake *FakeManagementV3) managementcattleiov3.ActiveDirectoryProviderInterface {
+func newFakeActiveDirectoryProviders(fake *FakeManagementV3) typedmanagementcattleiov3.ActiveDirectoryProviderInterface {
 	return &fakeActiveDirectoryProviders{
-		gentype.NewFakeClientWithList[*v3.ActiveDirectoryProvider, *v3.ActiveDirectoryProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.ActiveDirectoryProvider, *v3.ActiveDirectoryProviderList, *managementcattleiov3.ActiveDirectoryProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("activedirectoryproviders"),

@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ScheduleVMBackupInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.ScheduleVMBackupList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.ScheduleVMBackup, err error)
+	Apply(ctx context.Context, scheduleVMBackup *applyconfigurationharvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.ScheduleVMBackup, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, scheduleVMBackup *applyconfigurationharvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.ScheduleVMBackup, err error)
 	ScheduleVMBackupExpansion
 }
 
 // scheduleVMBackups implements ScheduleVMBackupInterface
 type scheduleVMBackups struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.ScheduleVMBackup, *harvesterhciiov1beta1.ScheduleVMBackupList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.ScheduleVMBackup, *harvesterhciiov1beta1.ScheduleVMBackupList, *applyconfigurationharvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration]
 }
 
 // newScheduleVMBackups returns a ScheduleVMBackups
 func newScheduleVMBackups(c *HarvesterhciV1beta1Client, namespace string) *scheduleVMBackups {
 	return &scheduleVMBackups{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.ScheduleVMBackup, *harvesterhciiov1beta1.ScheduleVMBackupList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.ScheduleVMBackup, *harvesterhciiov1beta1.ScheduleVMBackupList, *applyconfigurationharvesterhciiov1beta1.ScheduleVMBackupApplyConfiguration](
 			"schedulevmbackups",
 			c.RESTClient(),
 			scheme.ParameterCodec,

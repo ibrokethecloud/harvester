@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeSwitchLBRules implements SwitchLBRuleInterface
 type fakeSwitchLBRules struct {
-	*gentype.FakeClientWithList[*v1.SwitchLBRule, *v1.SwitchLBRuleList]
+	*gentype.FakeClientWithListAndApply[*v1.SwitchLBRule, *v1.SwitchLBRuleList, *kubeovnv1.SwitchLBRuleApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeSwitchLBRules(fake *FakeKubeovnV1) kubeovniov1.SwitchLBRuleInterface {
 	return &fakeSwitchLBRules{
-		gentype.NewFakeClientWithList[*v1.SwitchLBRule, *v1.SwitchLBRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1.SwitchLBRule, *v1.SwitchLBRuleList, *kubeovnv1.SwitchLBRuleApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("switch-lb-rules"),

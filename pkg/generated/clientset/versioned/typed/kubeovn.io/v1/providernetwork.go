@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ProviderNetworkInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.ProviderNetworkList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.ProviderNetwork, err error)
+	Apply(ctx context.Context, providerNetwork *applyconfigurationkubeovnv1.ProviderNetworkApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.ProviderNetwork, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, providerNetwork *applyconfigurationkubeovnv1.ProviderNetworkApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.ProviderNetwork, err error)
 	ProviderNetworkExpansion
 }
 
 // providerNetworks implements ProviderNetworkInterface
 type providerNetworks struct {
-	*gentype.ClientWithList[*kubeovnv1.ProviderNetwork, *kubeovnv1.ProviderNetworkList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.ProviderNetwork, *kubeovnv1.ProviderNetworkList, *applyconfigurationkubeovnv1.ProviderNetworkApplyConfiguration]
 }
 
 // newProviderNetworks returns a ProviderNetworks
 func newProviderNetworks(c *KubeovnV1Client) *providerNetworks {
 	return &providerNetworks{
-		gentype.NewClientWithList[*kubeovnv1.ProviderNetwork, *kubeovnv1.ProviderNetworkList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.ProviderNetwork, *kubeovnv1.ProviderNetworkList, *applyconfigurationkubeovnv1.ProviderNetworkApplyConfiguration](
 			"provider-networks",
 			c.RESTClient(),
 			scheme.ParameterCodec,

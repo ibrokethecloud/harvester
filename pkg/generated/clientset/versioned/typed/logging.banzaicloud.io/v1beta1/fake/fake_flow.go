@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	apiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	loggingbanzaicloudiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/logging.banzaicloud.io/v1beta1"
 	v1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeFlows implements FlowInterface
 type fakeFlows struct {
-	*gentype.FakeClientWithList[*v1beta1.Flow, *v1beta1.FlowList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.Flow, *v1beta1.FlowList, *apiv1beta1.FlowApplyConfiguration]
 	Fake *FakeLoggingV1beta1
 }
 
 func newFakeFlows(fake *FakeLoggingV1beta1) loggingbanzaicloudiov1beta1.FlowInterface {
 	return &fakeFlows{
-		gentype.NewFakeClientWithList[*v1beta1.Flow, *v1beta1.FlowList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.Flow, *v1beta1.FlowList, *apiv1beta1.FlowApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.GroupVersion.WithResource("flows"),

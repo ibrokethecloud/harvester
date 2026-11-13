@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeSystemRestores implements SystemRestoreInterface
 type fakeSystemRestores struct {
-	*gentype.FakeClientWithList[*v1beta2.SystemRestore, *v1beta2.SystemRestoreList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.SystemRestore, *v1beta2.SystemRestoreList, *longhornv1beta2.SystemRestoreApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeSystemRestores(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.SystemRestoreInterface {
 	return &fakeSystemRestores{
-		gentype.NewFakeClientWithList[*v1beta2.SystemRestore, *v1beta2.SystemRestoreList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.SystemRestore, *v1beta2.SystemRestoreList, *longhornv1beta2.SystemRestoreApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("systemrestores"),

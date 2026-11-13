@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeNodeDrivers implements NodeDriverInterface
 type fakeNodeDrivers struct {
-	*gentype.FakeClientWithList[*v3.NodeDriver, *v3.NodeDriverList]
+	*gentype.FakeClientWithListAndApply[*v3.NodeDriver, *v3.NodeDriverList, *managementcattleiov3.NodeDriverApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeNodeDrivers(fake *FakeManagementV3) managementcattleiov3.NodeDriverInterface {
+func newFakeNodeDrivers(fake *FakeManagementV3) typedmanagementcattleiov3.NodeDriverInterface {
 	return &fakeNodeDrivers{
-		gentype.NewFakeClientWithList[*v3.NodeDriver, *v3.NodeDriverList](
+		gentype.NewFakeClientWithListAndApply[*v3.NodeDriver, *v3.NodeDriverList, *managementcattleiov3.NodeDriverApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("nodedrivers"),

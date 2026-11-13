@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type CSIDriverInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.CSIDriverList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.CSIDriver, err error)
+	Apply(ctx context.Context, cSIDriver *applyconfigurationstoragev1.CSIDriverApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.CSIDriver, err error)
 	CSIDriverExpansion
 }
 
 // cSIDrivers implements CSIDriverInterface
 type cSIDrivers struct {
-	*gentype.ClientWithList[*storagev1.CSIDriver, *storagev1.CSIDriverList]
+	*gentype.ClientWithListAndApply[*storagev1.CSIDriver, *storagev1.CSIDriverList, *applyconfigurationstoragev1.CSIDriverApplyConfiguration]
 }
 
 // newCSIDrivers returns a CSIDrivers
 func newCSIDrivers(c *StorageV1Client) *cSIDrivers {
 	return &cSIDrivers{
-		gentype.NewClientWithList[*storagev1.CSIDriver, *storagev1.CSIDriverList](
+		gentype.NewClientWithListAndApply[*storagev1.CSIDriver, *storagev1.CSIDriverList, *applyconfigurationstoragev1.CSIDriverApplyConfiguration](
 			"csidrivers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

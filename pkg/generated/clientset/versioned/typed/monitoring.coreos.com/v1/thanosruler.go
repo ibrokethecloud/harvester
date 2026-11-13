@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationmonitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ThanosRulerInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*monitoringv1.ThanosRulerList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *monitoringv1.ThanosRuler, err error)
+	Apply(ctx context.Context, thanosRuler *applyconfigurationmonitoringv1.ThanosRulerApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.ThanosRuler, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, thanosRuler *applyconfigurationmonitoringv1.ThanosRulerApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.ThanosRuler, err error)
 	ThanosRulerExpansion
 }
 
 // thanosRulers implements ThanosRulerInterface
 type thanosRulers struct {
-	*gentype.ClientWithList[*monitoringv1.ThanosRuler, *monitoringv1.ThanosRulerList]
+	*gentype.ClientWithListAndApply[*monitoringv1.ThanosRuler, *monitoringv1.ThanosRulerList, *applyconfigurationmonitoringv1.ThanosRulerApplyConfiguration]
 }
 
 // newThanosRulers returns a ThanosRulers
 func newThanosRulers(c *MonitoringV1Client, namespace string) *thanosRulers {
 	return &thanosRulers{
-		gentype.NewClientWithList[*monitoringv1.ThanosRuler, *monitoringv1.ThanosRulerList](
+		gentype.NewClientWithListAndApply[*monitoringv1.ThanosRuler, *monitoringv1.ThanosRulerList, *applyconfigurationmonitoringv1.ThanosRulerApplyConfiguration](
 			"thanosrulers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

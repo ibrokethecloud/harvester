@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakePreferences implements PreferenceInterface
 type fakePreferences struct {
-	*gentype.FakeClientWithList[*v3.Preference, *v3.PreferenceList]
+	*gentype.FakeClientWithListAndApply[*v3.Preference, *v3.PreferenceList, *managementcattleiov3.PreferenceApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakePreferences(fake *FakeManagementV3, namespace string) managementcattleiov3.PreferenceInterface {
+func newFakePreferences(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.PreferenceInterface {
 	return &fakePreferences{
-		gentype.NewFakeClientWithList[*v3.Preference, *v3.PreferenceList](
+		gentype.NewFakeClientWithListAndApply[*v3.Preference, *v3.PreferenceList, *managementcattleiov3.PreferenceApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("preferences"),

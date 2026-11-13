@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/api/core/v1"
@@ -31,13 +32,13 @@ import (
 
 // fakeReplicationControllers implements ReplicationControllerInterface
 type fakeReplicationControllers struct {
-	*gentype.FakeClientWithList[*v1.ReplicationController, *v1.ReplicationControllerList]
+	*gentype.FakeClientWithListAndApply[*v1.ReplicationController, *v1.ReplicationControllerList, *corev1.ReplicationControllerApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeReplicationControllers(fake *FakeCoreV1, namespace string) typedv1.ReplicationControllerInterface {
 	return &fakeReplicationControllers{
-		gentype.NewFakeClientWithList[*v1.ReplicationController, *v1.ReplicationControllerList](
+		gentype.NewFakeClientWithListAndApply[*v1.ReplicationController, *v1.ReplicationControllerList, *corev1.ReplicationControllerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("replicationcontrollers"),

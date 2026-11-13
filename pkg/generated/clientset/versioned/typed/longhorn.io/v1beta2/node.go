@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type NodeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.NodeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.Node, err error)
+	Apply(ctx context.Context, node *applyconfigurationlonghornv1beta2.NodeApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.Node, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, node *applyconfigurationlonghornv1beta2.NodeApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.Node, err error)
 	NodeExpansion
 }
 
 // nodes implements NodeInterface
 type nodes struct {
-	*gentype.ClientWithList[*longhornv1beta2.Node, *longhornv1beta2.NodeList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.Node, *longhornv1beta2.NodeList, *applyconfigurationlonghornv1beta2.NodeApplyConfiguration]
 }
 
 // newNodes returns a Nodes
 func newNodes(c *LonghornV1beta2Client, namespace string) *nodes {
 	return &nodes{
-		gentype.NewClientWithList[*longhornv1beta2.Node, *longhornv1beta2.NodeList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.Node, *longhornv1beta2.NodeList, *applyconfigurationlonghornv1beta2.NodeApplyConfiguration](
 			"nodes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeUpgradeLogs implements UpgradeLogInterface
 type fakeUpgradeLogs struct {
-	*gentype.FakeClientWithList[*v1beta1.UpgradeLog, *v1beta1.UpgradeLogList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.UpgradeLog, *v1beta1.UpgradeLogList, *harvesterhciiov1beta1.UpgradeLogApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeUpgradeLogs(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.UpgradeLogInterface {
+func newFakeUpgradeLogs(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.UpgradeLogInterface {
 	return &fakeUpgradeLogs{
-		gentype.NewFakeClientWithList[*v1beta1.UpgradeLog, *v1beta1.UpgradeLogList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.UpgradeLog, *v1beta1.UpgradeLogList, *harvesterhciiov1beta1.UpgradeLogApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("upgradelogs"),

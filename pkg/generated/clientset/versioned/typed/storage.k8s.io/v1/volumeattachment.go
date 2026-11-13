@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VolumeAttachmentInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.VolumeAttachmentList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.VolumeAttachment, err error)
+	Apply(ctx context.Context, volumeAttachment *applyconfigurationstoragev1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.VolumeAttachment, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, volumeAttachment *applyconfigurationstoragev1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.VolumeAttachment, err error)
 	VolumeAttachmentExpansion
 }
 
 // volumeAttachments implements VolumeAttachmentInterface
 type volumeAttachments struct {
-	*gentype.ClientWithList[*storagev1.VolumeAttachment, *storagev1.VolumeAttachmentList]
+	*gentype.ClientWithListAndApply[*storagev1.VolumeAttachment, *storagev1.VolumeAttachmentList, *applyconfigurationstoragev1.VolumeAttachmentApplyConfiguration]
 }
 
 // newVolumeAttachments returns a VolumeAttachments
 func newVolumeAttachments(c *StorageV1Client) *volumeAttachments {
 	return &volumeAttachments{
-		gentype.NewClientWithList[*storagev1.VolumeAttachment, *storagev1.VolumeAttachmentList](
+		gentype.NewClientWithListAndApply[*storagev1.VolumeAttachment, *storagev1.VolumeAttachmentList, *applyconfigurationstoragev1.VolumeAttachmentApplyConfiguration](
 			"volumeattachments",
 			c.RESTClient(),
 			scheme.ParameterCodec,

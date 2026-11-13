@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationapiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	apiv1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ClusterFlowInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*apiv1beta1.ClusterFlowList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *apiv1beta1.ClusterFlow, err error)
+	Apply(ctx context.Context, clusterFlow *applyconfigurationapiv1beta1.ClusterFlowApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.ClusterFlow, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, clusterFlow *applyconfigurationapiv1beta1.ClusterFlowApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.ClusterFlow, err error)
 	ClusterFlowExpansion
 }
 
 // clusterFlows implements ClusterFlowInterface
 type clusterFlows struct {
-	*gentype.ClientWithList[*apiv1beta1.ClusterFlow, *apiv1beta1.ClusterFlowList]
+	*gentype.ClientWithListAndApply[*apiv1beta1.ClusterFlow, *apiv1beta1.ClusterFlowList, *applyconfigurationapiv1beta1.ClusterFlowApplyConfiguration]
 }
 
 // newClusterFlows returns a ClusterFlows
 func newClusterFlows(c *LoggingV1beta1Client) *clusterFlows {
 	return &clusterFlows{
-		gentype.NewClientWithList[*apiv1beta1.ClusterFlow, *apiv1beta1.ClusterFlowList](
+		gentype.NewClientWithListAndApply[*apiv1beta1.ClusterFlow, *apiv1beta1.ClusterFlowList, *applyconfigurationapiv1beta1.ClusterFlowApplyConfiguration](
 			"clusterflows",
 			c.RESTClient(),
 			scheme.ParameterCodec,

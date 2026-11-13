@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeUserAttributes implements UserAttributeInterface
 type fakeUserAttributes struct {
-	*gentype.FakeClientWithList[*v3.UserAttribute, *v3.UserAttributeList]
+	*gentype.FakeClientWithListAndApply[*v3.UserAttribute, *v3.UserAttributeList, *managementcattleiov3.UserAttributeApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeUserAttributes(fake *FakeManagementV3) managementcattleiov3.UserAttributeInterface {
+func newFakeUserAttributes(fake *FakeManagementV3) typedmanagementcattleiov3.UserAttributeInterface {
 	return &fakeUserAttributes{
-		gentype.NewFakeClientWithList[*v3.UserAttribute, *v3.UserAttributeList](
+		gentype.NewFakeClientWithListAndApply[*v3.UserAttribute, *v3.UserAttributeList, *managementcattleiov3.UserAttributeApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("userattributes"),

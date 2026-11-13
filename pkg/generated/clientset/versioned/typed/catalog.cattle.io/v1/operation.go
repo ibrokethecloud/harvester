@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcatalogcattleiov1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/catalog.cattle.io/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	catalogcattleiov1 "github.com/rancher/rancher/pkg/apis/catalog.cattle.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type OperationInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*catalogcattleiov1.OperationList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *catalogcattleiov1.Operation, err error)
+	Apply(ctx context.Context, operation *applyconfigurationcatalogcattleiov1.OperationApplyConfiguration, opts metav1.ApplyOptions) (result *catalogcattleiov1.Operation, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, operation *applyconfigurationcatalogcattleiov1.OperationApplyConfiguration, opts metav1.ApplyOptions) (result *catalogcattleiov1.Operation, err error)
 	OperationExpansion
 }
 
 // operations implements OperationInterface
 type operations struct {
-	*gentype.ClientWithList[*catalogcattleiov1.Operation, *catalogcattleiov1.OperationList]
+	*gentype.ClientWithListAndApply[*catalogcattleiov1.Operation, *catalogcattleiov1.OperationList, *applyconfigurationcatalogcattleiov1.OperationApplyConfiguration]
 }
 
 // newOperations returns a Operations
 func newOperations(c *CatalogV1Client, namespace string) *operations {
 	return &operations{
-		gentype.NewClientWithList[*catalogcattleiov1.Operation, *catalogcattleiov1.OperationList](
+		gentype.NewClientWithListAndApply[*catalogcattleiov1.Operation, *catalogcattleiov1.OperationList, *applyconfigurationcatalogcattleiov1.OperationApplyConfiguration](
 			"operations",
 			c.RESTClient(),
 			scheme.ParameterCodec,

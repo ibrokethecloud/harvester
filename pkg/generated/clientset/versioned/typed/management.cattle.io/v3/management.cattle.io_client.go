@@ -39,15 +39,15 @@ type ManagementV3Interface interface {
 	ClusterProxyConfigsGetter
 	ClusterRegistrationTokensGetter
 	ClusterRoleTemplateBindingsGetter
-	ClusterTemplatesGetter
-	ClusterTemplateRevisionsGetter
+	CognitoProvidersGetter
 	ComposeConfigsGetter
 	DynamicSchemasGetter
-	EtcdBackupsGetter
 	FeaturesGetter
 	FleetWorkspacesGetter
 	FreeIpaProvidersGetter
 	GenericOIDCProvidersGetter
+	GithubAppConfigsGetter
+	GithubAppProvidersGetter
 	GithubConfigsGetter
 	GithubProvidersGetter
 	GlobalRolesGetter
@@ -55,13 +55,13 @@ type ManagementV3Interface interface {
 	GoogleOAuthProvidersGetter
 	GroupsGetter
 	GroupMembersGetter
+	KeyCloakOIDCProvidersGetter
 	KontainerDriversGetter
 	LocalProvidersGetter
 	ManagedChartsGetter
 	NodesGetter
 	NodeDriversGetter
-	NodePoolsGetter
-	NodeTemplatesGetter
+	OIDCClientsGetter
 	OIDCProvidersGetter
 	OpenLdapProvidersGetter
 	PodSecurityAdmissionConfigurationTemplatesGetter
@@ -70,10 +70,8 @@ type ManagementV3Interface interface {
 	ProjectsGetter
 	ProjectNetworkPoliciesGetter
 	ProjectRoleTemplateBindingsGetter
+	ProxyEndpointsGetter
 	RancherUserNotificationsGetter
-	RkeAddonsGetter
-	RkeK8sServiceOptionsGetter
-	RkeK8sSystemImagesGetter
 	RoleTemplatesGetter
 	SamlProvidersGetter
 	SamlTokensGetter
@@ -132,12 +130,8 @@ func (c *ManagementV3Client) ClusterRoleTemplateBindings(namespace string) Clust
 	return newClusterRoleTemplateBindings(c, namespace)
 }
 
-func (c *ManagementV3Client) ClusterTemplates(namespace string) ClusterTemplateInterface {
-	return newClusterTemplates(c, namespace)
-}
-
-func (c *ManagementV3Client) ClusterTemplateRevisions(namespace string) ClusterTemplateRevisionInterface {
-	return newClusterTemplateRevisions(c, namespace)
+func (c *ManagementV3Client) CognitoProviders() CognitoProviderInterface {
+	return newCognitoProviders(c)
 }
 
 func (c *ManagementV3Client) ComposeConfigs() ComposeConfigInterface {
@@ -146,10 +140,6 @@ func (c *ManagementV3Client) ComposeConfigs() ComposeConfigInterface {
 
 func (c *ManagementV3Client) DynamicSchemas() DynamicSchemaInterface {
 	return newDynamicSchemas(c)
-}
-
-func (c *ManagementV3Client) EtcdBackups(namespace string) EtcdBackupInterface {
-	return newEtcdBackups(c, namespace)
 }
 
 func (c *ManagementV3Client) Features() FeatureInterface {
@@ -166,6 +156,14 @@ func (c *ManagementV3Client) FreeIpaProviders() FreeIpaProviderInterface {
 
 func (c *ManagementV3Client) GenericOIDCProviders() GenericOIDCProviderInterface {
 	return newGenericOIDCProviders(c)
+}
+
+func (c *ManagementV3Client) GithubAppConfigs() GithubAppConfigInterface {
+	return newGithubAppConfigs(c)
+}
+
+func (c *ManagementV3Client) GithubAppProviders() GithubAppProviderInterface {
+	return newGithubAppProviders(c)
 }
 
 func (c *ManagementV3Client) GithubConfigs() GithubConfigInterface {
@@ -196,6 +194,10 @@ func (c *ManagementV3Client) GroupMembers() GroupMemberInterface {
 	return newGroupMembers(c)
 }
 
+func (c *ManagementV3Client) KeyCloakOIDCProviders() KeyCloakOIDCProviderInterface {
+	return newKeyCloakOIDCProviders(c)
+}
+
 func (c *ManagementV3Client) KontainerDrivers() KontainerDriverInterface {
 	return newKontainerDrivers(c)
 }
@@ -216,12 +218,8 @@ func (c *ManagementV3Client) NodeDrivers() NodeDriverInterface {
 	return newNodeDrivers(c)
 }
 
-func (c *ManagementV3Client) NodePools(namespace string) NodePoolInterface {
-	return newNodePools(c, namespace)
-}
-
-func (c *ManagementV3Client) NodeTemplates(namespace string) NodeTemplateInterface {
-	return newNodeTemplates(c, namespace)
+func (c *ManagementV3Client) OIDCClients() OIDCClientInterface {
+	return newOIDCClients(c)
 }
 
 func (c *ManagementV3Client) OIDCProviders() OIDCProviderInterface {
@@ -256,20 +254,12 @@ func (c *ManagementV3Client) ProjectRoleTemplateBindings(namespace string) Proje
 	return newProjectRoleTemplateBindings(c, namespace)
 }
 
+func (c *ManagementV3Client) ProxyEndpoints() ProxyEndpointInterface {
+	return newProxyEndpoints(c)
+}
+
 func (c *ManagementV3Client) RancherUserNotifications() RancherUserNotificationInterface {
 	return newRancherUserNotifications(c)
-}
-
-func (c *ManagementV3Client) RkeAddons(namespace string) RkeAddonInterface {
-	return newRkeAddons(c, namespace)
-}
-
-func (c *ManagementV3Client) RkeK8sServiceOptions(namespace string) RkeK8sServiceOptionInterface {
-	return newRkeK8sServiceOptions(c, namespace)
-}
-
-func (c *ManagementV3Client) RkeK8sSystemImages(namespace string) RkeK8sSystemImageInterface {
-	return newRkeK8sSystemImages(c, namespace)
 }
 
 func (c *ManagementV3Client) RoleTemplates() RoleTemplateInterface {
@@ -280,8 +270,8 @@ func (c *ManagementV3Client) SamlProviders() SamlProviderInterface {
 	return newSamlProviders(c)
 }
 
-func (c *ManagementV3Client) SamlTokens() SamlTokenInterface {
-	return newSamlTokens(c)
+func (c *ManagementV3Client) SamlTokens(namespace string) SamlTokenInterface {
+	return newSamlTokens(c, namespace)
 }
 
 func (c *ManagementV3Client) Settings() SettingInterface {

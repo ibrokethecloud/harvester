@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type RancherUserNotificationInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.RancherUserNotificationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.RancherUserNotification, err error)
+	Apply(ctx context.Context, rancherUserNotification *applyconfigurationmanagementcattleiov3.RancherUserNotificationApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.RancherUserNotification, err error)
 	RancherUserNotificationExpansion
 }
 
 // rancherUserNotifications implements RancherUserNotificationInterface
 type rancherUserNotifications struct {
-	*gentype.ClientWithList[*managementcattleiov3.RancherUserNotification, *managementcattleiov3.RancherUserNotificationList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.RancherUserNotification, *managementcattleiov3.RancherUserNotificationList, *applyconfigurationmanagementcattleiov3.RancherUserNotificationApplyConfiguration]
 }
 
 // newRancherUserNotifications returns a RancherUserNotifications
 func newRancherUserNotifications(c *ManagementV3Client) *rancherUserNotifications {
 	return &rancherUserNotifications{
-		gentype.NewClientWithList[*managementcattleiov3.RancherUserNotification, *managementcattleiov3.RancherUserNotificationList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.RancherUserNotification, *managementcattleiov3.RancherUserNotificationList, *applyconfigurationmanagementcattleiov3.RancherUserNotificationApplyConfiguration](
 			"rancherusernotifications",
 			c.RESTClient(),
 			scheme.ParameterCodec,

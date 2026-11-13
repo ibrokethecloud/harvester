@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ClusterInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Cluster, err error)
+	Apply(ctx context.Context, cluster *applyconfigurationmanagementcattleiov3.ClusterApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Cluster, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, cluster *applyconfigurationmanagementcattleiov3.ClusterApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Cluster, err error)
 	ClusterExpansion
 }
 
 // clusters implements ClusterInterface
 type clusters struct {
-	*gentype.ClientWithList[*managementcattleiov3.Cluster, *managementcattleiov3.ClusterList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Cluster, *managementcattleiov3.ClusterList, *applyconfigurationmanagementcattleiov3.ClusterApplyConfiguration]
 }
 
 // newClusters returns a Clusters
 func newClusters(c *ManagementV3Client) *clusters {
 	return &clusters{
-		gentype.NewClientWithList[*managementcattleiov3.Cluster, *managementcattleiov3.ClusterList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Cluster, *managementcattleiov3.ClusterList, *applyconfigurationmanagementcattleiov3.ClusterApplyConfiguration](
 			"clusters",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeNodes implements NodeInterface
 type fakeNodes struct {
-	*gentype.FakeClientWithList[*v1beta2.Node, *v1beta2.NodeList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.Node, *v1beta2.NodeList, *longhornv1beta2.NodeApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeNodes(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.NodeInterface {
 	return &fakeNodes{
-		gentype.NewFakeClientWithList[*v1beta2.Node, *v1beta2.NodeList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.Node, *v1beta2.NodeList, *longhornv1beta2.NodeApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("nodes"),

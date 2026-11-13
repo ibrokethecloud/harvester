@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ResourceQuotaInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ResourceQuotaList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ResourceQuota, err error)
+	Apply(ctx context.Context, resourceQuota *applyconfigurationcorev1.ResourceQuotaApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ResourceQuota, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, resourceQuota *applyconfigurationcorev1.ResourceQuotaApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ResourceQuota, err error)
 	ResourceQuotaExpansion
 }
 
 // resourceQuotas implements ResourceQuotaInterface
 type resourceQuotas struct {
-	*gentype.ClientWithList[*corev1.ResourceQuota, *corev1.ResourceQuotaList]
+	*gentype.ClientWithListAndApply[*corev1.ResourceQuota, *corev1.ResourceQuotaList, *applyconfigurationcorev1.ResourceQuotaApplyConfiguration]
 }
 
 // newResourceQuotas returns a ResourceQuotas
 func newResourceQuotas(c *CoreV1Client, namespace string) *resourceQuotas {
 	return &resourceQuotas{
-		gentype.NewClientWithList[*corev1.ResourceQuota, *corev1.ResourceQuotaList](
+		gentype.NewClientWithListAndApply[*corev1.ResourceQuota, *corev1.ResourceQuotaList, *applyconfigurationcorev1.ResourceQuotaApplyConfiguration](
 			"resourcequotas",
 			c.RESTClient(),
 			scheme.ParameterCodec,

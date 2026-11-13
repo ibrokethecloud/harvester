@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	networkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	networkingk8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/networking.k8s.io/v1"
 	v1 "k8s.io/api/networking/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIPAddresses implements IPAddressInterface
 type fakeIPAddresses struct {
-	*gentype.FakeClientWithList[*v1.IPAddress, *v1.IPAddressList]
+	*gentype.FakeClientWithListAndApply[*v1.IPAddress, *v1.IPAddressList, *networkingv1.IPAddressApplyConfiguration]
 	Fake *FakeNetworkingV1
 }
 
 func newFakeIPAddresses(fake *FakeNetworkingV1) networkingk8siov1.IPAddressInterface {
 	return &fakeIPAddresses{
-		gentype.NewFakeClientWithList[*v1.IPAddress, *v1.IPAddressList](
+		gentype.NewFakeClientWithListAndApply[*v1.IPAddress, *v1.IPAddressList, *networkingv1.IPAddressApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("ipaddresses"),

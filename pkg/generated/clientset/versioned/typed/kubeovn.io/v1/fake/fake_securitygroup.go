@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeSecurityGroups implements SecurityGroupInterface
 type fakeSecurityGroups struct {
-	*gentype.FakeClientWithList[*v1.SecurityGroup, *v1.SecurityGroupList]
+	*gentype.FakeClientWithListAndApply[*v1.SecurityGroup, *v1.SecurityGroupList, *kubeovnv1.SecurityGroupApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeSecurityGroups(fake *FakeKubeovnV1) kubeovniov1.SecurityGroupInterface {
 	return &fakeSecurityGroups{
-		gentype.NewFakeClientWithList[*v1.SecurityGroup, *v1.SecurityGroupList](
+		gentype.NewFakeClientWithListAndApply[*v1.SecurityGroup, *v1.SecurityGroupList, *kubeovnv1.SecurityGroupApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("security-groups"),

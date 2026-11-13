@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type BackupBackingImageInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.BackupBackingImageList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.BackupBackingImage, err error)
+	Apply(ctx context.Context, backupBackingImage *applyconfigurationlonghornv1beta2.BackupBackingImageApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.BackupBackingImage, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, backupBackingImage *applyconfigurationlonghornv1beta2.BackupBackingImageApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.BackupBackingImage, err error)
 	BackupBackingImageExpansion
 }
 
 // backupBackingImages implements BackupBackingImageInterface
 type backupBackingImages struct {
-	*gentype.ClientWithList[*longhornv1beta2.BackupBackingImage, *longhornv1beta2.BackupBackingImageList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.BackupBackingImage, *longhornv1beta2.BackupBackingImageList, *applyconfigurationlonghornv1beta2.BackupBackingImageApplyConfiguration]
 }
 
 // newBackupBackingImages returns a BackupBackingImages
 func newBackupBackingImages(c *LonghornV1beta2Client, namespace string) *backupBackingImages {
 	return &backupBackingImages{
-		gentype.NewClientWithList[*longhornv1beta2.BackupBackingImage, *longhornv1beta2.BackupBackingImageList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.BackupBackingImage, *longhornv1beta2.BackupBackingImageList, *applyconfigurationlonghornv1beta2.BackupBackingImageApplyConfiguration](
 			"backupbackingimages",
 			c.RESTClient(),
 			scheme.ParameterCodec,

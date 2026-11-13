@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type DataImportCronInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.DataImportCronList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.DataImportCron, err error)
+	Apply(ctx context.Context, dataImportCron *applyconfigurationcorev1beta1.DataImportCronApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.DataImportCron, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, dataImportCron *applyconfigurationcorev1beta1.DataImportCronApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.DataImportCron, err error)
 	DataImportCronExpansion
 }
 
 // dataImportCrons implements DataImportCronInterface
 type dataImportCrons struct {
-	*gentype.ClientWithList[*corev1beta1.DataImportCron, *corev1beta1.DataImportCronList]
+	*gentype.ClientWithListAndApply[*corev1beta1.DataImportCron, *corev1beta1.DataImportCronList, *applyconfigurationcorev1beta1.DataImportCronApplyConfiguration]
 }
 
 // newDataImportCrons returns a DataImportCrons
 func newDataImportCrons(c *CdiV1beta1Client, namespace string) *dataImportCrons {
 	return &dataImportCrons{
-		gentype.NewClientWithList[*corev1beta1.DataImportCron, *corev1beta1.DataImportCronList](
+		gentype.NewClientWithListAndApply[*corev1beta1.DataImportCron, *corev1beta1.DataImportCronList, *applyconfigurationcorev1beta1.DataImportCronApplyConfiguration](
 			"dataimportcrons",
 			c.RESTClient(),
 			scheme.ParameterCodec,

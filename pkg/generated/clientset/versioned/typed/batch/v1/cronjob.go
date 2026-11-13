@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationbatchv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/batch/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type CronJobInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*batchv1.CronJobList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *batchv1.CronJob, err error)
+	Apply(ctx context.Context, cronJob *applyconfigurationbatchv1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *batchv1.CronJob, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, cronJob *applyconfigurationbatchv1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *batchv1.CronJob, err error)
 	CronJobExpansion
 }
 
 // cronJobs implements CronJobInterface
 type cronJobs struct {
-	*gentype.ClientWithList[*batchv1.CronJob, *batchv1.CronJobList]
+	*gentype.ClientWithListAndApply[*batchv1.CronJob, *batchv1.CronJobList, *applyconfigurationbatchv1.CronJobApplyConfiguration]
 }
 
 // newCronJobs returns a CronJobs
 func newCronJobs(c *BatchV1Client, namespace string) *cronJobs {
 	return &cronJobs{
-		gentype.NewClientWithList[*batchv1.CronJob, *batchv1.CronJobList](
+		gentype.NewClientWithListAndApply[*batchv1.CronJob, *batchv1.CronJobList, *applyconfigurationbatchv1.CronJobApplyConfiguration](
 			"cronjobs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

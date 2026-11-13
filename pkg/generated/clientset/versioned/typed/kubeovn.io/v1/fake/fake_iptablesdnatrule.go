@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIptablesDnatRules implements IptablesDnatRuleInterface
 type fakeIptablesDnatRules struct {
-	*gentype.FakeClientWithList[*v1.IptablesDnatRule, *v1.IptablesDnatRuleList]
+	*gentype.FakeClientWithListAndApply[*v1.IptablesDnatRule, *v1.IptablesDnatRuleList, *kubeovnv1.IptablesDnatRuleApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeIptablesDnatRules(fake *FakeKubeovnV1) kubeovniov1.IptablesDnatRuleInterface {
 	return &fakeIptablesDnatRules{
-		gentype.NewFakeClientWithList[*v1.IptablesDnatRule, *v1.IptablesDnatRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1.IptablesDnatRule, *v1.IptablesDnatRuleList, *kubeovnv1.IptablesDnatRuleApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("iptables-dnat-rules"),

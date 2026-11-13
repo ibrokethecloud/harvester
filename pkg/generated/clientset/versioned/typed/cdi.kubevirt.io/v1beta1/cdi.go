@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type CDIInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.CDIList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.CDI, err error)
+	Apply(ctx context.Context, cDI *applyconfigurationcorev1beta1.CDIApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.CDI, err error)
 	CDIExpansion
 }
 
 // cDIs implements CDIInterface
 type cDIs struct {
-	*gentype.ClientWithList[*corev1beta1.CDI, *corev1beta1.CDIList]
+	*gentype.ClientWithListAndApply[*corev1beta1.CDI, *corev1beta1.CDIList, *applyconfigurationcorev1beta1.CDIApplyConfiguration]
 }
 
 // newCDIs returns a CDIs
 func newCDIs(c *CdiV1beta1Client) *cDIs {
 	return &cDIs{
-		gentype.NewClientWithList[*corev1beta1.CDI, *corev1beta1.CDIList](
+		gentype.NewClientWithListAndApply[*corev1beta1.CDI, *corev1beta1.CDIList, *applyconfigurationcorev1beta1.CDIApplyConfiguration](
 			"cdis",
 			c.RESTClient(),
 			scheme.ParameterCodec,

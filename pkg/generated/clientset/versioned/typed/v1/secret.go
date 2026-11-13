@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type SecretInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.SecretList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Secret, err error)
+	Apply(ctx context.Context, secret *applyconfigurationcorev1.SecretApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Secret, err error)
 	SecretExpansion
 }
 
 // secrets implements SecretInterface
 type secrets struct {
-	*gentype.ClientWithList[*corev1.Secret, *corev1.SecretList]
+	*gentype.ClientWithListAndApply[*corev1.Secret, *corev1.SecretList, *applyconfigurationcorev1.SecretApplyConfiguration]
 }
 
 // newSecrets returns a Secrets
 func newSecrets(c *CoreV1Client, namespace string) *secrets {
 	return &secrets{
-		gentype.NewClientWithList[*corev1.Secret, *corev1.SecretList](
+		gentype.NewClientWithListAndApply[*corev1.Secret, *corev1.SecretList, *applyconfigurationcorev1.SecretApplyConfiguration](
 			"secrets",
 			c.RESTClient(),
 			scheme.ParameterCodec,

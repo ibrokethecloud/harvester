@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationbatchv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/batch/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type JobInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*batchv1.JobList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *batchv1.Job, err error)
+	Apply(ctx context.Context, job *applyconfigurationbatchv1.JobApplyConfiguration, opts metav1.ApplyOptions) (result *batchv1.Job, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, job *applyconfigurationbatchv1.JobApplyConfiguration, opts metav1.ApplyOptions) (result *batchv1.Job, err error)
 	JobExpansion
 }
 
 // jobs implements JobInterface
 type jobs struct {
-	*gentype.ClientWithList[*batchv1.Job, *batchv1.JobList]
+	*gentype.ClientWithListAndApply[*batchv1.Job, *batchv1.JobList, *applyconfigurationbatchv1.JobApplyConfiguration]
 }
 
 // newJobs returns a Jobs
 func newJobs(c *BatchV1Client, namespace string) *jobs {
 	return &jobs{
-		gentype.NewClientWithList[*batchv1.Job, *batchv1.JobList](
+		gentype.NewClientWithListAndApply[*batchv1.Job, *batchv1.JobList, *applyconfigurationbatchv1.JobApplyConfiguration](
 			"jobs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

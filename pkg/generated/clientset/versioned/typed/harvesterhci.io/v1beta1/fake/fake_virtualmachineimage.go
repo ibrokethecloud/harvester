@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVirtualMachineImages implements VirtualMachineImageInterface
 type fakeVirtualMachineImages struct {
-	*gentype.FakeClientWithList[*v1beta1.VirtualMachineImage, *v1beta1.VirtualMachineImageList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VirtualMachineImage, *v1beta1.VirtualMachineImageList, *harvesterhciiov1beta1.VirtualMachineImageApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeVirtualMachineImages(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.VirtualMachineImageInterface {
+func newFakeVirtualMachineImages(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.VirtualMachineImageInterface {
 	return &fakeVirtualMachineImages{
-		gentype.NewFakeClientWithList[*v1beta1.VirtualMachineImage, *v1beta1.VirtualMachineImageList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VirtualMachineImage, *v1beta1.VirtualMachineImageList, *harvesterhciiov1beta1.VirtualMachineImageApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("virtualmachineimages"),

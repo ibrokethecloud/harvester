@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VolumeUploadSourceInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.VolumeUploadSourceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.VolumeUploadSource, err error)
+	Apply(ctx context.Context, volumeUploadSource *applyconfigurationcorev1beta1.VolumeUploadSourceApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.VolumeUploadSource, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, volumeUploadSource *applyconfigurationcorev1beta1.VolumeUploadSourceApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.VolumeUploadSource, err error)
 	VolumeUploadSourceExpansion
 }
 
 // volumeUploadSources implements VolumeUploadSourceInterface
 type volumeUploadSources struct {
-	*gentype.ClientWithList[*corev1beta1.VolumeUploadSource, *corev1beta1.VolumeUploadSourceList]
+	*gentype.ClientWithListAndApply[*corev1beta1.VolumeUploadSource, *corev1beta1.VolumeUploadSourceList, *applyconfigurationcorev1beta1.VolumeUploadSourceApplyConfiguration]
 }
 
 // newVolumeUploadSources returns a VolumeUploadSources
 func newVolumeUploadSources(c *CdiV1beta1Client, namespace string) *volumeUploadSources {
 	return &volumeUploadSources{
-		gentype.NewClientWithList[*corev1beta1.VolumeUploadSource, *corev1beta1.VolumeUploadSourceList](
+		gentype.NewClientWithListAndApply[*corev1beta1.VolumeUploadSource, *corev1beta1.VolumeUploadSourceList, *applyconfigurationcorev1beta1.VolumeUploadSourceApplyConfiguration](
 			"volumeuploadsources",
 			c.RESTClient(),
 			scheme.ParameterCodec,

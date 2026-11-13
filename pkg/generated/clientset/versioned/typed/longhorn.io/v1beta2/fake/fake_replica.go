@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeReplicas implements ReplicaInterface
 type fakeReplicas struct {
-	*gentype.FakeClientWithList[*v1beta2.Replica, *v1beta2.ReplicaList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.Replica, *v1beta2.ReplicaList, *longhornv1beta2.ReplicaApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeReplicas(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.ReplicaInterface {
 	return &fakeReplicas{
-		gentype.NewFakeClientWithList[*v1beta2.Replica, *v1beta2.ReplicaList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.Replica, *v1beta2.ReplicaList, *longhornv1beta2.ReplicaApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("replicas"),

@@ -40,15 +40,11 @@ type ClusterRegistrationTokenExpansion interface{}
 
 type ClusterRoleTemplateBindingExpansion interface{}
 
-type ClusterTemplateExpansion interface{}
-
-type ClusterTemplateRevisionExpansion interface{}
+type CognitoProviderExpansion interface{}
 
 type ComposeConfigExpansion interface{}
 
 type DynamicSchemaExpansion interface{}
-
-type EtcdBackupExpansion interface{}
 
 type FeatureExpansion interface{}
 
@@ -57,6 +53,10 @@ type FleetWorkspaceExpansion interface{}
 type FreeIpaProviderExpansion interface{}
 
 type GenericOIDCProviderExpansion interface{}
+
+type GithubAppConfigExpansion interface{}
+
+type GithubAppProviderExpansion interface{}
 
 type GithubConfigExpansion interface{}
 
@@ -72,6 +72,8 @@ type GroupExpansion interface{}
 
 type GroupMemberExpansion interface{}
 
+type KeyCloakOIDCProviderExpansion interface{}
+
 type KontainerDriverExpansion interface{}
 
 type LocalProviderExpansion interface{}
@@ -82,9 +84,7 @@ type NodeExpansion interface{}
 
 type NodeDriverExpansion interface{}
 
-type NodePoolExpansion interface{}
-
-type NodeTemplateExpansion interface{}
+type OIDCClientExpansion interface{}
 
 type OIDCProviderExpansion interface{}
 
@@ -102,13 +102,9 @@ type ProjectNetworkPolicyExpansion interface{}
 
 type ProjectRoleTemplateBindingExpansion interface{}
 
+type ProxyEndpointExpansion interface{}
+
 type RancherUserNotificationExpansion interface{}
-
-type RkeAddonExpansion interface{}
-
-type RkeK8sServiceOptionExpansion interface{}
-
-type RkeK8sSystemImageExpansion interface{}
 
 type RoleTemplateExpansion interface{}
 

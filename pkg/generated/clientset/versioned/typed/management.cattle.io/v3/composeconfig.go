@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ComposeConfigInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ComposeConfigList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.ComposeConfig, err error)
+	Apply(ctx context.Context, composeConfig *applyconfigurationmanagementcattleiov3.ComposeConfigApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ComposeConfig, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, composeConfig *applyconfigurationmanagementcattleiov3.ComposeConfigApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ComposeConfig, err error)
 	ComposeConfigExpansion
 }
 
 // composeConfigs implements ComposeConfigInterface
 type composeConfigs struct {
-	*gentype.ClientWithList[*managementcattleiov3.ComposeConfig, *managementcattleiov3.ComposeConfigList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.ComposeConfig, *managementcattleiov3.ComposeConfigList, *applyconfigurationmanagementcattleiov3.ComposeConfigApplyConfiguration]
 }
 
 // newComposeConfigs returns a ComposeConfigs
 func newComposeConfigs(c *ManagementV3Client) *composeConfigs {
 	return &composeConfigs{
-		gentype.NewClientWithList[*managementcattleiov3.ComposeConfig, *managementcattleiov3.ComposeConfigList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.ComposeConfig, *managementcattleiov3.ComposeConfigList, *applyconfigurationmanagementcattleiov3.ComposeConfigApplyConfiguration](
 			"composeconfigs",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	storagev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	storagek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/storage.k8s.io/v1"
 	v1 "k8s.io/api/storage/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeStorageClasses implements StorageClassInterface
 type fakeStorageClasses struct {
-	*gentype.FakeClientWithList[*v1.StorageClass, *v1.StorageClassList]
+	*gentype.FakeClientWithListAndApply[*v1.StorageClass, *v1.StorageClassList, *storagev1.StorageClassApplyConfiguration]
 	Fake *FakeStorageV1
 }
 
 func newFakeStorageClasses(fake *FakeStorageV1) storagek8siov1.StorageClassInterface {
 	return &fakeStorageClasses{
-		gentype.NewFakeClientWithList[*v1.StorageClass, *v1.StorageClassList](
+		gentype.NewFakeClientWithListAndApply[*v1.StorageClass, *v1.StorageClassList, *storagev1.StorageClassApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("storageclasses"),

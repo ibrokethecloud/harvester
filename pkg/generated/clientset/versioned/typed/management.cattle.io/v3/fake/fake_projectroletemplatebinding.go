@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeProjectRoleTemplateBindings implements ProjectRoleTemplateBindingInterface
 type fakeProjectRoleTemplateBindings struct {
-	*gentype.FakeClientWithList[*v3.ProjectRoleTemplateBinding, *v3.ProjectRoleTemplateBindingList]
+	*gentype.FakeClientWithListAndApply[*v3.ProjectRoleTemplateBinding, *v3.ProjectRoleTemplateBindingList, *managementcattleiov3.ProjectRoleTemplateBindingApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeProjectRoleTemplateBindings(fake *FakeManagementV3, namespace string) managementcattleiov3.ProjectRoleTemplateBindingInterface {
+func newFakeProjectRoleTemplateBindings(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ProjectRoleTemplateBindingInterface {
 	return &fakeProjectRoleTemplateBindings{
-		gentype.NewFakeClientWithList[*v3.ProjectRoleTemplateBinding, *v3.ProjectRoleTemplateBindingList](
+		gentype.NewFakeClientWithListAndApply[*v3.ProjectRoleTemplateBinding, *v3.ProjectRoleTemplateBindingList, *managementcattleiov3.ProjectRoleTemplateBindingApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("projectroletemplatebindings"),

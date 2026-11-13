@@ -38,6 +38,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -46,6 +47,7 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	uploadv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/upload/v1beta1"
+	apiapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 )
 
 var Scheme = runtime.NewScheme()
@@ -53,6 +55,7 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	corev1.AddToScheme,
+	apiapi.AddToScheme,
 	appsv1.AddToScheme,
 	batchv1.AddToScheme,
 	catalogv1.AddToScheme,
@@ -65,6 +68,7 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	loggingv1beta1.AddToScheme,
 	longhornv1beta2.AddToScheme,
 	managementv3.AddToScheme,
+	metav1.AddToScheme,
 	monitoringv1.AddToScheme,
 	networkv1beta1.AddToScheme,
 	networkingv1.AddToScheme,

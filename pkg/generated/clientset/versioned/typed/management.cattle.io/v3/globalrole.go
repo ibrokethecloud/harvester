@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type GlobalRoleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GlobalRoleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.GlobalRole, err error)
+	Apply(ctx context.Context, globalRole *applyconfigurationmanagementcattleiov3.GlobalRoleApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GlobalRole, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, globalRole *applyconfigurationmanagementcattleiov3.GlobalRoleApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.GlobalRole, err error)
 	GlobalRoleExpansion
 }
 
 // globalRoles implements GlobalRoleInterface
 type globalRoles struct {
-	*gentype.ClientWithList[*managementcattleiov3.GlobalRole, *managementcattleiov3.GlobalRoleList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.GlobalRole, *managementcattleiov3.GlobalRoleList, *applyconfigurationmanagementcattleiov3.GlobalRoleApplyConfiguration]
 }
 
 // newGlobalRoles returns a GlobalRoles
 func newGlobalRoles(c *ManagementV3Client) *globalRoles {
 	return &globalRoles{
-		gentype.NewClientWithList[*managementcattleiov3.GlobalRole, *managementcattleiov3.GlobalRoleList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.GlobalRole, *managementcattleiov3.GlobalRoleList, *applyconfigurationmanagementcattleiov3.GlobalRoleApplyConfiguration](
 			"globalroles",
 			c.RESTClient(),
 			scheme.ParameterCodec,

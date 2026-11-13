@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationmonitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -48,6 +49,9 @@ type PrometheusInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*monitoringv1.PrometheusList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *monitoringv1.Prometheus, err error)
+	Apply(ctx context.Context, prometheus *applyconfigurationmonitoringv1.PrometheusApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.Prometheus, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, prometheus *applyconfigurationmonitoringv1.PrometheusApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.Prometheus, err error)
 	GetScale(ctx context.Context, prometheusName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(ctx context.Context, prometheusName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
 
@@ -56,13 +60,13 @@ type PrometheusInterface interface {
 
 // prometheuses implements PrometheusInterface
 type prometheuses struct {
-	*gentype.ClientWithList[*monitoringv1.Prometheus, *monitoringv1.PrometheusList]
+	*gentype.ClientWithListAndApply[*monitoringv1.Prometheus, *monitoringv1.PrometheusList, *applyconfigurationmonitoringv1.PrometheusApplyConfiguration]
 }
 
 // newPrometheuses returns a Prometheuses
 func newPrometheuses(c *MonitoringV1Client, namespace string) *prometheuses {
 	return &prometheuses{
-		gentype.NewClientWithList[*monitoringv1.Prometheus, *monitoringv1.PrometheusList](
+		gentype.NewClientWithListAndApply[*monitoringv1.Prometheus, *monitoringv1.PrometheusList, *applyconfigurationmonitoringv1.PrometheusApplyConfiguration](
 			"prometheuses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -20,7 +20,10 @@ package v1
 
 import (
 	context "context"
+	fmt "fmt"
 
+	applyconfigurationappsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	applyconfigurationautoscalingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/autoscaling/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -28,6 +31,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+	apply "k8s.io/client-go/util/apply"
 )
 
 // ReplicaSetsGetter has a method to return a ReplicaSetInterface.
@@ -48,21 +52,25 @@ type ReplicaSetInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*appsv1.ReplicaSetList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.ReplicaSet, err error)
+	Apply(ctx context.Context, replicaSet *applyconfigurationappsv1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.ReplicaSet, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, replicaSet *applyconfigurationappsv1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.ReplicaSet, err error)
 	GetScale(ctx context.Context, replicaSetName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(ctx context.Context, replicaSetName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
+	ApplyScale(ctx context.Context, replicaSetName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*autoscalingv1.Scale, error)
 
 	ReplicaSetExpansion
 }
 
 // replicaSets implements ReplicaSetInterface
 type replicaSets struct {
-	*gentype.ClientWithList[*appsv1.ReplicaSet, *appsv1.ReplicaSetList]
+	*gentype.ClientWithListAndApply[*appsv1.ReplicaSet, *appsv1.ReplicaSetList, *applyconfigurationappsv1.ReplicaSetApplyConfiguration]
 }
 
 // newReplicaSets returns a ReplicaSets
 func newReplicaSets(c *AppsV1Client, namespace string) *replicaSets {
 	return &replicaSets{
-		gentype.NewClientWithList[*appsv1.ReplicaSet, *appsv1.ReplicaSetList](
+		gentype.NewClientWithListAndApply[*appsv1.ReplicaSet, *appsv1.ReplicaSetList, *applyconfigurationappsv1.ReplicaSetApplyConfiguration](
 			"replicasets",
 			c.RESTClient(),
 			scheme.ParameterCodec,
@@ -97,6 +105,30 @@ func (c *replicaSets) UpdateScale(ctx context.Context, replicaSetName string, sc
 		SubResource("scale").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scale).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// ApplyScale takes top resource name and the apply declarative configuration for scale,
+// applies it and returns the applied scale, and an error, if there is any.
+func (c *replicaSets) ApplyScale(ctx context.Context, replicaSetName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.Scale, err error) {
+	if scale == nil {
+		return nil, fmt.Errorf("scale provided to ApplyScale must not be nil")
+	}
+	patchOpts := opts.ToPatchOptions()
+	request, err := apply.NewRequest(c.GetClient(), scale)
+	if err != nil {
+		return nil, err
+	}
+
+	result = &autoscalingv1.Scale{}
+	err = request.
+		Namespace(c.GetNamespace()).
+		Resource("replicasets").
+		Name(replicaSetName).
+		SubResource("scale").
+		VersionedParams(&patchOpts, scheme.ParameterCodec).
 		Do(ctx).
 		Into(result)
 	return

@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type StorageClassInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.StorageClassList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.StorageClass, err error)
+	Apply(ctx context.Context, storageClass *applyconfigurationstoragev1.StorageClassApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.StorageClass, err error)
 	StorageClassExpansion
 }
 
 // storageClasses implements StorageClassInterface
 type storageClasses struct {
-	*gentype.ClientWithList[*storagev1.StorageClass, *storagev1.StorageClassList]
+	*gentype.ClientWithListAndApply[*storagev1.StorageClass, *storagev1.StorageClassList, *applyconfigurationstoragev1.StorageClassApplyConfiguration]
 }
 
 // newStorageClasses returns a StorageClasses
 func newStorageClasses(c *StorageV1Client) *storageClasses {
 	return &storageClasses{
-		gentype.NewClientWithList[*storagev1.StorageClass, *storagev1.StorageClassList](
+		gentype.NewClientWithListAndApply[*storagev1.StorageClass, *storagev1.StorageClassList, *applyconfigurationstoragev1.StorageClassApplyConfiguration](
 			"storageclasses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

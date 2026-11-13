@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	cdikubevirtiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/cdi.kubevirt.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 	v1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -26,13 +27,13 @@ import (
 
 // fakeCDIs implements CDIInterface
 type fakeCDIs struct {
-	*gentype.FakeClientWithList[*v1beta1.CDI, *v1beta1.CDIList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.CDI, *v1beta1.CDIList, *corev1beta1.CDIApplyConfiguration]
 	Fake *FakeCdiV1beta1
 }
 
 func newFakeCDIs(fake *FakeCdiV1beta1) cdikubevirtiov1beta1.CDIInterface {
 	return &fakeCDIs{
-		gentype.NewFakeClientWithList[*v1beta1.CDI, *v1beta1.CDIList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.CDI, *v1beta1.CDIList, *corev1beta1.CDIApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("cdis"),

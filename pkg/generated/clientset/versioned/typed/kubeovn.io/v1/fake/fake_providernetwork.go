@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeProviderNetworks implements ProviderNetworkInterface
 type fakeProviderNetworks struct {
-	*gentype.FakeClientWithList[*v1.ProviderNetwork, *v1.ProviderNetworkList]
+	*gentype.FakeClientWithListAndApply[*v1.ProviderNetwork, *v1.ProviderNetworkList, *kubeovnv1.ProviderNetworkApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeProviderNetworks(fake *FakeKubeovnV1) kubeovniov1.ProviderNetworkInterface {
 	return &fakeProviderNetworks{
-		gentype.NewFakeClientWithList[*v1.ProviderNetwork, *v1.ProviderNetworkList](
+		gentype.NewFakeClientWithListAndApply[*v1.ProviderNetwork, *v1.ProviderNetworkList, *kubeovnv1.ProviderNetworkApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("provider-networks"),

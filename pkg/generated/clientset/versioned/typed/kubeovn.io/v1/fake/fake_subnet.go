@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeSubnets implements SubnetInterface
 type fakeSubnets struct {
-	*gentype.FakeClientWithList[*v1.Subnet, *v1.SubnetList]
+	*gentype.FakeClientWithListAndApply[*v1.Subnet, *v1.SubnetList, *kubeovnv1.SubnetApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeSubnets(fake *FakeKubeovnV1) kubeovniov1.SubnetInterface {
 	return &fakeSubnets{
-		gentype.NewFakeClientWithList[*v1.Subnet, *v1.SubnetList](
+		gentype.NewFakeClientWithListAndApply[*v1.Subnet, *v1.SubnetList, *kubeovnv1.SubnetApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("subnets"),

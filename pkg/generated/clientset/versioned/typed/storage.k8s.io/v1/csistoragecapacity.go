@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type CSIStorageCapacityInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.CSIStorageCapacityList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.CSIStorageCapacity, err error)
+	Apply(ctx context.Context, cSIStorageCapacity *applyconfigurationstoragev1.CSIStorageCapacityApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.CSIStorageCapacity, err error)
 	CSIStorageCapacityExpansion
 }
 
 // cSIStorageCapacities implements CSIStorageCapacityInterface
 type cSIStorageCapacities struct {
-	*gentype.ClientWithList[*storagev1.CSIStorageCapacity, *storagev1.CSIStorageCapacityList]
+	*gentype.ClientWithListAndApply[*storagev1.CSIStorageCapacity, *storagev1.CSIStorageCapacityList, *applyconfigurationstoragev1.CSIStorageCapacityApplyConfiguration]
 }
 
 // newCSIStorageCapacities returns a CSIStorageCapacities
 func newCSIStorageCapacities(c *StorageV1Client, namespace string) *cSIStorageCapacities {
 	return &cSIStorageCapacities{
-		gentype.NewClientWithList[*storagev1.CSIStorageCapacity, *storagev1.CSIStorageCapacityList](
+		gentype.NewClientWithListAndApply[*storagev1.CSIStorageCapacity, *storagev1.CSIStorageCapacityList, *applyconfigurationstoragev1.CSIStorageCapacityApplyConfiguration](
 			"csistoragecapacities",
 			c.RESTClient(),
 			scheme.ParameterCodec,

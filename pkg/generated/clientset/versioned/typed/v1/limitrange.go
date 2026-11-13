@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type LimitRangeInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.LimitRangeList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.LimitRange, err error)
+	Apply(ctx context.Context, limitRange *applyconfigurationcorev1.LimitRangeApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.LimitRange, err error)
 	LimitRangeExpansion
 }
 
 // limitRanges implements LimitRangeInterface
 type limitRanges struct {
-	*gentype.ClientWithList[*corev1.LimitRange, *corev1.LimitRangeList]
+	*gentype.ClientWithListAndApply[*corev1.LimitRange, *corev1.LimitRangeList, *applyconfigurationcorev1.LimitRangeApplyConfiguration]
 }
 
 // newLimitRanges returns a LimitRanges
 func newLimitRanges(c *CoreV1Client, namespace string) *limitRanges {
 	return &limitRanges{
-		gentype.NewClientWithList[*corev1.LimitRange, *corev1.LimitRangeList](
+		gentype.NewClientWithListAndApply[*corev1.LimitRange, *corev1.LimitRangeList, *applyconfigurationcorev1.LimitRangeApplyConfiguration](
 			"limitranges",
 			c.RESTClient(),
 			scheme.ParameterCodec,

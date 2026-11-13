@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeFeatures implements FeatureInterface
 type fakeFeatures struct {
-	*gentype.FakeClientWithList[*v3.Feature, *v3.FeatureList]
+	*gentype.FakeClientWithListAndApply[*v3.Feature, *v3.FeatureList, *managementcattleiov3.FeatureApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeFeatures(fake *FakeManagementV3) managementcattleiov3.FeatureInterface {
+func newFakeFeatures(fake *FakeManagementV3) typedmanagementcattleiov3.FeatureInterface {
 	return &fakeFeatures{
-		gentype.NewFakeClientWithList[*v3.Feature, *v3.FeatureList](
+		gentype.NewFakeClientWithListAndApply[*v3.Feature, *v3.FeatureList, *managementcattleiov3.FeatureApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("features"),

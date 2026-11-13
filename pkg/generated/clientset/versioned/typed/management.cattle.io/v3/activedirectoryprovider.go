@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type ActiveDirectoryProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ActiveDirectoryProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.ActiveDirectoryProvider, err error)
+	Apply(ctx context.Context, activeDirectoryProvider *applyconfigurationmanagementcattleiov3.ActiveDirectoryProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ActiveDirectoryProvider, err error)
 	ActiveDirectoryProviderExpansion
 }
 
 // activeDirectoryProviders implements ActiveDirectoryProviderInterface
 type activeDirectoryProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.ActiveDirectoryProvider, *managementcattleiov3.ActiveDirectoryProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.ActiveDirectoryProvider, *managementcattleiov3.ActiveDirectoryProviderList, *applyconfigurationmanagementcattleiov3.ActiveDirectoryProviderApplyConfiguration]
 }
 
 // newActiveDirectoryProviders returns a ActiveDirectoryProviders
 func newActiveDirectoryProviders(c *ManagementV3Client) *activeDirectoryProviders {
 	return &activeDirectoryProviders{
-		gentype.NewClientWithList[*managementcattleiov3.ActiveDirectoryProvider, *managementcattleiov3.ActiveDirectoryProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.ActiveDirectoryProvider, *managementcattleiov3.ActiveDirectoryProviderList, *applyconfigurationmanagementcattleiov3.ActiveDirectoryProviderApplyConfiguration](
 			"activedirectoryproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

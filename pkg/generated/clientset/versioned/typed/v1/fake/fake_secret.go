@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeSecrets implements SecretInterface
 type fakeSecrets struct {
-	*gentype.FakeClientWithList[*v1.Secret, *v1.SecretList]
+	*gentype.FakeClientWithListAndApply[*v1.Secret, *v1.SecretList, *corev1.SecretApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeSecrets(fake *FakeCoreV1, namespace string) typedv1.SecretInterface {
 	return &fakeSecrets{
-		gentype.NewFakeClientWithList[*v1.Secret, *v1.SecretList](
+		gentype.NewFakeClientWithListAndApply[*v1.Secret, *v1.SecretList, *corev1.SecretApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("secrets"),

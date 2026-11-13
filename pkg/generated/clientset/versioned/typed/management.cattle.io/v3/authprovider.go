@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type AuthProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.AuthProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.AuthProvider, err error)
+	Apply(ctx context.Context, authProvider *applyconfigurationmanagementcattleiov3.AuthProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.AuthProvider, err error)
 	AuthProviderExpansion
 }
 
 // authProviders implements AuthProviderInterface
 type authProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.AuthProvider, *managementcattleiov3.AuthProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.AuthProvider, *managementcattleiov3.AuthProviderList, *applyconfigurationmanagementcattleiov3.AuthProviderApplyConfiguration]
 }
 
 // newAuthProviders returns a AuthProviders
 func newAuthProviders(c *ManagementV3Client) *authProviders {
 	return &authProviders{
-		gentype.NewClientWithList[*managementcattleiov3.AuthProvider, *managementcattleiov3.AuthProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.AuthProvider, *managementcattleiov3.AuthProviderList, *applyconfigurationmanagementcattleiov3.AuthProviderApplyConfiguration](
 			"authproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

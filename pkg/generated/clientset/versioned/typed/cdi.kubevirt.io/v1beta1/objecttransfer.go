@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ObjectTransferInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.ObjectTransferList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.ObjectTransfer, err error)
+	Apply(ctx context.Context, objectTransfer *applyconfigurationcorev1beta1.ObjectTransferApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.ObjectTransfer, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, objectTransfer *applyconfigurationcorev1beta1.ObjectTransferApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.ObjectTransfer, err error)
 	ObjectTransferExpansion
 }
 
 // objectTransfers implements ObjectTransferInterface
 type objectTransfers struct {
-	*gentype.ClientWithList[*corev1beta1.ObjectTransfer, *corev1beta1.ObjectTransferList]
+	*gentype.ClientWithListAndApply[*corev1beta1.ObjectTransfer, *corev1beta1.ObjectTransferList, *applyconfigurationcorev1beta1.ObjectTransferApplyConfiguration]
 }
 
 // newObjectTransfers returns a ObjectTransfers
 func newObjectTransfers(c *CdiV1beta1Client) *objectTransfers {
 	return &objectTransfers{
-		gentype.NewClientWithList[*corev1beta1.ObjectTransfer, *corev1beta1.ObjectTransferList](
+		gentype.NewClientWithListAndApply[*corev1beta1.ObjectTransfer, *corev1beta1.ObjectTransferList, *applyconfigurationcorev1beta1.ObjectTransferApplyConfiguration](
 			"objecttransfers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

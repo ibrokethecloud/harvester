@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeComponentStatuses implements ComponentStatusInterface
 type fakeComponentStatuses struct {
-	*gentype.FakeClientWithList[*v1.ComponentStatus, *v1.ComponentStatusList]
+	*gentype.FakeClientWithListAndApply[*v1.ComponentStatus, *v1.ComponentStatusList, *corev1.ComponentStatusApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeComponentStatuses(fake *FakeCoreV1) typedv1.ComponentStatusInterface {
 	return &fakeComponentStatuses{
-		gentype.NewFakeClientWithList[*v1.ComponentStatus, *v1.ComponentStatusList](
+		gentype.NewFakeClientWithListAndApply[*v1.ComponentStatus, *v1.ComponentStatusList, *corev1.ComponentStatusApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("componentstatuses"),

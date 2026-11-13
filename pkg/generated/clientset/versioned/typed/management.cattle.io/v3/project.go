@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ProjectInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ProjectList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Project, err error)
+	Apply(ctx context.Context, project *applyconfigurationmanagementcattleiov3.ProjectApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Project, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, project *applyconfigurationmanagementcattleiov3.ProjectApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Project, err error)
 	ProjectExpansion
 }
 
 // projects implements ProjectInterface
 type projects struct {
-	*gentype.ClientWithList[*managementcattleiov3.Project, *managementcattleiov3.ProjectList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Project, *managementcattleiov3.ProjectList, *applyconfigurationmanagementcattleiov3.ProjectApplyConfiguration]
 }
 
 // newProjects returns a Projects
 func newProjects(c *ManagementV3Client, namespace string) *projects {
 	return &projects{
-		gentype.NewClientWithList[*managementcattleiov3.Project, *managementcattleiov3.ProjectList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Project, *managementcattleiov3.ProjectList, *applyconfigurationmanagementcattleiov3.ProjectApplyConfiguration](
 			"projects",
 			c.RESTClient(),
 			scheme.ParameterCodec,

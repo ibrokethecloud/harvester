@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeSupportBundles implements SupportBundleInterface
 type fakeSupportBundles struct {
-	*gentype.FakeClientWithList[*v1beta1.SupportBundle, *v1beta1.SupportBundleList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.SupportBundle, *v1beta1.SupportBundleList, *harvesterhciiov1beta1.SupportBundleApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeSupportBundles(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.SupportBundleInterface {
+func newFakeSupportBundles(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.SupportBundleInterface {
 	return &fakeSupportBundles{
-		gentype.NewFakeClientWithList[*v1beta1.SupportBundle, *v1beta1.SupportBundleList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.SupportBundle, *v1beta1.SupportBundleList, *harvesterhciiov1beta1.SupportBundleApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("supportbundles"),

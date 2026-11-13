@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type SettingInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.SettingList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Setting, err error)
+	Apply(ctx context.Context, setting *applyconfigurationmanagementcattleiov3.SettingApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Setting, err error)
 	SettingExpansion
 }
 
 // settings implements SettingInterface
 type settings struct {
-	*gentype.ClientWithList[*managementcattleiov3.Setting, *managementcattleiov3.SettingList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Setting, *managementcattleiov3.SettingList, *applyconfigurationmanagementcattleiov3.SettingApplyConfiguration]
 }
 
 // newSettings returns a Settings
 func newSettings(c *ManagementV3Client) *settings {
 	return &settings{
-		gentype.NewClientWithList[*managementcattleiov3.Setting, *managementcattleiov3.SettingList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Setting, *managementcattleiov3.SettingList, *applyconfigurationmanagementcattleiov3.SettingApplyConfiguration](
 			"settings",
 			c.RESTClient(),
 			scheme.ParameterCodec,

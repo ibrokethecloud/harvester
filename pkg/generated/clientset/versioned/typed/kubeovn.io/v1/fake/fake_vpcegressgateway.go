@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -31,13 +32,13 @@ import (
 
 // fakeVpcEgressGateways implements VpcEgressGatewayInterface
 type fakeVpcEgressGateways struct {
-	*gentype.FakeClientWithList[*v1.VpcEgressGateway, *v1.VpcEgressGatewayList]
+	*gentype.FakeClientWithListAndApply[*v1.VpcEgressGateway, *v1.VpcEgressGatewayList, *kubeovnv1.VpcEgressGatewayApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeVpcEgressGateways(fake *FakeKubeovnV1, namespace string) kubeovniov1.VpcEgressGatewayInterface {
 	return &fakeVpcEgressGateways{
-		gentype.NewFakeClientWithList[*v1.VpcEgressGateway, *v1.VpcEgressGatewayList](
+		gentype.NewFakeClientWithListAndApply[*v1.VpcEgressGateway, *v1.VpcEgressGatewayList, *kubeovnv1.VpcEgressGatewayApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("vpc-egress-gateways"),

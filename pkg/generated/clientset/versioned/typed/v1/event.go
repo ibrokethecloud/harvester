@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type EventInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.EventList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Event, err error)
+	Apply(ctx context.Context, event *applyconfigurationcorev1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Event, err error)
 	EventExpansion
 }
 
 // events implements EventInterface
 type events struct {
-	*gentype.ClientWithList[*corev1.Event, *corev1.EventList]
+	*gentype.ClientWithListAndApply[*corev1.Event, *corev1.EventList, *applyconfigurationcorev1.EventApplyConfiguration]
 }
 
 // newEvents returns a Events
 func newEvents(c *CoreV1Client, namespace string) *events {
 	return &events{
-		gentype.NewClientWithList[*corev1.Event, *corev1.EventList](
+		gentype.NewClientWithListAndApply[*corev1.Event, *corev1.EventList, *applyconfigurationcorev1.EventApplyConfiguration](
 			"events",
 			c.RESTClient(),
 			scheme.ParameterCodec,

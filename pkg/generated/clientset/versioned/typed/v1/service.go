@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,18 +47,21 @@ type ServiceInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Service, err error)
+	Apply(ctx context.Context, service *applyconfigurationcorev1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Service, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, service *applyconfigurationcorev1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Service, err error)
 	ServiceExpansion
 }
 
 // services implements ServiceInterface
 type services struct {
-	*gentype.ClientWithList[*corev1.Service, *corev1.ServiceList]
+	*gentype.ClientWithListAndApply[*corev1.Service, *corev1.ServiceList, *applyconfigurationcorev1.ServiceApplyConfiguration]
 }
 
 // newServices returns a Services
 func newServices(c *CoreV1Client, namespace string) *services {
 	return &services{
-		gentype.NewClientWithList[*corev1.Service, *corev1.ServiceList](
+		gentype.NewClientWithListAndApply[*corev1.Service, *corev1.ServiceList, *applyconfigurationcorev1.ServiceApplyConfiguration](
 			"services",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	storagev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	storagek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/storage.k8s.io/v1"
 	v1 "k8s.io/api/storage/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeVolumeAttributesClasses implements VolumeAttributesClassInterface
 type fakeVolumeAttributesClasses struct {
-	*gentype.FakeClientWithList[*v1.VolumeAttributesClass, *v1.VolumeAttributesClassList]
+	*gentype.FakeClientWithListAndApply[*v1.VolumeAttributesClass, *v1.VolumeAttributesClassList, *storagev1.VolumeAttributesClassApplyConfiguration]
 	Fake *FakeStorageV1
 }
 
 func newFakeVolumeAttributesClasses(fake *FakeStorageV1) storagek8siov1.VolumeAttributesClassInterface {
 	return &fakeVolumeAttributesClasses{
-		gentype.NewFakeClientWithList[*v1.VolumeAttributesClass, *v1.VolumeAttributesClassList](
+		gentype.NewFakeClientWithListAndApply[*v1.VolumeAttributesClass, *v1.VolumeAttributesClassList, *storagev1.VolumeAttributesClassApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("volumeattributesclasses"),

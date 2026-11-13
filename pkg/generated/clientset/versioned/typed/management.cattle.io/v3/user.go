@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type UserInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.UserList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.User, err error)
+	Apply(ctx context.Context, user *applyconfigurationmanagementcattleiov3.UserApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.User, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, user *applyconfigurationmanagementcattleiov3.UserApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.User, err error)
 	UserExpansion
 }
 
 // users implements UserInterface
 type users struct {
-	*gentype.ClientWithList[*managementcattleiov3.User, *managementcattleiov3.UserList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.User, *managementcattleiov3.UserList, *applyconfigurationmanagementcattleiov3.UserApplyConfiguration]
 }
 
 // newUsers returns a Users
 func newUsers(c *ManagementV3Client) *users {
 	return &users{
-		gentype.NewClientWithList[*managementcattleiov3.User, *managementcattleiov3.UserList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.User, *managementcattleiov3.UserList, *applyconfigurationmanagementcattleiov3.UserApplyConfiguration](
 			"users",
 			c.RESTClient(),
 			scheme.ParameterCodec,

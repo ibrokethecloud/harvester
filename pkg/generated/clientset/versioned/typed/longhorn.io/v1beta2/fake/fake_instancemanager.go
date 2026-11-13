@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeInstanceManagers implements InstanceManagerInterface
 type fakeInstanceManagers struct {
-	*gentype.FakeClientWithList[*v1beta2.InstanceManager, *v1beta2.InstanceManagerList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.InstanceManager, *v1beta2.InstanceManagerList, *longhornv1beta2.InstanceManagerApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeInstanceManagers(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.InstanceManagerInterface {
 	return &fakeInstanceManagers{
-		gentype.NewFakeClientWithList[*v1beta2.InstanceManager, *v1beta2.InstanceManagerList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.InstanceManager, *v1beta2.InstanceManagerList, *longhornv1beta2.InstanceManagerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("instancemanagers"),

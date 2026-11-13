@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeVirtualMachineImageDownloaders implements VirtualMachineImageDownloaderInterface
 type fakeVirtualMachineImageDownloaders struct {
-	*gentype.FakeClientWithList[*v1beta1.VirtualMachineImageDownloader, *v1beta1.VirtualMachineImageDownloaderList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.VirtualMachineImageDownloader, *v1beta1.VirtualMachineImageDownloaderList, *harvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeVirtualMachineImageDownloaders(fake *FakeHarvesterhciV1beta1, namespace string) harvesterhciiov1beta1.VirtualMachineImageDownloaderInterface {
+func newFakeVirtualMachineImageDownloaders(fake *FakeHarvesterhciV1beta1, namespace string) typedharvesterhciiov1beta1.VirtualMachineImageDownloaderInterface {
 	return &fakeVirtualMachineImageDownloaders{
-		gentype.NewFakeClientWithList[*v1beta1.VirtualMachineImageDownloader, *v1beta1.VirtualMachineImageDownloaderList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.VirtualMachineImageDownloader, *v1beta1.VirtualMachineImageDownloaderList, *harvesterhciiov1beta1.VirtualMachineImageDownloaderApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("virtualmachineimagedownloaders"),

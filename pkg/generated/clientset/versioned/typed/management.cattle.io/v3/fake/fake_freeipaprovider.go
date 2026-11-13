@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeFreeIpaProviders implements FreeIpaProviderInterface
 type fakeFreeIpaProviders struct {
-	*gentype.FakeClientWithList[*v3.FreeIpaProvider, *v3.FreeIpaProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.FreeIpaProvider, *v3.FreeIpaProviderList, *managementcattleiov3.FreeIpaProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeFreeIpaProviders(fake *FakeManagementV3) managementcattleiov3.FreeIpaProviderInterface {
+func newFakeFreeIpaProviders(fake *FakeManagementV3) typedmanagementcattleiov3.FreeIpaProviderInterface {
 	return &fakeFreeIpaProviders{
-		gentype.NewFakeClientWithList[*v3.FreeIpaProvider, *v3.FreeIpaProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.FreeIpaProvider, *v3.FreeIpaProviderList, *managementcattleiov3.FreeIpaProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("freeipaproviders"),

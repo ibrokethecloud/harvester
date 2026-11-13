@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationnetworkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type IngressClassInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.IngressClassList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.IngressClass, err error)
+	Apply(ctx context.Context, ingressClass *applyconfigurationnetworkingv1.IngressClassApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.IngressClass, err error)
 	IngressClassExpansion
 }
 
 // ingressClasses implements IngressClassInterface
 type ingressClasses struct {
-	*gentype.ClientWithList[*networkingv1.IngressClass, *networkingv1.IngressClassList]
+	*gentype.ClientWithListAndApply[*networkingv1.IngressClass, *networkingv1.IngressClassList, *applyconfigurationnetworkingv1.IngressClassApplyConfiguration]
 }
 
 // newIngressClasses returns a IngressClasses
 func newIngressClasses(c *NetworkingV1Client) *ingressClasses {
 	return &ingressClasses{
-		gentype.NewClientWithList[*networkingv1.IngressClass, *networkingv1.IngressClassList](
+		gentype.NewClientWithListAndApply[*networkingv1.IngressClass, *networkingv1.IngressClassList, *applyconfigurationnetworkingv1.IngressClassApplyConfiguration](
 			"ingressclasses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

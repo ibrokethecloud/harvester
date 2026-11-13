@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGoogleOAuthProviders implements GoogleOAuthProviderInterface
 type fakeGoogleOAuthProviders struct {
-	*gentype.FakeClientWithList[*v3.GoogleOAuthProvider, *v3.GoogleOAuthProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.GoogleOAuthProvider, *v3.GoogleOAuthProviderList, *managementcattleiov3.GoogleOAuthProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGoogleOAuthProviders(fake *FakeManagementV3) managementcattleiov3.GoogleOAuthProviderInterface {
+func newFakeGoogleOAuthProviders(fake *FakeManagementV3) typedmanagementcattleiov3.GoogleOAuthProviderInterface {
 	return &fakeGoogleOAuthProviders{
-		gentype.NewFakeClientWithList[*v3.GoogleOAuthProvider, *v3.GoogleOAuthProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.GoogleOAuthProvider, *v3.GoogleOAuthProviderList, *managementcattleiov3.GoogleOAuthProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("googleoauthproviders"),

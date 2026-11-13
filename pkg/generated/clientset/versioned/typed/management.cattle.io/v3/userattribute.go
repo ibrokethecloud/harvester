@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type UserAttributeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.UserAttributeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.UserAttribute, err error)
+	Apply(ctx context.Context, userAttribute *applyconfigurationmanagementcattleiov3.UserAttributeApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.UserAttribute, err error)
 	UserAttributeExpansion
 }
 
 // userAttributes implements UserAttributeInterface
 type userAttributes struct {
-	*gentype.ClientWithList[*managementcattleiov3.UserAttribute, *managementcattleiov3.UserAttributeList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.UserAttribute, *managementcattleiov3.UserAttributeList, *applyconfigurationmanagementcattleiov3.UserAttributeApplyConfiguration]
 }
 
 // newUserAttributes returns a UserAttributes
 func newUserAttributes(c *ManagementV3Client) *userAttributes {
 	return &userAttributes{
-		gentype.NewClientWithList[*managementcattleiov3.UserAttribute, *managementcattleiov3.UserAttributeList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.UserAttribute, *managementcattleiov3.UserAttributeList, *applyconfigurationmanagementcattleiov3.UserAttributeApplyConfiguration](
 			"userattributes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

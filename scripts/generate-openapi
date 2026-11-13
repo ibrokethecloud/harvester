@@ -27,6 +27,7 @@ input_dirs=(
     github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1
     github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1
     github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1
+    kubevirt.io/controller-lifecycle-operator-sdk/api
 )
 
 comma_join() {
@@ -42,5 +43,5 @@ GO111MODULE=auto openapi-gen --input-dirs "$(comma_join "${input_dirs[@]}")" \
 git checkout -- "${files[@]}"
 
 # generate swagger.json
-go run pkg/genswagger/main.go
+#go run pkg/genswagger/main.go
 

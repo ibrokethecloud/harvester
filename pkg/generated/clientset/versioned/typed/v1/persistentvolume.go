@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type PersistentVolumeInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PersistentVolumeList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PersistentVolume, err error)
+	Apply(ctx context.Context, persistentVolume *applyconfigurationcorev1.PersistentVolumeApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.PersistentVolume, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, persistentVolume *applyconfigurationcorev1.PersistentVolumeApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.PersistentVolume, err error)
 	PersistentVolumeExpansion
 }
 
 // persistentVolumes implements PersistentVolumeInterface
 type persistentVolumes struct {
-	*gentype.ClientWithList[*corev1.PersistentVolume, *corev1.PersistentVolumeList]
+	*gentype.ClientWithListAndApply[*corev1.PersistentVolume, *corev1.PersistentVolumeList, *applyconfigurationcorev1.PersistentVolumeApplyConfiguration]
 }
 
 // newPersistentVolumes returns a PersistentVolumes
 func newPersistentVolumes(c *CoreV1Client) *persistentVolumes {
 	return &persistentVolumes{
-		gentype.NewClientWithList[*corev1.PersistentVolume, *corev1.PersistentVolumeList](
+		gentype.NewClientWithListAndApply[*corev1.PersistentVolume, *corev1.PersistentVolumeList, *applyconfigurationcorev1.PersistentVolumeApplyConfiguration](
 			"persistentvolumes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

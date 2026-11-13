@@ -72,12 +72,8 @@ func (c *FakeManagementV3) ClusterRoleTemplateBindings(namespace string) v3.Clus
 	return newFakeClusterRoleTemplateBindings(c, namespace)
 }
 
-func (c *FakeManagementV3) ClusterTemplates(namespace string) v3.ClusterTemplateInterface {
-	return newFakeClusterTemplates(c, namespace)
-}
-
-func (c *FakeManagementV3) ClusterTemplateRevisions(namespace string) v3.ClusterTemplateRevisionInterface {
-	return newFakeClusterTemplateRevisions(c, namespace)
+func (c *FakeManagementV3) CognitoProviders() v3.CognitoProviderInterface {
+	return newFakeCognitoProviders(c)
 }
 
 func (c *FakeManagementV3) ComposeConfigs() v3.ComposeConfigInterface {
@@ -86,10 +82,6 @@ func (c *FakeManagementV3) ComposeConfigs() v3.ComposeConfigInterface {
 
 func (c *FakeManagementV3) DynamicSchemas() v3.DynamicSchemaInterface {
 	return newFakeDynamicSchemas(c)
-}
-
-func (c *FakeManagementV3) EtcdBackups(namespace string) v3.EtcdBackupInterface {
-	return newFakeEtcdBackups(c, namespace)
 }
 
 func (c *FakeManagementV3) Features() v3.FeatureInterface {
@@ -106,6 +98,14 @@ func (c *FakeManagementV3) FreeIpaProviders() v3.FreeIpaProviderInterface {
 
 func (c *FakeManagementV3) GenericOIDCProviders() v3.GenericOIDCProviderInterface {
 	return newFakeGenericOIDCProviders(c)
+}
+
+func (c *FakeManagementV3) GithubAppConfigs() v3.GithubAppConfigInterface {
+	return newFakeGithubAppConfigs(c)
+}
+
+func (c *FakeManagementV3) GithubAppProviders() v3.GithubAppProviderInterface {
+	return newFakeGithubAppProviders(c)
 }
 
 func (c *FakeManagementV3) GithubConfigs() v3.GithubConfigInterface {
@@ -136,6 +136,10 @@ func (c *FakeManagementV3) GroupMembers() v3.GroupMemberInterface {
 	return newFakeGroupMembers(c)
 }
 
+func (c *FakeManagementV3) KeyCloakOIDCProviders() v3.KeyCloakOIDCProviderInterface {
+	return newFakeKeyCloakOIDCProviders(c)
+}
+
 func (c *FakeManagementV3) KontainerDrivers() v3.KontainerDriverInterface {
 	return newFakeKontainerDrivers(c)
 }
@@ -156,12 +160,8 @@ func (c *FakeManagementV3) NodeDrivers() v3.NodeDriverInterface {
 	return newFakeNodeDrivers(c)
 }
 
-func (c *FakeManagementV3) NodePools(namespace string) v3.NodePoolInterface {
-	return newFakeNodePools(c, namespace)
-}
-
-func (c *FakeManagementV3) NodeTemplates(namespace string) v3.NodeTemplateInterface {
-	return newFakeNodeTemplates(c, namespace)
+func (c *FakeManagementV3) OIDCClients() v3.OIDCClientInterface {
+	return newFakeOIDCClients(c)
 }
 
 func (c *FakeManagementV3) OIDCProviders() v3.OIDCProviderInterface {
@@ -196,20 +196,12 @@ func (c *FakeManagementV3) ProjectRoleTemplateBindings(namespace string) v3.Proj
 	return newFakeProjectRoleTemplateBindings(c, namespace)
 }
 
+func (c *FakeManagementV3) ProxyEndpoints() v3.ProxyEndpointInterface {
+	return newFakeProxyEndpoints(c)
+}
+
 func (c *FakeManagementV3) RancherUserNotifications() v3.RancherUserNotificationInterface {
 	return newFakeRancherUserNotifications(c)
-}
-
-func (c *FakeManagementV3) RkeAddons(namespace string) v3.RkeAddonInterface {
-	return newFakeRkeAddons(c, namespace)
-}
-
-func (c *FakeManagementV3) RkeK8sServiceOptions(namespace string) v3.RkeK8sServiceOptionInterface {
-	return newFakeRkeK8sServiceOptions(c, namespace)
-}
-
-func (c *FakeManagementV3) RkeK8sSystemImages(namespace string) v3.RkeK8sSystemImageInterface {
-	return newFakeRkeK8sSystemImages(c, namespace)
 }
 
 func (c *FakeManagementV3) RoleTemplates() v3.RoleTemplateInterface {
@@ -220,8 +212,8 @@ func (c *FakeManagementV3) SamlProviders() v3.SamlProviderInterface {
 	return newFakeSamlProviders(c)
 }
 
-func (c *FakeManagementV3) SamlTokens() v3.SamlTokenInterface {
-	return newFakeSamlTokens(c)
+func (c *FakeManagementV3) SamlTokens(namespace string) v3.SamlTokenInterface {
+	return newFakeSamlTokens(c, namespace)
 }
 
 func (c *FakeManagementV3) Settings() v3.SettingInterface {

@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type SupportBundleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.SupportBundleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.SupportBundle, err error)
+	Apply(ctx context.Context, supportBundle *applyconfigurationharvesterhciiov1beta1.SupportBundleApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.SupportBundle, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, supportBundle *applyconfigurationharvesterhciiov1beta1.SupportBundleApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.SupportBundle, err error)
 	SupportBundleExpansion
 }
 
 // supportBundles implements SupportBundleInterface
 type supportBundles struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.SupportBundle, *harvesterhciiov1beta1.SupportBundleList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.SupportBundle, *harvesterhciiov1beta1.SupportBundleList, *applyconfigurationharvesterhciiov1beta1.SupportBundleApplyConfiguration]
 }
 
 // newSupportBundles returns a SupportBundles
 func newSupportBundles(c *HarvesterhciV1beta1Client, namespace string) *supportBundles {
 	return &supportBundles{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.SupportBundle, *harvesterhciiov1beta1.SupportBundleList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.SupportBundle, *harvesterhciiov1beta1.SupportBundleList, *applyconfigurationharvesterhciiov1beta1.SupportBundleApplyConfiguration](
 			"supportbundles",
 			c.RESTClient(),
 			scheme.ParameterCodec,

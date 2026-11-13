@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationdiscoveryv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/discovery/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type EndpointSliceInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*discoveryv1.EndpointSliceList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *discoveryv1.EndpointSlice, err error)
+	Apply(ctx context.Context, endpointSlice *applyconfigurationdiscoveryv1.EndpointSliceApplyConfiguration, opts metav1.ApplyOptions) (result *discoveryv1.EndpointSlice, err error)
 	EndpointSliceExpansion
 }
 
 // endpointSlices implements EndpointSliceInterface
 type endpointSlices struct {
-	*gentype.ClientWithList[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList]
+	*gentype.ClientWithListAndApply[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList, *applyconfigurationdiscoveryv1.EndpointSliceApplyConfiguration]
 }
 
 // newEndpointSlices returns a EndpointSlices
 func newEndpointSlices(c *DiscoveryV1Client, namespace string) *endpointSlices {
 	return &endpointSlices{
-		gentype.NewClientWithList[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList](
+		gentype.NewClientWithListAndApply[*discoveryv1.EndpointSlice, *discoveryv1.EndpointSliceList, *applyconfigurationdiscoveryv1.EndpointSliceApplyConfiguration](
 			"endpointslices",
 			c.RESTClient(),
 			scheme.ParameterCodec,

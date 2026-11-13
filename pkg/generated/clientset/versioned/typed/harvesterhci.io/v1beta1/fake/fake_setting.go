@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
+	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
+	typedharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/harvesterhci.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeSettings implements SettingInterface
 type fakeSettings struct {
-	*gentype.FakeClientWithList[*v1beta1.Setting, *v1beta1.SettingList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.Setting, *v1beta1.SettingList, *harvesterhciiov1beta1.SettingApplyConfiguration]
 	Fake *FakeHarvesterhciV1beta1
 }
 
-func newFakeSettings(fake *FakeHarvesterhciV1beta1) harvesterhciiov1beta1.SettingInterface {
+func newFakeSettings(fake *FakeHarvesterhciV1beta1) typedharvesterhciiov1beta1.SettingInterface {
 	return &fakeSettings{
-		gentype.NewFakeClientWithList[*v1beta1.Setting, *v1beta1.SettingList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.Setting, *v1beta1.SettingList, *harvesterhciiov1beta1.SettingApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.SchemeGroupVersion.WithResource("settings"),

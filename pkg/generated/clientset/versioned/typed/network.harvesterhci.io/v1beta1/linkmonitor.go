@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	networkharvesterhciiov1beta1 "github.com/harvester/harvester-network-controller/pkg/apis/network.harvesterhci.io/v1beta1"
+	applyconfigurationnetworkharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/network.harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type LinkMonitorInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*networkharvesterhciiov1beta1.LinkMonitorList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *networkharvesterhciiov1beta1.LinkMonitor, err error)
+	Apply(ctx context.Context, linkMonitor *applyconfigurationnetworkharvesterhciiov1beta1.LinkMonitorApplyConfiguration, opts v1.ApplyOptions) (result *networkharvesterhciiov1beta1.LinkMonitor, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, linkMonitor *applyconfigurationnetworkharvesterhciiov1beta1.LinkMonitorApplyConfiguration, opts v1.ApplyOptions) (result *networkharvesterhciiov1beta1.LinkMonitor, err error)
 	LinkMonitorExpansion
 }
 
 // linkMonitors implements LinkMonitorInterface
 type linkMonitors struct {
-	*gentype.ClientWithList[*networkharvesterhciiov1beta1.LinkMonitor, *networkharvesterhciiov1beta1.LinkMonitorList]
+	*gentype.ClientWithListAndApply[*networkharvesterhciiov1beta1.LinkMonitor, *networkharvesterhciiov1beta1.LinkMonitorList, *applyconfigurationnetworkharvesterhciiov1beta1.LinkMonitorApplyConfiguration]
 }
 
 // newLinkMonitors returns a LinkMonitors
 func newLinkMonitors(c *NetworkV1beta1Client) *linkMonitors {
 	return &linkMonitors{
-		gentype.NewClientWithList[*networkharvesterhciiov1beta1.LinkMonitor, *networkharvesterhciiov1beta1.LinkMonitorList](
+		gentype.NewClientWithListAndApply[*networkharvesterhciiov1beta1.LinkMonitor, *networkharvesterhciiov1beta1.LinkMonitorList, *applyconfigurationnetworkharvesterhciiov1beta1.LinkMonitorApplyConfiguration](
 			"linkmonitors",
 			c.RESTClient(),
 			scheme.ParameterCodec,

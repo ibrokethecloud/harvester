@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ManagedChartInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ManagedChartList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.ManagedChart, err error)
+	Apply(ctx context.Context, managedChart *applyconfigurationmanagementcattleiov3.ManagedChartApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ManagedChart, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, managedChart *applyconfigurationmanagementcattleiov3.ManagedChartApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ManagedChart, err error)
 	ManagedChartExpansion
 }
 
 // managedCharts implements ManagedChartInterface
 type managedCharts struct {
-	*gentype.ClientWithList[*managementcattleiov3.ManagedChart, *managementcattleiov3.ManagedChartList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.ManagedChart, *managementcattleiov3.ManagedChartList, *applyconfigurationmanagementcattleiov3.ManagedChartApplyConfiguration]
 }
 
 // newManagedCharts returns a ManagedCharts
 func newManagedCharts(c *ManagementV3Client, namespace string) *managedCharts {
 	return &managedCharts{
-		gentype.NewClientWithList[*managementcattleiov3.ManagedChart, *managementcattleiov3.ManagedChartList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.ManagedChart, *managementcattleiov3.ManagedChartList, *applyconfigurationmanagementcattleiov3.ManagedChartApplyConfiguration](
 			"managedcharts",
 			c.RESTClient(),
 			scheme.ParameterCodec,

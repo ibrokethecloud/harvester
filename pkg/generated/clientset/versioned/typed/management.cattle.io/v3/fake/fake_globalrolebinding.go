@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGlobalRoleBindings implements GlobalRoleBindingInterface
 type fakeGlobalRoleBindings struct {
-	*gentype.FakeClientWithList[*v3.GlobalRoleBinding, *v3.GlobalRoleBindingList]
+	*gentype.FakeClientWithListAndApply[*v3.GlobalRoleBinding, *v3.GlobalRoleBindingList, *managementcattleiov3.GlobalRoleBindingApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGlobalRoleBindings(fake *FakeManagementV3) managementcattleiov3.GlobalRoleBindingInterface {
+func newFakeGlobalRoleBindings(fake *FakeManagementV3) typedmanagementcattleiov3.GlobalRoleBindingInterface {
 	return &fakeGlobalRoleBindings{
-		gentype.NewFakeClientWithList[*v3.GlobalRoleBinding, *v3.GlobalRoleBindingList](
+		gentype.NewFakeClientWithListAndApply[*v3.GlobalRoleBinding, *v3.GlobalRoleBindingList, *managementcattleiov3.GlobalRoleBindingApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("globalrolebindings"),

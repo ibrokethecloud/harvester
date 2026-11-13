@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type KontainerDriverInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.KontainerDriverList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.KontainerDriver, err error)
+	Apply(ctx context.Context, kontainerDriver *applyconfigurationmanagementcattleiov3.KontainerDriverApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.KontainerDriver, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, kontainerDriver *applyconfigurationmanagementcattleiov3.KontainerDriverApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.KontainerDriver, err error)
 	KontainerDriverExpansion
 }
 
 // kontainerDrivers implements KontainerDriverInterface
 type kontainerDrivers struct {
-	*gentype.ClientWithList[*managementcattleiov3.KontainerDriver, *managementcattleiov3.KontainerDriverList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.KontainerDriver, *managementcattleiov3.KontainerDriverList, *applyconfigurationmanagementcattleiov3.KontainerDriverApplyConfiguration]
 }
 
 // newKontainerDrivers returns a KontainerDrivers
 func newKontainerDrivers(c *ManagementV3Client) *kontainerDrivers {
 	return &kontainerDrivers{
-		gentype.NewClientWithList[*managementcattleiov3.KontainerDriver, *managementcattleiov3.KontainerDriverList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.KontainerDriver, *managementcattleiov3.KontainerDriverList, *applyconfigurationmanagementcattleiov3.KontainerDriverApplyConfiguration](
 			"kontainerdrivers",
 			c.RESTClient(),
 			scheme.ParameterCodec,

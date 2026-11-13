@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type PrincipalInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.PrincipalList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Principal, err error)
+	Apply(ctx context.Context, principal *applyconfigurationmanagementcattleiov3.PrincipalApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Principal, err error)
 	PrincipalExpansion
 }
 
 // principals implements PrincipalInterface
 type principals struct {
-	*gentype.ClientWithList[*managementcattleiov3.Principal, *managementcattleiov3.PrincipalList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Principal, *managementcattleiov3.PrincipalList, *applyconfigurationmanagementcattleiov3.PrincipalApplyConfiguration]
 }
 
 // newPrincipals returns a Principals
 func newPrincipals(c *ManagementV3Client) *principals {
 	return &principals{
-		gentype.NewClientWithList[*managementcattleiov3.Principal, *managementcattleiov3.PrincipalList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Principal, *managementcattleiov3.PrincipalList, *applyconfigurationmanagementcattleiov3.PrincipalApplyConfiguration](
 			"principals",
 			c.RESTClient(),
 			scheme.ParameterCodec,

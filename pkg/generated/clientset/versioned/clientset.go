@@ -22,6 +22,7 @@ import (
 	fmt "fmt"
 	http "net/http"
 
+	apiapi "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/api.sdk.kubevirt.io/api"
 	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	batchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
 	catalogv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/catalog.cattle.io/v1"
@@ -34,6 +35,7 @@ import (
 	loggingv1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/logging.banzaicloud.io/v1beta1"
 	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	managementv3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	metav1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/meta.k8s.io/v1"
 	monitoringv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	networkv1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
 	networkingv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/networking.k8s.io/v1"
@@ -52,6 +54,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	CoreV1() corev1.CoreV1Interface
+	ApiApi() apiapi.ApiApiInterface
 	AppsV1() appsv1.AppsV1Interface
 	BatchV1() batchv1.BatchV1Interface
 	CatalogV1() catalogv1.CatalogV1Interface
@@ -64,6 +67,7 @@ type Interface interface {
 	LoggingV1beta1() loggingv1beta1.LoggingV1beta1Interface
 	LonghornV1beta2() longhornv1beta2.LonghornV1beta2Interface
 	ManagementV3() managementv3.ManagementV3Interface
+	MetaV1() metav1.MetaV1Interface
 	MonitoringV1() monitoringv1.MonitoringV1Interface
 	NetworkV1beta1() networkv1beta1.NetworkV1beta1Interface
 	NetworkingV1() networkingv1.NetworkingV1Interface
@@ -79,6 +83,7 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	coreV1              *corev1.CoreV1Client
+	apiApi              *apiapi.ApiApiClient
 	appsV1              *appsv1.AppsV1Client
 	batchV1             *batchv1.BatchV1Client
 	catalogV1           *catalogv1.CatalogV1Client
@@ -91,6 +96,7 @@ type Clientset struct {
 	loggingV1beta1      *loggingv1beta1.LoggingV1beta1Client
 	longhornV1beta2     *longhornv1beta2.LonghornV1beta2Client
 	managementV3        *managementv3.ManagementV3Client
+	metaV1              *metav1.MetaV1Client
 	monitoringV1        *monitoringv1.MonitoringV1Client
 	networkV1beta1      *networkv1beta1.NetworkV1beta1Client
 	networkingV1        *networkingv1.NetworkingV1Client
@@ -105,6 +111,11 @@ type Clientset struct {
 // CoreV1 retrieves the CoreV1Client
 func (c *Clientset) CoreV1() corev1.CoreV1Interface {
 	return c.coreV1
+}
+
+// ApiApi retrieves the ApiApiClient
+func (c *Clientset) ApiApi() apiapi.ApiApiInterface {
+	return c.apiApi
 }
 
 // AppsV1 retrieves the AppsV1Client
@@ -165,6 +176,11 @@ func (c *Clientset) LonghornV1beta2() longhornv1beta2.LonghornV1beta2Interface {
 // ManagementV3 retrieves the ManagementV3Client
 func (c *Clientset) ManagementV3() managementv3.ManagementV3Interface {
 	return c.managementV3
+}
+
+// MetaV1 retrieves the MetaV1Client
+func (c *Clientset) MetaV1() metav1.MetaV1Interface {
+	return c.metaV1
 }
 
 // MonitoringV1 retrieves the MonitoringV1Client
@@ -260,6 +276,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.apiApi, err = apiapi.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.appsV1, err = appsv1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -273,10 +293,6 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 		return nil, err
 	}
 	cs.cdiV1beta1, err = cdiv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err != nil {
-		return nil, err
-	}
-	cs.clusterV1beta1, err = clusterv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -309,6 +325,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 		return nil, err
 	}
 	cs.managementV3, err = managementv3.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	cs.metaV1, err = metav1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -370,11 +390,11 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.coreV1 = corev1.New(c)
+	cs.apiApi = apiapi.New(c)
 	cs.appsV1 = appsv1.New(c)
 	cs.batchV1 = batchv1.New(c)
 	cs.catalogV1 = catalogv1.New(c)
 	cs.cdiV1beta1 = cdiv1beta1.New(c)
-	cs.clusterV1beta1 = clusterv1beta1.New(c)
 	cs.discoveryV1 = discoveryv1.New(c)
 	cs.harvesterhciV1beta1 = harvesterhciv1beta1.New(c)
 	cs.k8sCniCncfIoV1 = k8scnicncfiov1.New(c)
@@ -383,6 +403,7 @@ func New(c rest.Interface) *Clientset {
 	cs.loggingV1beta1 = loggingv1beta1.New(c)
 	cs.longhornV1beta2 = longhornv1beta2.New(c)
 	cs.managementV3 = managementv3.New(c)
+	cs.metaV1 = metav1.New(c)
 	cs.monitoringV1 = monitoringv1.New(c)
 	cs.networkV1beta1 = networkv1beta1.New(c)
 	cs.networkingV1 = networkingv1.New(c)

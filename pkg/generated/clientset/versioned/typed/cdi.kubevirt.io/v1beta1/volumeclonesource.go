@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationcorev1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type VolumeCloneSourceInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1beta1.VolumeCloneSourceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1beta1.VolumeCloneSource, err error)
+	Apply(ctx context.Context, volumeCloneSource *applyconfigurationcorev1beta1.VolumeCloneSourceApplyConfiguration, opts v1.ApplyOptions) (result *corev1beta1.VolumeCloneSource, err error)
 	VolumeCloneSourceExpansion
 }
 
 // volumeCloneSources implements VolumeCloneSourceInterface
 type volumeCloneSources struct {
-	*gentype.ClientWithList[*corev1beta1.VolumeCloneSource, *corev1beta1.VolumeCloneSourceList]
+	*gentype.ClientWithListAndApply[*corev1beta1.VolumeCloneSource, *corev1beta1.VolumeCloneSourceList, *applyconfigurationcorev1beta1.VolumeCloneSourceApplyConfiguration]
 }
 
 // newVolumeCloneSources returns a VolumeCloneSources
 func newVolumeCloneSources(c *CdiV1beta1Client, namespace string) *volumeCloneSources {
 	return &volumeCloneSources{
-		gentype.NewClientWithList[*corev1beta1.VolumeCloneSource, *corev1beta1.VolumeCloneSourceList](
+		gentype.NewClientWithListAndApply[*corev1beta1.VolumeCloneSource, *corev1beta1.VolumeCloneSourceList, *applyconfigurationcorev1beta1.VolumeCloneSourceApplyConfiguration](
 			"volumeclonesources",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	kubevirtiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubevirt.io/v1"
 	gentype "k8s.io/client-go/gentype"
 	v1 "kubevirt.io/api/core/v1"
@@ -26,13 +27,13 @@ import (
 
 // fakeKubeVirts implements KubeVirtInterface
 type fakeKubeVirts struct {
-	*gentype.FakeClientWithList[*v1.KubeVirt, *v1.KubeVirtList]
+	*gentype.FakeClientWithListAndApply[*v1.KubeVirt, *v1.KubeVirtList, *corev1.KubeVirtApplyConfiguration]
 	Fake *FakeKubevirtV1
 }
 
 func newFakeKubeVirts(fake *FakeKubevirtV1, namespace string) kubevirtiov1.KubeVirtInterface {
 	return &fakeKubeVirts{
-		gentype.NewFakeClientWithList[*v1.KubeVirt, *v1.KubeVirtList](
+		gentype.NewFakeClientWithListAndApply[*v1.KubeVirt, *v1.KubeVirtList, *corev1.KubeVirtApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("kubevirts"),

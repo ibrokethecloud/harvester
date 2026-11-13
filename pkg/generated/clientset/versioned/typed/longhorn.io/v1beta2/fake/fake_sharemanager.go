@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeShareManagers implements ShareManagerInterface
 type fakeShareManagers struct {
-	*gentype.FakeClientWithList[*v1beta2.ShareManager, *v1beta2.ShareManagerList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.ShareManager, *v1beta2.ShareManagerList, *longhornv1beta2.ShareManagerApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeShareManagers(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.ShareManagerInterface {
 	return &fakeShareManagers{
-		gentype.NewFakeClientWithList[*v1beta2.ShareManager, *v1beta2.ShareManagerList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.ShareManager, *v1beta2.ShareManagerList, *longhornv1beta2.ShareManagerApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("sharemanagers"),

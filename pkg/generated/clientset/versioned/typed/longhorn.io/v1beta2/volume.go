@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VolumeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.VolumeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.Volume, err error)
+	Apply(ctx context.Context, volume *applyconfigurationlonghornv1beta2.VolumeApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.Volume, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, volume *applyconfigurationlonghornv1beta2.VolumeApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.Volume, err error)
 	VolumeExpansion
 }
 
 // volumes implements VolumeInterface
 type volumes struct {
-	*gentype.ClientWithList[*longhornv1beta2.Volume, *longhornv1beta2.VolumeList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.Volume, *longhornv1beta2.VolumeList, *applyconfigurationlonghornv1beta2.VolumeApplyConfiguration]
 }
 
 // newVolumes returns a Volumes
 func newVolumes(c *LonghornV1beta2Client, namespace string) *volumes {
 	return &volumes{
-		gentype.NewClientWithList[*longhornv1beta2.Volume, *longhornv1beta2.VolumeList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.Volume, *longhornv1beta2.VolumeList, *applyconfigurationlonghornv1beta2.VolumeApplyConfiguration](
 			"volumes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

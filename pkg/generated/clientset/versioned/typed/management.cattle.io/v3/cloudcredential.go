@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type CloudCredentialInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.CloudCredentialList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.CloudCredential, err error)
+	Apply(ctx context.Context, cloudCredential *applyconfigurationmanagementcattleiov3.CloudCredentialApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.CloudCredential, err error)
 	CloudCredentialExpansion
 }
 
 // cloudCredentials implements CloudCredentialInterface
 type cloudCredentials struct {
-	*gentype.ClientWithList[*managementcattleiov3.CloudCredential, *managementcattleiov3.CloudCredentialList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.CloudCredential, *managementcattleiov3.CloudCredentialList, *applyconfigurationmanagementcattleiov3.CloudCredentialApplyConfiguration]
 }
 
 // newCloudCredentials returns a CloudCredentials
 func newCloudCredentials(c *ManagementV3Client, namespace string) *cloudCredentials {
 	return &cloudCredentials{
-		gentype.NewClientWithList[*managementcattleiov3.CloudCredential, *managementcattleiov3.CloudCredentialList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.CloudCredential, *managementcattleiov3.CloudCredentialList, *applyconfigurationmanagementcattleiov3.CloudCredentialApplyConfiguration](
 			"cloudcredentials",
 			c.RESTClient(),
 			scheme.ParameterCodec,

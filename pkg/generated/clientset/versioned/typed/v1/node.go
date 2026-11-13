@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type NodeInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.NodeList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Node, err error)
+	Apply(ctx context.Context, node *applyconfigurationcorev1.NodeApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Node, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, node *applyconfigurationcorev1.NodeApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Node, err error)
 	NodeExpansion
 }
 
 // nodes implements NodeInterface
 type nodes struct {
-	*gentype.ClientWithList[*corev1.Node, *corev1.NodeList]
+	*gentype.ClientWithListAndApply[*corev1.Node, *corev1.NodeList, *applyconfigurationcorev1.NodeApplyConfiguration]
 }
 
 // newNodes returns a Nodes
 func newNodes(c *CoreV1Client) *nodes {
 	return &nodes{
-		gentype.NewClientWithList[*corev1.Node, *corev1.NodeList](
+		gentype.NewClientWithListAndApply[*corev1.Node, *corev1.NodeList, *applyconfigurationcorev1.NodeApplyConfiguration](
 			"nodes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

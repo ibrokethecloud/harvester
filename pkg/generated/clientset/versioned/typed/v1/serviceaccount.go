@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,7 @@ type ServiceAccountInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceAccountList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ServiceAccount, err error)
+	Apply(ctx context.Context, serviceAccount *applyconfigurationcorev1.ServiceAccountApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ServiceAccount, err error)
 	CreateToken(ctx context.Context, serviceAccountName string, tokenRequest *authenticationv1.TokenRequest, opts metav1.CreateOptions) (*authenticationv1.TokenRequest, error)
 
 	ServiceAccountExpansion
@@ -53,13 +55,13 @@ type ServiceAccountInterface interface {
 
 // serviceAccounts implements ServiceAccountInterface
 type serviceAccounts struct {
-	*gentype.ClientWithList[*corev1.ServiceAccount, *corev1.ServiceAccountList]
+	*gentype.ClientWithListAndApply[*corev1.ServiceAccount, *corev1.ServiceAccountList, *applyconfigurationcorev1.ServiceAccountApplyConfiguration]
 }
 
 // newServiceAccounts returns a ServiceAccounts
 func newServiceAccounts(c *CoreV1Client, namespace string) *serviceAccounts {
 	return &serviceAccounts{
-		gentype.NewClientWithList[*corev1.ServiceAccount, *corev1.ServiceAccountList](
+		gentype.NewClientWithListAndApply[*corev1.ServiceAccount, *corev1.ServiceAccountList, *applyconfigurationcorev1.ServiceAccountApplyConfiguration](
 			"serviceaccounts",
 			c.RESTClient(),
 			scheme.ParameterCodec,

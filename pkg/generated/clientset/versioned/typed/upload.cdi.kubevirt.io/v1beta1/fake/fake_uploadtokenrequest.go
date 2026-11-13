@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	uploadv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/upload/v1beta1"
 	uploadcdikubevirtiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/upload.cdi.kubevirt.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
 	v1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/upload/v1beta1"
@@ -26,13 +27,13 @@ import (
 
 // fakeUploadTokenRequests implements UploadTokenRequestInterface
 type fakeUploadTokenRequests struct {
-	*gentype.FakeClientWithList[*v1beta1.UploadTokenRequest, *v1beta1.UploadTokenRequestList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.UploadTokenRequest, *v1beta1.UploadTokenRequestList, *uploadv1beta1.UploadTokenRequestApplyConfiguration]
 	Fake *FakeUploadV1beta1
 }
 
 func newFakeUploadTokenRequests(fake *FakeUploadV1beta1, namespace string) uploadcdikubevirtiov1beta1.UploadTokenRequestInterface {
 	return &fakeUploadTokenRequests{
-		gentype.NewFakeClientWithList[*v1beta1.UploadTokenRequest, *v1beta1.UploadTokenRequestList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.UploadTokenRequest, *v1beta1.UploadTokenRequestList, *uploadv1beta1.UploadTokenRequestApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta1.SchemeGroupVersion.WithResource("uploadtokenrequests"),

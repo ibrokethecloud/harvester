@@ -21,6 +21,7 @@ package v1beta2
 import (
 	context "context"
 
+	applyconfigurationlonghornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	longhornv1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type SupportBundleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*longhornv1beta2.SupportBundleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *longhornv1beta2.SupportBundle, err error)
+	Apply(ctx context.Context, supportBundle *applyconfigurationlonghornv1beta2.SupportBundleApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.SupportBundle, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, supportBundle *applyconfigurationlonghornv1beta2.SupportBundleApplyConfiguration, opts v1.ApplyOptions) (result *longhornv1beta2.SupportBundle, err error)
 	SupportBundleExpansion
 }
 
 // supportBundles implements SupportBundleInterface
 type supportBundles struct {
-	*gentype.ClientWithList[*longhornv1beta2.SupportBundle, *longhornv1beta2.SupportBundleList]
+	*gentype.ClientWithListAndApply[*longhornv1beta2.SupportBundle, *longhornv1beta2.SupportBundleList, *applyconfigurationlonghornv1beta2.SupportBundleApplyConfiguration]
 }
 
 // newSupportBundles returns a SupportBundles
 func newSupportBundles(c *LonghornV1beta2Client, namespace string) *supportBundles {
 	return &supportBundles{
-		gentype.NewClientWithList[*longhornv1beta2.SupportBundle, *longhornv1beta2.SupportBundleList](
+		gentype.NewClientWithListAndApply[*longhornv1beta2.SupportBundle, *longhornv1beta2.SupportBundleList, *applyconfigurationlonghornv1beta2.SupportBundleApplyConfiguration](
 			"supportbundles",
 			c.RESTClient(),
 			scheme.ParameterCodec,

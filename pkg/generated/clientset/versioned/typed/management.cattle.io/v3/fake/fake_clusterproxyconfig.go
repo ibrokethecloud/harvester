@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusterProxyConfigs implements ClusterProxyConfigInterface
 type fakeClusterProxyConfigs struct {
-	*gentype.FakeClientWithList[*v3.ClusterProxyConfig, *v3.ClusterProxyConfigList]
+	*gentype.FakeClientWithListAndApply[*v3.ClusterProxyConfig, *v3.ClusterProxyConfigList, *managementcattleiov3.ClusterProxyConfigApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeClusterProxyConfigs(fake *FakeManagementV3, namespace string) managementcattleiov3.ClusterProxyConfigInterface {
+func newFakeClusterProxyConfigs(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ClusterProxyConfigInterface {
 	return &fakeClusterProxyConfigs{
-		gentype.NewFakeClientWithList[*v3.ClusterProxyConfig, *v3.ClusterProxyConfigList](
+		gentype.NewFakeClientWithListAndApply[*v3.ClusterProxyConfig, *v3.ClusterProxyConfigList, *managementcattleiov3.ClusterProxyConfigApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("clusterproxyconfigs"),

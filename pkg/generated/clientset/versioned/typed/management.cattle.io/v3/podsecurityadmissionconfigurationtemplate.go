@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type PodSecurityAdmissionConfigurationTemplateInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.PodSecurityAdmissionConfigurationTemplateList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, err error)
+	Apply(ctx context.Context, podSecurityAdmissionConfigurationTemplate *applyconfigurationmanagementcattleiov3.PodSecurityAdmissionConfigurationTemplateApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, err error)
 	PodSecurityAdmissionConfigurationTemplateExpansion
 }
 
 // podSecurityAdmissionConfigurationTemplates implements PodSecurityAdmissionConfigurationTemplateInterface
 type podSecurityAdmissionConfigurationTemplates struct {
-	*gentype.ClientWithList[*managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateList, *applyconfigurationmanagementcattleiov3.PodSecurityAdmissionConfigurationTemplateApplyConfiguration]
 }
 
 // newPodSecurityAdmissionConfigurationTemplates returns a PodSecurityAdmissionConfigurationTemplates
 func newPodSecurityAdmissionConfigurationTemplates(c *ManagementV3Client) *podSecurityAdmissionConfigurationTemplates {
 	return &podSecurityAdmissionConfigurationTemplates{
-		gentype.NewClientWithList[*managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.PodSecurityAdmissionConfigurationTemplate, *managementcattleiov3.PodSecurityAdmissionConfigurationTemplateList, *applyconfigurationmanagementcattleiov3.PodSecurityAdmissionConfigurationTemplateApplyConfiguration](
 			"podsecurityadmissionconfigurationtemplates",
 			c.RESTClient(),
 			scheme.ParameterCodec,

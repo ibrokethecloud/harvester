@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type EndpointsInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.EndpointsList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Endpoints, err error)
+	Apply(ctx context.Context, endpoints *applyconfigurationcorev1.EndpointsApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.Endpoints, err error)
 	EndpointsExpansion
 }
 
 // endpointses implements EndpointsInterface
 type endpointses struct {
-	*gentype.ClientWithList[*corev1.Endpoints, *corev1.EndpointsList]
+	*gentype.ClientWithListAndApply[*corev1.Endpoints, *corev1.EndpointsList, *applyconfigurationcorev1.EndpointsApplyConfiguration]
 }
 
 // newEndpointses returns a Endpointses
 func newEndpointses(c *CoreV1Client, namespace string) *endpointses {
 	return &endpointses{
-		gentype.NewClientWithList[*corev1.Endpoints, *corev1.EndpointsList](
+		gentype.NewClientWithListAndApply[*corev1.Endpoints, *corev1.EndpointsList, *applyconfigurationcorev1.EndpointsApplyConfiguration](
 			"endpointses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

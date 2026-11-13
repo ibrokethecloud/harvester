@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type NodeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.NodeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Node, err error)
+	Apply(ctx context.Context, node *applyconfigurationmanagementcattleiov3.NodeApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Node, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, node *applyconfigurationmanagementcattleiov3.NodeApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Node, err error)
 	NodeExpansion
 }
 
 // nodes implements NodeInterface
 type nodes struct {
-	*gentype.ClientWithList[*managementcattleiov3.Node, *managementcattleiov3.NodeList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Node, *managementcattleiov3.NodeList, *applyconfigurationmanagementcattleiov3.NodeApplyConfiguration]
 }
 
 // newNodes returns a Nodes
 func newNodes(c *ManagementV3Client, namespace string) *nodes {
 	return &nodes{
-		gentype.NewClientWithList[*managementcattleiov3.Node, *managementcattleiov3.NodeList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Node, *managementcattleiov3.NodeList, *applyconfigurationmanagementcattleiov3.NodeApplyConfiguration](
 			"nodes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VpcNatGatewayInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.VpcNatGatewayList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.VpcNatGateway, err error)
+	Apply(ctx context.Context, vpcNatGateway *applyconfigurationkubeovnv1.VpcNatGatewayApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.VpcNatGateway, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, vpcNatGateway *applyconfigurationkubeovnv1.VpcNatGatewayApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.VpcNatGateway, err error)
 	VpcNatGatewayExpansion
 }
 
 // vpcNatGateways implements VpcNatGatewayInterface
 type vpcNatGateways struct {
-	*gentype.ClientWithList[*kubeovnv1.VpcNatGateway, *kubeovnv1.VpcNatGatewayList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.VpcNatGateway, *kubeovnv1.VpcNatGatewayList, *applyconfigurationkubeovnv1.VpcNatGatewayApplyConfiguration]
 }
 
 // newVpcNatGateways returns a VpcNatGateways
 func newVpcNatGateways(c *KubeovnV1Client) *vpcNatGateways {
 	return &vpcNatGateways{
-		gentype.NewClientWithList[*kubeovnv1.VpcNatGateway, *kubeovnv1.VpcNatGatewayList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.VpcNatGateway, *kubeovnv1.VpcNatGatewayList, *applyconfigurationkubeovnv1.VpcNatGatewayApplyConfiguration](
 			"vpc-nat-gateways",
 			c.RESTClient(),
 			scheme.ParameterCodec,

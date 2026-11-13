@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type OpenLdapProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.OpenLdapProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.OpenLdapProvider, err error)
+	Apply(ctx context.Context, openLdapProvider *applyconfigurationmanagementcattleiov3.OpenLdapProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.OpenLdapProvider, err error)
 	OpenLdapProviderExpansion
 }
 
 // openLdapProviders implements OpenLdapProviderInterface
 type openLdapProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.OpenLdapProvider, *managementcattleiov3.OpenLdapProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.OpenLdapProvider, *managementcattleiov3.OpenLdapProviderList, *applyconfigurationmanagementcattleiov3.OpenLdapProviderApplyConfiguration]
 }
 
 // newOpenLdapProviders returns a OpenLdapProviders
 func newOpenLdapProviders(c *ManagementV3Client) *openLdapProviders {
 	return &openLdapProviders{
-		gentype.NewClientWithList[*managementcattleiov3.OpenLdapProvider, *managementcattleiov3.OpenLdapProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.OpenLdapProvider, *managementcattleiov3.OpenLdapProviderList, *applyconfigurationmanagementcattleiov3.OpenLdapProviderApplyConfiguration](
 			"openldapproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

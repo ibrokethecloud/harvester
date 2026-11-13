@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeProjects implements ProjectInterface
 type fakeProjects struct {
-	*gentype.FakeClientWithList[*v3.Project, *v3.ProjectList]
+	*gentype.FakeClientWithListAndApply[*v3.Project, *v3.ProjectList, *managementcattleiov3.ProjectApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeProjects(fake *FakeManagementV3, namespace string) managementcattleiov3.ProjectInterface {
+func newFakeProjects(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ProjectInterface {
 	return &fakeProjects{
-		gentype.NewFakeClientWithList[*v3.Project, *v3.ProjectList](
+		gentype.NewFakeClientWithListAndApply[*v3.Project, *v3.ProjectList, *managementcattleiov3.ProjectApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("projects"),

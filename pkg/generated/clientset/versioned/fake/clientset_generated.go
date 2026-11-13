@@ -19,7 +19,10 @@ limitations under the License.
 package fake
 
 import (
+	applyconfiguration "github.com/harvester/harvester/pkg/generated/applyconfiguration"
 	clientset "github.com/harvester/harvester/pkg/generated/clientset/versioned"
+	apiapi "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/api.sdk.kubevirt.io/api"
+	fakeapiapi "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/api.sdk.kubevirt.io/api/fake"
 	appsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1"
 	fakeappsv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/apps/v1/fake"
 	batchv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/batch/v1"
@@ -44,6 +47,8 @@ import (
 	fakelonghornv1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2/fake"
 	managementv3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	fakemanagementv3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3/fake"
+	metav1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/meta.k8s.io/v1"
+	fakemetav1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/meta.k8s.io/v1/fake"
 	monitoringv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	fakemonitoringv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1/fake"
 	networkv1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/network.harvesterhci.io/v1beta1"
@@ -76,10 +81,6 @@ import (
 // It's backed by a very simple object tracker that processes creates, updates and deletions as-is,
 // without applying any field management, validations and/or defaults. It shouldn't be considered a replacement
 // for a real clientset and is mostly useful in simple unit tests.
-//
-// DEPRECATED: NewClientset replaces this with support for field management, which significantly improves
-// server side apply testing. NewClientset is only available when apply configurations are generated (e.g.
-// via --with-applyconfig).
 func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 	o := testing.NewObjectTracker(scheme, codecs.UniversalDecoder())
 	for _, obj := range objects {
@@ -93,8 +94,8 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
 		var opts metav1.ListOptions
-		if watchActcion, ok := action.(testing.WatchActionImpl); ok {
-			opts = watchActcion.ListOptions
+		if watchAction, ok := action.(testing.WatchActionImpl); ok {
+			opts = watchAction.ListOptions
 		}
 		gvr := action.GetResource()
 		ns := action.GetNamespace()
@@ -125,6 +126,57 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
+// IsWatchListSemanticsUnSupported informs the reflector that this client
+// doesn't support WatchList semantics.
+//
+// This is a synthetic method whose sole purpose is to satisfy the optional
+// interface check performed by the reflector.
+// Returning true signals that WatchList can NOT be used.
+// No additional logic is implemented here.
+func (c *Clientset) IsWatchListSemanticsUnSupported() bool {
+	return true
+}
+
+// NewClientset returns a clientset that will respond with the provided objects.
+// It's backed by a very simple object tracker that processes creates, updates and deletions as-is,
+// without applying any validations and/or defaults. It shouldn't be considered a replacement
+// for a real clientset and is mostly useful in simple unit tests.
+//
+// Compared to NewSimpleClientset, the Clientset returned here supports field tracking and thus
+// server-side apply. Beware though that support in that for CRDs is missing
+// (https://github.com/kubernetes/kubernetes/issues/126850).
+func NewClientset(objects ...runtime.Object) *Clientset {
+	o := testing.NewFieldManagedObjectTracker(
+		scheme,
+		codecs.UniversalDecoder(),
+		applyconfiguration.NewTypeConverter(scheme),
+	)
+	for _, obj := range objects {
+		if err := o.Add(obj); err != nil {
+			panic(err)
+		}
+	}
+
+	cs := &Clientset{tracker: o}
+	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
+	cs.AddReactor("*", "*", testing.ObjectReaction(o))
+	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
+		var opts metav1.ListOptions
+		if watchAction, ok := action.(testing.WatchActionImpl); ok {
+			opts = watchAction.ListOptions
+		}
+		gvr := action.GetResource()
+		ns := action.GetNamespace()
+		watch, err := o.Watch(gvr, ns, opts)
+		if err != nil {
+			return false, nil, err
+		}
+		return true, watch, nil
+	})
+
+	return cs
+}
+
 var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
@@ -133,6 +185,11 @@ var (
 // CoreV1 retrieves the CoreV1Client
 func (c *Clientset) CoreV1() corev1.CoreV1Interface {
 	return &fakecorev1.FakeCoreV1{Fake: &c.Fake}
+}
+
+// ApiApi retrieves the ApiApiClient
+func (c *Clientset) ApiApi() apiapi.ApiApiInterface {
+	return &fakeapiapi.FakeApiApi{Fake: &c.Fake}
 }
 
 // AppsV1 retrieves the AppsV1Client
@@ -193,6 +250,11 @@ func (c *Clientset) LonghornV1beta2() longhornv1beta2.LonghornV1beta2Interface {
 // ManagementV3 retrieves the ManagementV3Client
 func (c *Clientset) ManagementV3() managementv3.ManagementV3Interface {
 	return &fakemanagementv3.FakeManagementV3{Fake: &c.Fake}
+}
+
+// MetaV1 retrieves the MetaV1Client
+func (c *Clientset) MetaV1() metav1.MetaV1Interface {
+	return &fakemetav1.FakeMetaV1{Fake: &c.Fake}
 }
 
 // MonitoringV1 retrieves the MonitoringV1Client

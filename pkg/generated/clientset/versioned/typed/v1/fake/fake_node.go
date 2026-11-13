@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	v1 "k8s.io/api/core/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeNodes implements NodeInterface
 type fakeNodes struct {
-	*gentype.FakeClientWithList[*v1.Node, *v1.NodeList]
+	*gentype.FakeClientWithListAndApply[*v1.Node, *v1.NodeList, *corev1.NodeApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeNodes(fake *FakeCoreV1) typedv1.NodeInterface {
 	return &fakeNodes{
-		gentype.NewFakeClientWithList[*v1.Node, *v1.NodeList](
+		gentype.NewFakeClientWithListAndApply[*v1.Node, *v1.NodeList, *corev1.NodeApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("nodes"),

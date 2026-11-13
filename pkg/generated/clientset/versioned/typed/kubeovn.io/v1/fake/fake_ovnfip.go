@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeOvnFips implements OvnFipInterface
 type fakeOvnFips struct {
-	*gentype.FakeClientWithList[*v1.OvnFip, *v1.OvnFipList]
+	*gentype.FakeClientWithListAndApply[*v1.OvnFip, *v1.OvnFipList, *kubeovnv1.OvnFipApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeOvnFips(fake *FakeKubeovnV1) kubeovniov1.OvnFipInterface {
 	return &fakeOvnFips{
-		gentype.NewFakeClientWithList[*v1.OvnFip, *v1.OvnFipList](
+		gentype.NewFakeClientWithListAndApply[*v1.OvnFip, *v1.OvnFipList, *kubeovnv1.OvnFipApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("ovn-fips"),

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	kubevirtiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubevirt.io/v1"
 	gentype "k8s.io/client-go/gentype"
 	v1 "kubevirt.io/api/core/v1"
@@ -26,13 +27,13 @@ import (
 
 // fakeVirtualMachines implements VirtualMachineInterface
 type fakeVirtualMachines struct {
-	*gentype.FakeClientWithList[*v1.VirtualMachine, *v1.VirtualMachineList]
+	*gentype.FakeClientWithListAndApply[*v1.VirtualMachine, *v1.VirtualMachineList, *corev1.VirtualMachineApplyConfiguration]
 	Fake *FakeKubevirtV1
 }
 
 func newFakeVirtualMachines(fake *FakeKubevirtV1, namespace string) kubevirtiov1.VirtualMachineInterface {
 	return &fakeVirtualMachines{
-		gentype.NewFakeClientWithList[*v1.VirtualMachine, *v1.VirtualMachineList](
+		gentype.NewFakeClientWithListAndApply[*v1.VirtualMachine, *v1.VirtualMachineList, *corev1.VirtualMachineApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("virtualmachines"),

@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type GroupInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.GroupList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.Group, err error)
+	Apply(ctx context.Context, group *applyconfigurationmanagementcattleiov3.GroupApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.Group, err error)
 	GroupExpansion
 }
 
 // groups implements GroupInterface
 type groups struct {
-	*gentype.ClientWithList[*managementcattleiov3.Group, *managementcattleiov3.GroupList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.Group, *managementcattleiov3.GroupList, *applyconfigurationmanagementcattleiov3.GroupApplyConfiguration]
 }
 
 // newGroups returns a Groups
 func newGroups(c *ManagementV3Client) *groups {
 	return &groups{
-		gentype.NewClientWithList[*managementcattleiov3.Group, *managementcattleiov3.GroupList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.Group, *managementcattleiov3.GroupList, *applyconfigurationmanagementcattleiov3.GroupApplyConfiguration](
 			"groups",
 			c.RESTClient(),
 			scheme.ParameterCodec,

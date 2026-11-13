@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeLocalProviders implements LocalProviderInterface
 type fakeLocalProviders struct {
-	*gentype.FakeClientWithList[*v3.LocalProvider, *v3.LocalProviderList]
+	*gentype.FakeClientWithListAndApply[*v3.LocalProvider, *v3.LocalProviderList, *managementcattleiov3.LocalProviderApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeLocalProviders(fake *FakeManagementV3) managementcattleiov3.LocalProviderInterface {
+func newFakeLocalProviders(fake *FakeManagementV3) typedmanagementcattleiov3.LocalProviderInterface {
 	return &fakeLocalProviders{
-		gentype.NewFakeClientWithList[*v3.LocalProvider, *v3.LocalProviderList](
+		gentype.NewFakeClientWithListAndApply[*v3.LocalProvider, *v3.LocalProviderList, *managementcattleiov3.LocalProviderApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("localproviders"),

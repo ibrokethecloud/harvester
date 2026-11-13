@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type KubeVirtInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.KubeVirtList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.KubeVirt, err error)
+	Apply(ctx context.Context, kubeVirt *applyconfigurationcorev1.KubeVirtApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.KubeVirt, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, kubeVirt *applyconfigurationcorev1.KubeVirtApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.KubeVirt, err error)
 	KubeVirtExpansion
 }
 
 // kubeVirts implements KubeVirtInterface
 type kubeVirts struct {
-	*gentype.ClientWithList[*corev1.KubeVirt, *corev1.KubeVirtList]
+	*gentype.ClientWithListAndApply[*corev1.KubeVirt, *corev1.KubeVirtList, *applyconfigurationcorev1.KubeVirtApplyConfiguration]
 }
 
 // newKubeVirts returns a KubeVirts
 func newKubeVirts(c *KubevirtV1Client, namespace string) *kubeVirts {
 	return &kubeVirts{
-		gentype.NewClientWithList[*corev1.KubeVirt, *corev1.KubeVirtList](
+		gentype.NewClientWithListAndApply[*corev1.KubeVirt, *corev1.KubeVirtList, *applyconfigurationcorev1.KubeVirtApplyConfiguration](
 			"kubevirts",
 			c.RESTClient(),
 			scheme.ParameterCodec,

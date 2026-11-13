@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type DynamicSchemaInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.DynamicSchemaList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.DynamicSchema, err error)
+	Apply(ctx context.Context, dynamicSchema *applyconfigurationmanagementcattleiov3.DynamicSchemaApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.DynamicSchema, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, dynamicSchema *applyconfigurationmanagementcattleiov3.DynamicSchemaApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.DynamicSchema, err error)
 	DynamicSchemaExpansion
 }
 
 // dynamicSchemas implements DynamicSchemaInterface
 type dynamicSchemas struct {
-	*gentype.ClientWithList[*managementcattleiov3.DynamicSchema, *managementcattleiov3.DynamicSchemaList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.DynamicSchema, *managementcattleiov3.DynamicSchemaList, *applyconfigurationmanagementcattleiov3.DynamicSchemaApplyConfiguration]
 }
 
 // newDynamicSchemas returns a DynamicSchemas
 func newDynamicSchemas(c *ManagementV3Client) *dynamicSchemas {
 	return &dynamicSchemas{
-		gentype.NewClientWithList[*managementcattleiov3.DynamicSchema, *managementcattleiov3.DynamicSchemaList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.DynamicSchema, *managementcattleiov3.DynamicSchemaList, *applyconfigurationmanagementcattleiov3.DynamicSchemaApplyConfiguration](
 			"dynamicschemas",
 			c.RESTClient(),
 			scheme.ParameterCodec,

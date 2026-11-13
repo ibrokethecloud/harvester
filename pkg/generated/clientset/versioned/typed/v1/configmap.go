@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type ConfigMapInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ConfigMapList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ConfigMap, err error)
+	Apply(ctx context.Context, configMap *applyconfigurationcorev1.ConfigMapApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.ConfigMap, err error)
 	ConfigMapExpansion
 }
 
 // configMaps implements ConfigMapInterface
 type configMaps struct {
-	*gentype.ClientWithList[*corev1.ConfigMap, *corev1.ConfigMapList]
+	*gentype.ClientWithListAndApply[*corev1.ConfigMap, *corev1.ConfigMapList, *applyconfigurationcorev1.ConfigMapApplyConfiguration]
 }
 
 // newConfigMaps returns a ConfigMaps
 func newConfigMaps(c *CoreV1Client, namespace string) *configMaps {
 	return &configMaps{
-		gentype.NewClientWithList[*corev1.ConfigMap, *corev1.ConfigMapList](
+		gentype.NewClientWithListAndApply[*corev1.ConfigMap, *corev1.ConfigMapList, *applyconfigurationcorev1.ConfigMapApplyConfiguration](
 			"configmaps",
 			c.RESTClient(),
 			scheme.ParameterCodec,

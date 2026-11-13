@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type VirtualMachineInstanceInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.VirtualMachineInstanceList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.VirtualMachineInstance, err error)
+	Apply(ctx context.Context, virtualMachineInstance *applyconfigurationcorev1.VirtualMachineInstanceApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.VirtualMachineInstance, err error)
 	VirtualMachineInstanceExpansion
 }
 
 // virtualMachineInstances implements VirtualMachineInstanceInterface
 type virtualMachineInstances struct {
-	*gentype.ClientWithList[*corev1.VirtualMachineInstance, *corev1.VirtualMachineInstanceList]
+	*gentype.ClientWithListAndApply[*corev1.VirtualMachineInstance, *corev1.VirtualMachineInstanceList, *applyconfigurationcorev1.VirtualMachineInstanceApplyConfiguration]
 }
 
 // newVirtualMachineInstances returns a VirtualMachineInstances
 func newVirtualMachineInstances(c *KubevirtV1Client, namespace string) *virtualMachineInstances {
 	return &virtualMachineInstances{
-		gentype.NewClientWithList[*corev1.VirtualMachineInstance, *corev1.VirtualMachineInstanceList](
+		gentype.NewClientWithListAndApply[*corev1.VirtualMachineInstance, *corev1.VirtualMachineInstanceList, *applyconfigurationcorev1.VirtualMachineInstanceApplyConfiguration](
 			"virtualmachineinstances",
 			c.RESTClient(),
 			scheme.ParameterCodec,

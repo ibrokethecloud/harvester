@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type OIDCProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.OIDCProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.OIDCProvider, err error)
+	Apply(ctx context.Context, oIDCProvider *applyconfigurationmanagementcattleiov3.OIDCProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.OIDCProvider, err error)
 	OIDCProviderExpansion
 }
 
 // oIDCProviders implements OIDCProviderInterface
 type oIDCProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.OIDCProvider, *managementcattleiov3.OIDCProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.OIDCProvider, *managementcattleiov3.OIDCProviderList, *applyconfigurationmanagementcattleiov3.OIDCProviderApplyConfiguration]
 }
 
 // newOIDCProviders returns a OIDCProviders
 func newOIDCProviders(c *ManagementV3Client) *oIDCProviders {
 	return &oIDCProviders{
-		gentype.NewClientWithList[*managementcattleiov3.OIDCProvider, *managementcattleiov3.OIDCProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.OIDCProvider, *managementcattleiov3.OIDCProviderList, *applyconfigurationmanagementcattleiov3.OIDCProviderApplyConfiguration](
 			"oidcproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

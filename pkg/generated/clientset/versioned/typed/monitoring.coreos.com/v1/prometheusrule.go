@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationmonitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,24 +40,29 @@ type PrometheusRulesGetter interface {
 type PrometheusRuleInterface interface {
 	Create(ctx context.Context, prometheusRule *monitoringv1.PrometheusRule, opts metav1.CreateOptions) (*monitoringv1.PrometheusRule, error)
 	Update(ctx context.Context, prometheusRule *monitoringv1.PrometheusRule, opts metav1.UpdateOptions) (*monitoringv1.PrometheusRule, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, prometheusRule *monitoringv1.PrometheusRule, opts metav1.UpdateOptions) (*monitoringv1.PrometheusRule, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*monitoringv1.PrometheusRule, error)
 	List(ctx context.Context, opts metav1.ListOptions) (*monitoringv1.PrometheusRuleList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *monitoringv1.PrometheusRule, err error)
+	Apply(ctx context.Context, prometheusRule *applyconfigurationmonitoringv1.PrometheusRuleApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.PrometheusRule, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, prometheusRule *applyconfigurationmonitoringv1.PrometheusRuleApplyConfiguration, opts metav1.ApplyOptions) (result *monitoringv1.PrometheusRule, err error)
 	PrometheusRuleExpansion
 }
 
 // prometheusRules implements PrometheusRuleInterface
 type prometheusRules struct {
-	*gentype.ClientWithList[*monitoringv1.PrometheusRule, *monitoringv1.PrometheusRuleList]
+	*gentype.ClientWithListAndApply[*monitoringv1.PrometheusRule, *monitoringv1.PrometheusRuleList, *applyconfigurationmonitoringv1.PrometheusRuleApplyConfiguration]
 }
 
 // newPrometheusRules returns a PrometheusRules
 func newPrometheusRules(c *MonitoringV1Client, namespace string) *prometheusRules {
 	return &prometheusRules{
-		gentype.NewClientWithList[*monitoringv1.PrometheusRule, *monitoringv1.PrometheusRuleList](
+		gentype.NewClientWithListAndApply[*monitoringv1.PrometheusRule, *monitoringv1.PrometheusRuleList, *applyconfigurationmonitoringv1.PrometheusRuleApplyConfiguration](
 			"prometheusrules",
 			c.RESTClient(),
 			scheme.ParameterCodec,

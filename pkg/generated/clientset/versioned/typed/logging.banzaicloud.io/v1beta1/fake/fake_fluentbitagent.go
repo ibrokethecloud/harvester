@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	apiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	loggingbanzaicloudiov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/logging.banzaicloud.io/v1beta1"
 	v1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeFluentbitAgents implements FluentbitAgentInterface
 type fakeFluentbitAgents struct {
-	*gentype.FakeClientWithList[*v1beta1.FluentbitAgent, *v1beta1.FluentbitAgentList]
+	*gentype.FakeClientWithListAndApply[*v1beta1.FluentbitAgent, *v1beta1.FluentbitAgentList, *apiv1beta1.FluentbitAgentApplyConfiguration]
 	Fake *FakeLoggingV1beta1
 }
 
 func newFakeFluentbitAgents(fake *FakeLoggingV1beta1) loggingbanzaicloudiov1beta1.FluentbitAgentInterface {
 	return &fakeFluentbitAgents{
-		gentype.NewFakeClientWithList[*v1beta1.FluentbitAgent, *v1beta1.FluentbitAgentList](
+		gentype.NewFakeClientWithListAndApply[*v1beta1.FluentbitAgent, *v1beta1.FluentbitAgentList, *apiv1beta1.FluentbitAgentApplyConfiguration](
 			fake.Fake,
 			"",
 			v1beta1.GroupVersion.WithResource("fluentbitagents"),

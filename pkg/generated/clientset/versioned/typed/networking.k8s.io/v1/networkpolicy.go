@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationnetworkingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/networking/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type NetworkPolicyInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.NetworkPolicyList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.NetworkPolicy, err error)
+	Apply(ctx context.Context, networkPolicy *applyconfigurationnetworkingv1.NetworkPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *networkingv1.NetworkPolicy, err error)
 	NetworkPolicyExpansion
 }
 
 // networkPolicies implements NetworkPolicyInterface
 type networkPolicies struct {
-	*gentype.ClientWithList[*networkingv1.NetworkPolicy, *networkingv1.NetworkPolicyList]
+	*gentype.ClientWithListAndApply[*networkingv1.NetworkPolicy, *networkingv1.NetworkPolicyList, *applyconfigurationnetworkingv1.NetworkPolicyApplyConfiguration]
 }
 
 // newNetworkPolicies returns a NetworkPolicies
 func newNetworkPolicies(c *NetworkingV1Client, namespace string) *networkPolicies {
 	return &networkPolicies{
-		gentype.NewClientWithList[*networkingv1.NetworkPolicy, *networkingv1.NetworkPolicyList](
+		gentype.NewClientWithListAndApply[*networkingv1.NetworkPolicy, *networkingv1.NetworkPolicyList, *applyconfigurationnetworkingv1.NetworkPolicyApplyConfiguration](
 			"networkpolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,

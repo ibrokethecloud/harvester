@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationvolumesnapshotv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/volumesnapshot/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	volumesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type VolumeSnapshotClassInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*volumesnapshotv1.VolumeSnapshotClassList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *volumesnapshotv1.VolumeSnapshotClass, err error)
+	Apply(ctx context.Context, volumeSnapshotClass *applyconfigurationvolumesnapshotv1.VolumeSnapshotClassApplyConfiguration, opts metav1.ApplyOptions) (result *volumesnapshotv1.VolumeSnapshotClass, err error)
 	VolumeSnapshotClassExpansion
 }
 
 // volumeSnapshotClasses implements VolumeSnapshotClassInterface
 type volumeSnapshotClasses struct {
-	*gentype.ClientWithList[*volumesnapshotv1.VolumeSnapshotClass, *volumesnapshotv1.VolumeSnapshotClassList]
+	*gentype.ClientWithListAndApply[*volumesnapshotv1.VolumeSnapshotClass, *volumesnapshotv1.VolumeSnapshotClassList, *applyconfigurationvolumesnapshotv1.VolumeSnapshotClassApplyConfiguration]
 }
 
 // newVolumeSnapshotClasses returns a VolumeSnapshotClasses
 func newVolumeSnapshotClasses(c *SnapshotV1Client) *volumeSnapshotClasses {
 	return &volumeSnapshotClasses{
-		gentype.NewClientWithList[*volumesnapshotv1.VolumeSnapshotClass, *volumesnapshotv1.VolumeSnapshotClassList](
+		gentype.NewClientWithListAndApply[*volumesnapshotv1.VolumeSnapshotClass, *volumesnapshotv1.VolumeSnapshotClassList, *applyconfigurationvolumesnapshotv1.VolumeSnapshotClassApplyConfiguration](
 			"volumesnapshotclasses",
 			c.RESTClient(),
 			scheme.ParameterCodec,

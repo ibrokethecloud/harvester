@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	kubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	kubeovniov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/kubeovn.io/v1"
 	v1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeIptablesSnatRules implements IptablesSnatRuleInterface
 type fakeIptablesSnatRules struct {
-	*gentype.FakeClientWithList[*v1.IptablesSnatRule, *v1.IptablesSnatRuleList]
+	*gentype.FakeClientWithListAndApply[*v1.IptablesSnatRule, *v1.IptablesSnatRuleList, *kubeovnv1.IptablesSnatRuleApplyConfiguration]
 	Fake *FakeKubeovnV1
 }
 
 func newFakeIptablesSnatRules(fake *FakeKubeovnV1) kubeovniov1.IptablesSnatRuleInterface {
 	return &fakeIptablesSnatRules{
-		gentype.NewFakeClientWithList[*v1.IptablesSnatRule, *v1.IptablesSnatRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1.IptablesSnatRule, *v1.IptablesSnatRuleList, *kubeovnv1.IptablesSnatRuleApplyConfiguration](
 			fake.Fake,
 			"",
 			v1.SchemeGroupVersion.WithResource("iptables-snat-rules"),

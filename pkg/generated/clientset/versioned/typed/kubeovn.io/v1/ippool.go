@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type IPPoolInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.IPPoolList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.IPPool, err error)
+	Apply(ctx context.Context, iPPool *applyconfigurationkubeovnv1.IPPoolApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.IPPool, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, iPPool *applyconfigurationkubeovnv1.IPPoolApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.IPPool, err error)
 	IPPoolExpansion
 }
 
 // iPPools implements IPPoolInterface
 type iPPools struct {
-	*gentype.ClientWithList[*kubeovnv1.IPPool, *kubeovnv1.IPPoolList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.IPPool, *kubeovnv1.IPPoolList, *applyconfigurationkubeovnv1.IPPoolApplyConfiguration]
 }
 
 // newIPPools returns a IPPools
 func newIPPools(c *KubeovnV1Client) *iPPools {
 	return &iPPools{
-		gentype.NewClientWithList[*kubeovnv1.IPPool, *kubeovnv1.IPPoolList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.IPPool, *kubeovnv1.IPPoolList, *applyconfigurationkubeovnv1.IPPoolApplyConfiguration](
 			"ippools",
 			c.RESTClient(),
 			scheme.ParameterCodec,

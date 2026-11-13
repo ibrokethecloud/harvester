@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationappsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type DaemonSetInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*appsv1.DaemonSetList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.DaemonSet, err error)
+	Apply(ctx context.Context, daemonSet *applyconfigurationappsv1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.DaemonSet, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, daemonSet *applyconfigurationappsv1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.DaemonSet, err error)
 	DaemonSetExpansion
 }
 
 // daemonSets implements DaemonSetInterface
 type daemonSets struct {
-	*gentype.ClientWithList[*appsv1.DaemonSet, *appsv1.DaemonSetList]
+	*gentype.ClientWithListAndApply[*appsv1.DaemonSet, *appsv1.DaemonSetList, *applyconfigurationappsv1.DaemonSetApplyConfiguration]
 }
 
 // newDaemonSets returns a DaemonSets
 func newDaemonSets(c *AppsV1Client, namespace string) *daemonSets {
 	return &daemonSets{
-		gentype.NewClientWithList[*appsv1.DaemonSet, *appsv1.DaemonSetList](
+		gentype.NewClientWithListAndApply[*appsv1.DaemonSet, *appsv1.DaemonSetList, *applyconfigurationappsv1.DaemonSetApplyConfiguration](
 			"daemonsets",
 			c.RESTClient(),
 			scheme.ParameterCodec,

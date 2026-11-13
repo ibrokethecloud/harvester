@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type PodTemplateInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodTemplateList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PodTemplate, err error)
+	Apply(ctx context.Context, podTemplate *applyconfigurationcorev1.PodTemplateApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.PodTemplate, err error)
 	PodTemplateExpansion
 }
 
 // podTemplates implements PodTemplateInterface
 type podTemplates struct {
-	*gentype.ClientWithList[*corev1.PodTemplate, *corev1.PodTemplateList]
+	*gentype.ClientWithListAndApply[*corev1.PodTemplate, *corev1.PodTemplateList, *applyconfigurationcorev1.PodTemplateApplyConfiguration]
 }
 
 // newPodTemplates returns a PodTemplates
 func newPodTemplates(c *CoreV1Client, namespace string) *podTemplates {
 	return &podTemplates{
-		gentype.NewClientWithList[*corev1.PodTemplate, *corev1.PodTemplateList](
+		gentype.NewClientWithListAndApply[*corev1.PodTemplate, *corev1.PodTemplateList, *applyconfigurationcorev1.PodTemplateApplyConfiguration](
 			"podtemplates",
 			c.RESTClient(),
 			scheme.ParameterCodec,

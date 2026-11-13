@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationstoragev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/storage/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type CSINodeInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*storagev1.CSINodeList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.CSINode, err error)
+	Apply(ctx context.Context, cSINode *applyconfigurationstoragev1.CSINodeApplyConfiguration, opts metav1.ApplyOptions) (result *storagev1.CSINode, err error)
 	CSINodeExpansion
 }
 
 // cSINodes implements CSINodeInterface
 type cSINodes struct {
-	*gentype.ClientWithList[*storagev1.CSINode, *storagev1.CSINodeList]
+	*gentype.ClientWithListAndApply[*storagev1.CSINode, *storagev1.CSINodeList, *applyconfigurationstoragev1.CSINodeApplyConfiguration]
 }
 
 // newCSINodes returns a CSINodes
 func newCSINodes(c *StorageV1Client) *cSINodes {
 	return &cSINodes{
-		gentype.NewClientWithList[*storagev1.CSINode, *storagev1.CSINodeList](
+		gentype.NewClientWithListAndApply[*storagev1.CSINode, *storagev1.CSINodeList, *applyconfigurationstoragev1.CSINodeApplyConfiguration](
 			"csinodes",
 			c.RESTClient(),
 			scheme.ParameterCodec,

@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type ClusterRegistrationTokenInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.ClusterRegistrationTokenList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.ClusterRegistrationToken, err error)
+	Apply(ctx context.Context, clusterRegistrationToken *applyconfigurationmanagementcattleiov3.ClusterRegistrationTokenApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ClusterRegistrationToken, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, clusterRegistrationToken *applyconfigurationmanagementcattleiov3.ClusterRegistrationTokenApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.ClusterRegistrationToken, err error)
 	ClusterRegistrationTokenExpansion
 }
 
 // clusterRegistrationTokens implements ClusterRegistrationTokenInterface
 type clusterRegistrationTokens struct {
-	*gentype.ClientWithList[*managementcattleiov3.ClusterRegistrationToken, *managementcattleiov3.ClusterRegistrationTokenList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.ClusterRegistrationToken, *managementcattleiov3.ClusterRegistrationTokenList, *applyconfigurationmanagementcattleiov3.ClusterRegistrationTokenApplyConfiguration]
 }
 
 // newClusterRegistrationTokens returns a ClusterRegistrationTokens
 func newClusterRegistrationTokens(c *ManagementV3Client, namespace string) *clusterRegistrationTokens {
 	return &clusterRegistrationTokens{
-		gentype.NewClientWithList[*managementcattleiov3.ClusterRegistrationToken, *managementcattleiov3.ClusterRegistrationTokenList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.ClusterRegistrationToken, *managementcattleiov3.ClusterRegistrationTokenList, *applyconfigurationmanagementcattleiov3.ClusterRegistrationTokenApplyConfiguration](
 			"clusterregistrationtokens",
 			c.RESTClient(),
 			scheme.ParameterCodec,

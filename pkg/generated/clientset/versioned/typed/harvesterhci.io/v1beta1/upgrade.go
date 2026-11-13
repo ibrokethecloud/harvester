@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type UpgradeInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.UpgradeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.Upgrade, err error)
+	Apply(ctx context.Context, upgrade *applyconfigurationharvesterhciiov1beta1.UpgradeApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.Upgrade, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, upgrade *applyconfigurationharvesterhciiov1beta1.UpgradeApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.Upgrade, err error)
 	UpgradeExpansion
 }
 
 // upgrades implements UpgradeInterface
 type upgrades struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.Upgrade, *harvesterhciiov1beta1.UpgradeList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.Upgrade, *harvesterhciiov1beta1.UpgradeList, *applyconfigurationharvesterhciiov1beta1.UpgradeApplyConfiguration]
 }
 
 // newUpgrades returns a Upgrades
 func newUpgrades(c *HarvesterhciV1beta1Client, namespace string) *upgrades {
 	return &upgrades{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.Upgrade, *harvesterhciiov1beta1.UpgradeList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.Upgrade, *harvesterhciiov1beta1.UpgradeList, *applyconfigurationharvesterhciiov1beta1.UpgradeApplyConfiguration](
 			"upgrades",
 			c.RESTClient(),
 			scheme.ParameterCodec,

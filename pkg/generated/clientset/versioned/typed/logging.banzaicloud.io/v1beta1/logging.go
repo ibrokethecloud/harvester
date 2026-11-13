@@ -21,6 +21,7 @@ package v1beta1
 import (
 	context "context"
 
+	applyconfigurationapiv1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/api/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	apiv1beta1 "github.com/kube-logging/logging-operator/pkg/sdk/logging/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type LoggingInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*apiv1beta1.LoggingList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *apiv1beta1.Logging, err error)
+	Apply(ctx context.Context, logging *applyconfigurationapiv1beta1.LoggingApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.Logging, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, logging *applyconfigurationapiv1beta1.LoggingApplyConfiguration, opts v1.ApplyOptions) (result *apiv1beta1.Logging, err error)
 	LoggingExpansion
 }
 
 // loggings implements LoggingInterface
 type loggings struct {
-	*gentype.ClientWithList[*apiv1beta1.Logging, *apiv1beta1.LoggingList]
+	*gentype.ClientWithListAndApply[*apiv1beta1.Logging, *apiv1beta1.LoggingList, *applyconfigurationapiv1beta1.LoggingApplyConfiguration]
 }
 
 // newLoggings returns a Loggings
 func newLoggings(c *LoggingV1beta1Client) *loggings {
 	return &loggings{
-		gentype.NewClientWithList[*apiv1beta1.Logging, *apiv1beta1.LoggingList](
+		gentype.NewClientWithListAndApply[*apiv1beta1.Logging, *apiv1beta1.LoggingList, *applyconfigurationapiv1beta1.LoggingApplyConfiguration](
 			"loggings",
 			c.RESTClient(),
 			scheme.ParameterCodec,

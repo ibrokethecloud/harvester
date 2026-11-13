@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	catalogcattleiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/catalog.cattle.io/v1"
+	catalogcattleiov1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/catalog.cattle.io/v1"
+	typedcatalogcattleiov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/catalog.cattle.io/v1"
 	v1 "github.com/rancher/rancher/pkg/apis/catalog.cattle.io/v1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeOperations implements OperationInterface
 type fakeOperations struct {
-	*gentype.FakeClientWithList[*v1.Operation, *v1.OperationList]
+	*gentype.FakeClientWithListAndApply[*v1.Operation, *v1.OperationList, *catalogcattleiov1.OperationApplyConfiguration]
 	Fake *FakeCatalogV1
 }
 
-func newFakeOperations(fake *FakeCatalogV1, namespace string) catalogcattleiov1.OperationInterface {
+func newFakeOperations(fake *FakeCatalogV1, namespace string) typedcatalogcattleiov1.OperationInterface {
 	return &fakeOperations{
-		gentype.NewFakeClientWithList[*v1.Operation, *v1.OperationList](
+		gentype.NewFakeClientWithListAndApply[*v1.Operation, *v1.OperationList, *catalogcattleiov1.OperationApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("operations"),

@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	volumesnapshotv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/volumesnapshot/v1"
 	snapshotstoragek8siov1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/snapshot.storage.k8s.io/v1"
 	v1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeVolumeSnapshots implements VolumeSnapshotInterface
 type fakeVolumeSnapshots struct {
-	*gentype.FakeClientWithList[*v1.VolumeSnapshot, *v1.VolumeSnapshotList]
+	*gentype.FakeClientWithListAndApply[*v1.VolumeSnapshot, *v1.VolumeSnapshotList, *volumesnapshotv1.VolumeSnapshotApplyConfiguration]
 	Fake *FakeSnapshotV1
 }
 
 func newFakeVolumeSnapshots(fake *FakeSnapshotV1, namespace string) snapshotstoragek8siov1.VolumeSnapshotInterface {
 	return &fakeVolumeSnapshots{
-		gentype.NewFakeClientWithList[*v1.VolumeSnapshot, *v1.VolumeSnapshotList](
+		gentype.NewFakeClientWithListAndApply[*v1.VolumeSnapshot, *v1.VolumeSnapshotList, *volumesnapshotv1.VolumeSnapshotApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("volumesnapshots"),

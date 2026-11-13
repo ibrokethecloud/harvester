@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	monitoringv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/monitoring/v1"
 	monitoringcoreoscomv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/monitoring.coreos.com/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -31,13 +32,13 @@ import (
 
 // fakePrometheuses implements PrometheusInterface
 type fakePrometheuses struct {
-	*gentype.FakeClientWithList[*v1.Prometheus, *v1.PrometheusList]
+	*gentype.FakeClientWithListAndApply[*v1.Prometheus, *v1.PrometheusList, *monitoringv1.PrometheusApplyConfiguration]
 	Fake *FakeMonitoringV1
 }
 
 func newFakePrometheuses(fake *FakeMonitoringV1, namespace string) monitoringcoreoscomv1.PrometheusInterface {
 	return &fakePrometheuses{
-		gentype.NewFakeClientWithList[*v1.Prometheus, *v1.PrometheusList](
+		gentype.NewFakeClientWithListAndApply[*v1.Prometheus, *v1.PrometheusList, *monitoringv1.PrometheusApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("prometheuses"),

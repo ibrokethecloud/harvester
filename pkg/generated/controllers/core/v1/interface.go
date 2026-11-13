@@ -31,6 +31,7 @@ func init() {
 }
 
 type Interface interface {
+	LocalObjectReference() LocalObjectReferenceController
 	Node() NodeController
 	PersistentVolume() PersistentVolumeController
 	PersistentVolumeClaim() PersistentVolumeClaimController
@@ -45,6 +46,10 @@ func New(controllerFactory controller.SharedControllerFactory) Interface {
 
 type version struct {
 	controllerFactory controller.SharedControllerFactory
+}
+
+func (v *version) LocalObjectReference() LocalObjectReferenceController {
+	return generic.NewController[*v1.LocalObjectReference, *v1.LocalObjectReferenceList](schema.GroupVersionKind{Group: "", Version: "v1", Kind: "LocalObjectReference"}, "localobjectreferences", true, v.controllerFactory)
 }
 
 func (v *version) Node() NodeController {

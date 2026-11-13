@@ -21,6 +21,7 @@ package fake
 import (
 	context "context"
 
+	corev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	typedv1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -31,13 +32,13 @@ import (
 
 // fakeServiceAccounts implements ServiceAccountInterface
 type fakeServiceAccounts struct {
-	*gentype.FakeClientWithList[*v1.ServiceAccount, *v1.ServiceAccountList]
+	*gentype.FakeClientWithListAndApply[*v1.ServiceAccount, *v1.ServiceAccountList, *corev1.ServiceAccountApplyConfiguration]
 	Fake *FakeCoreV1
 }
 
 func newFakeServiceAccounts(fake *FakeCoreV1, namespace string) typedv1.ServiceAccountInterface {
 	return &fakeServiceAccounts{
-		gentype.NewFakeClientWithList[*v1.ServiceAccount, *v1.ServiceAccountList](
+		gentype.NewFakeClientWithListAndApply[*v1.ServiceAccount, *v1.ServiceAccountList, *corev1.ServiceAccountApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1.SchemeGroupVersion.WithResource("serviceaccounts"),

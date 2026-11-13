@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeProjectNetworkPolicies implements ProjectNetworkPolicyInterface
 type fakeProjectNetworkPolicies struct {
-	*gentype.FakeClientWithList[*v3.ProjectNetworkPolicy, *v3.ProjectNetworkPolicyList]
+	*gentype.FakeClientWithListAndApply[*v3.ProjectNetworkPolicy, *v3.ProjectNetworkPolicyList, *managementcattleiov3.ProjectNetworkPolicyApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeProjectNetworkPolicies(fake *FakeManagementV3, namespace string) managementcattleiov3.ProjectNetworkPolicyInterface {
+func newFakeProjectNetworkPolicies(fake *FakeManagementV3, namespace string) typedmanagementcattleiov3.ProjectNetworkPolicyInterface {
 	return &fakeProjectNetworkPolicies{
-		gentype.NewFakeClientWithList[*v3.ProjectNetworkPolicy, *v3.ProjectNetworkPolicyList](
+		gentype.NewFakeClientWithListAndApply[*v3.ProjectNetworkPolicy, *v3.ProjectNetworkPolicyList, *managementcattleiov3.ProjectNetworkPolicyApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v3.SchemeGroupVersion.WithResource("projectnetworkpolicies"),

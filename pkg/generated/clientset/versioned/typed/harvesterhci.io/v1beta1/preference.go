@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	harvesterhciiov1beta1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
+	applyconfigurationharvesterhciiov1beta1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/harvesterhci.io/v1beta1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type PreferenceInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*harvesterhciiov1beta1.PreferenceList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *harvesterhciiov1beta1.Preference, err error)
+	Apply(ctx context.Context, preference *applyconfigurationharvesterhciiov1beta1.PreferenceApplyConfiguration, opts v1.ApplyOptions) (result *harvesterhciiov1beta1.Preference, err error)
 	PreferenceExpansion
 }
 
 // preferences implements PreferenceInterface
 type preferences struct {
-	*gentype.ClientWithList[*harvesterhciiov1beta1.Preference, *harvesterhciiov1beta1.PreferenceList]
+	*gentype.ClientWithListAndApply[*harvesterhciiov1beta1.Preference, *harvesterhciiov1beta1.PreferenceList, *applyconfigurationharvesterhciiov1beta1.PreferenceApplyConfiguration]
 }
 
 // newPreferences returns a Preferences
 func newPreferences(c *HarvesterhciV1beta1Client, namespace string) *preferences {
 	return &preferences{
-		gentype.NewClientWithList[*harvesterhciiov1beta1.Preference, *harvesterhciiov1beta1.PreferenceList](
+		gentype.NewClientWithListAndApply[*harvesterhciiov1beta1.Preference, *harvesterhciiov1beta1.PreferenceList, *applyconfigurationharvesterhciiov1beta1.PreferenceApplyConfiguration](
 			"preferences",
 			c.RESTClient(),
 			scheme.ParameterCodec,

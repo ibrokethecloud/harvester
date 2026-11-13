@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationkubeovnv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/kubeovn/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type VipInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*kubeovnv1.VipList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *kubeovnv1.Vip, err error)
+	Apply(ctx context.Context, vip *applyconfigurationkubeovnv1.VipApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.Vip, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, vip *applyconfigurationkubeovnv1.VipApplyConfiguration, opts metav1.ApplyOptions) (result *kubeovnv1.Vip, err error)
 	VipExpansion
 }
 
 // vips implements VipInterface
 type vips struct {
-	*gentype.ClientWithList[*kubeovnv1.Vip, *kubeovnv1.VipList]
+	*gentype.ClientWithListAndApply[*kubeovnv1.Vip, *kubeovnv1.VipList, *applyconfigurationkubeovnv1.VipApplyConfiguration]
 }
 
 // newVips returns a Vips
 func newVips(c *KubeovnV1Client) *vips {
 	return &vips{
-		gentype.NewClientWithList[*kubeovnv1.Vip, *kubeovnv1.VipList](
+		gentype.NewClientWithListAndApply[*kubeovnv1.Vip, *kubeovnv1.VipList, *applyconfigurationkubeovnv1.VipApplyConfiguration](
 			"vips",
 			c.RESTClient(),
 			scheme.ParameterCodec,

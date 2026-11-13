@@ -21,6 +21,7 @@ package v3
 import (
 	context "context"
 
+	applyconfigurationmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	managementcattleiov3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,18 +46,19 @@ type AzureADProviderInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*managementcattleiov3.AzureADProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *managementcattleiov3.AzureADProvider, err error)
+	Apply(ctx context.Context, azureADProvider *applyconfigurationmanagementcattleiov3.AzureADProviderApplyConfiguration, opts v1.ApplyOptions) (result *managementcattleiov3.AzureADProvider, err error)
 	AzureADProviderExpansion
 }
 
 // azureADProviders implements AzureADProviderInterface
 type azureADProviders struct {
-	*gentype.ClientWithList[*managementcattleiov3.AzureADProvider, *managementcattleiov3.AzureADProviderList]
+	*gentype.ClientWithListAndApply[*managementcattleiov3.AzureADProvider, *managementcattleiov3.AzureADProviderList, *applyconfigurationmanagementcattleiov3.AzureADProviderApplyConfiguration]
 }
 
 // newAzureADProviders returns a AzureADProviders
 func newAzureADProviders(c *ManagementV3Client) *azureADProviders {
 	return &azureADProviders{
-		gentype.NewClientWithList[*managementcattleiov3.AzureADProvider, *managementcattleiov3.AzureADProviderList](
+		gentype.NewClientWithListAndApply[*managementcattleiov3.AzureADProvider, *managementcattleiov3.AzureADProviderList, *applyconfigurationmanagementcattleiov3.AzureADProviderApplyConfiguration](
 			"azureadproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,

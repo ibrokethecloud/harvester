@@ -21,6 +21,7 @@ package v1
 import (
 	context "context"
 
+	applyconfigurationcorev1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/core/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type VirtualMachineInstanceReplicaSetInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.VirtualMachineInstanceReplicaSetList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.VirtualMachineInstanceReplicaSet, err error)
+	Apply(ctx context.Context, virtualMachineInstanceReplicaSet *applyconfigurationcorev1.VirtualMachineInstanceReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.VirtualMachineInstanceReplicaSet, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, virtualMachineInstanceReplicaSet *applyconfigurationcorev1.VirtualMachineInstanceReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *corev1.VirtualMachineInstanceReplicaSet, err error)
 	VirtualMachineInstanceReplicaSetExpansion
 }
 
 // virtualMachineInstanceReplicaSets implements VirtualMachineInstanceReplicaSetInterface
 type virtualMachineInstanceReplicaSets struct {
-	*gentype.ClientWithList[*corev1.VirtualMachineInstanceReplicaSet, *corev1.VirtualMachineInstanceReplicaSetList]
+	*gentype.ClientWithListAndApply[*corev1.VirtualMachineInstanceReplicaSet, *corev1.VirtualMachineInstanceReplicaSetList, *applyconfigurationcorev1.VirtualMachineInstanceReplicaSetApplyConfiguration]
 }
 
 // newVirtualMachineInstanceReplicaSets returns a VirtualMachineInstanceReplicaSets
 func newVirtualMachineInstanceReplicaSets(c *KubevirtV1Client, namespace string) *virtualMachineInstanceReplicaSets {
 	return &virtualMachineInstanceReplicaSets{
-		gentype.NewClientWithList[*corev1.VirtualMachineInstanceReplicaSet, *corev1.VirtualMachineInstanceReplicaSetList](
+		gentype.NewClientWithListAndApply[*corev1.VirtualMachineInstanceReplicaSet, *corev1.VirtualMachineInstanceReplicaSetList, *applyconfigurationcorev1.VirtualMachineInstanceReplicaSetApplyConfiguration](
 			"virtualmachineinstancereplicasets",
 			c.RESTClient(),
 			scheme.ParameterCodec,

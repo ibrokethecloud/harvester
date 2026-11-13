@@ -20,7 +20,10 @@ package v1
 
 import (
 	context "context"
+	fmt "fmt"
 
+	applyconfigurationappsv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/apps/v1"
+	applyconfigurationautoscalingv1 "github.com/harvester/harvester/pkg/generated/applyconfiguration/autoscaling/v1"
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -28,6 +31,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+	apply "k8s.io/client-go/util/apply"
 )
 
 // StatefulSetsGetter has a method to return a StatefulSetInterface.
@@ -48,21 +52,25 @@ type StatefulSetInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*appsv1.StatefulSetList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.StatefulSet, err error)
+	Apply(ctx context.Context, statefulSet *applyconfigurationappsv1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.StatefulSet, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, statefulSet *applyconfigurationappsv1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1.StatefulSet, err error)
 	GetScale(ctx context.Context, statefulSetName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(ctx context.Context, statefulSetName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
+	ApplyScale(ctx context.Context, statefulSetName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*autoscalingv1.Scale, error)
 
 	StatefulSetExpansion
 }
 
 // statefulSets implements StatefulSetInterface
 type statefulSets struct {
-	*gentype.ClientWithList[*appsv1.StatefulSet, *appsv1.StatefulSetList]
+	*gentype.ClientWithListAndApply[*appsv1.StatefulSet, *appsv1.StatefulSetList, *applyconfigurationappsv1.StatefulSetApplyConfiguration]
 }
 
 // newStatefulSets returns a StatefulSets
 func newStatefulSets(c *AppsV1Client, namespace string) *statefulSets {
 	return &statefulSets{
-		gentype.NewClientWithList[*appsv1.StatefulSet, *appsv1.StatefulSetList](
+		gentype.NewClientWithListAndApply[*appsv1.StatefulSet, *appsv1.StatefulSetList, *applyconfigurationappsv1.StatefulSetApplyConfiguration](
 			"statefulsets",
 			c.RESTClient(),
 			scheme.ParameterCodec,
@@ -97,6 +105,30 @@ func (c *statefulSets) UpdateScale(ctx context.Context, statefulSetName string, 
 		SubResource("scale").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scale).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// ApplyScale takes top resource name and the apply declarative configuration for scale,
+// applies it and returns the applied scale, and an error, if there is any.
+func (c *statefulSets) ApplyScale(ctx context.Context, statefulSetName string, scale *applyconfigurationautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.Scale, err error) {
+	if scale == nil {
+		return nil, fmt.Errorf("scale provided to ApplyScale must not be nil")
+	}
+	patchOpts := opts.ToPatchOptions()
+	request, err := apply.NewRequest(c.GetClient(), scale)
+	if err != nil {
+		return nil, err
+	}
+
+	result = &autoscalingv1.Scale{}
+	err = request.
+		Namespace(c.GetNamespace()).
+		Resource("statefulsets").
+		Name(statefulSetName).
+		SubResource("scale").
+		VersionedParams(&patchOpts, scheme.ParameterCodec).
 		Do(ctx).
 		Into(result)
 	return

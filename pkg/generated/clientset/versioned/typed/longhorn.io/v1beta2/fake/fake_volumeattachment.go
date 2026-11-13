@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	longhornv1beta2 "github.com/harvester/harvester/pkg/generated/applyconfiguration/longhorn/v1beta2"
 	longhorniov1beta2 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/longhorn.io/v1beta2"
 	v1beta2 "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta2"
 	gentype "k8s.io/client-go/gentype"
@@ -26,13 +27,13 @@ import (
 
 // fakeVolumeAttachments implements VolumeAttachmentInterface
 type fakeVolumeAttachments struct {
-	*gentype.FakeClientWithList[*v1beta2.VolumeAttachment, *v1beta2.VolumeAttachmentList]
+	*gentype.FakeClientWithListAndApply[*v1beta2.VolumeAttachment, *v1beta2.VolumeAttachmentList, *longhornv1beta2.VolumeAttachmentApplyConfiguration]
 	Fake *FakeLonghornV1beta2
 }
 
 func newFakeVolumeAttachments(fake *FakeLonghornV1beta2, namespace string) longhorniov1beta2.VolumeAttachmentInterface {
 	return &fakeVolumeAttachments{
-		gentype.NewFakeClientWithList[*v1beta2.VolumeAttachment, *v1beta2.VolumeAttachmentList](
+		gentype.NewFakeClientWithListAndApply[*v1beta2.VolumeAttachment, *v1beta2.VolumeAttachmentList, *longhornv1beta2.VolumeAttachmentApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1beta2.SchemeGroupVersion.WithResource("volumeattachments"),

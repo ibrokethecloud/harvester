@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
+	managementcattleiov3 "github.com/harvester/harvester/pkg/generated/applyconfiguration/management.cattle.io/v3"
+	typedmanagementcattleiov3 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	v3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGlobalRoles implements GlobalRoleInterface
 type fakeGlobalRoles struct {
-	*gentype.FakeClientWithList[*v3.GlobalRole, *v3.GlobalRoleList]
+	*gentype.FakeClientWithListAndApply[*v3.GlobalRole, *v3.GlobalRoleList, *managementcattleiov3.GlobalRoleApplyConfiguration]
 	Fake *FakeManagementV3
 }
 
-func newFakeGlobalRoles(fake *FakeManagementV3) managementcattleiov3.GlobalRoleInterface {
+func newFakeGlobalRoles(fake *FakeManagementV3) typedmanagementcattleiov3.GlobalRoleInterface {
 	return &fakeGlobalRoles{
-		gentype.NewFakeClientWithList[*v3.GlobalRole, *v3.GlobalRoleList](
+		gentype.NewFakeClientWithListAndApply[*v3.GlobalRole, *v3.GlobalRoleList, *managementcattleiov3.GlobalRoleApplyConfiguration](
 			fake.Fake,
 			"",
 			v3.SchemeGroupVersion.WithResource("globalroles"),
