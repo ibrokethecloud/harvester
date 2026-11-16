@@ -25,7 +25,7 @@ import (
 	kubeletconfigv1 "k8s.io/kubelet/config/v1beta1"
 	kubeletstatsv1 "k8s.io/kubelet/pkg/apis/stats/v1alpha1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	"github.com/harvester/harvester/pkg/controller/master/upgrade"

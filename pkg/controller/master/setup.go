@@ -12,7 +12,6 @@ import (
 	"github.com/harvester/harvester/pkg/controller/master/image"
 	"github.com/harvester/harvester/pkg/controller/master/keypair"
 	"github.com/harvester/harvester/pkg/controller/master/kubevirt"
-	"github.com/harvester/harvester/pkg/controller/master/machine"
 	"github.com/harvester/harvester/pkg/controller/master/mcmsettings"
 	"github.com/harvester/harvester/pkg/controller/master/migration"
 	"github.com/harvester/harvester/pkg/controller/master/node"
@@ -45,7 +44,6 @@ var registerFuncs = []registerFunc{
 	image.Register,
 	keypair.Register,
 	kubevirt.Register,
-	machine.ControlPlaneRegister,
 	mcmsettings.Register,
 	migration.Register,
 	node.CPUManagerRegister,
@@ -53,7 +51,6 @@ var registerFuncs = []registerFunc{
 	node.DownRegister,
 	node.MaintainRegister,
 	node.PromoteRegister,
-	node.RemoveRegister,
 	node.VolumeDetachRegister,
 	nodedrain.Register,
 	pvc.Register,

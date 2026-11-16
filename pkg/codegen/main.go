@@ -29,7 +29,6 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	cdiuploadv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/upload/v1beta1"
-	capi "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	harvesterv1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
@@ -144,14 +143,6 @@ func main() {
 			upgradev1.SchemeGroupVersion.Group: {
 				Types: []interface{}{
 					upgradev1.Plan{},
-				},
-				GenerateTypes:   false,
-				GenerateClients: true,
-			},
-			capi.GroupVersion.Group: {
-				Types: []interface{}{
-					capi.Cluster{},
-					capi.Machine{},
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,

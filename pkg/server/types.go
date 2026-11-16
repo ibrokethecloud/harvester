@@ -16,7 +16,6 @@ import (
 	"github.com/rancher/dynamiclistener/server"
 	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/steve/pkg/accesscontrol"
-	steveauth "github.com/rancher/steve/pkg/auth"
 	steveserver "github.com/rancher/steve/pkg/server"
 	"github.com/rancher/wrangler/v3/pkg/generic"
 	"github.com/rancher/wrangler/v3/pkg/ratelimit"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	harvesterauth "github.com/harvester/harvester/cmd/harvester-auth"
 	"github.com/harvester/harvester/pkg/api"
 	"github.com/harvester/harvester/pkg/config"
 	"github.com/harvester/harvester/pkg/controller/admission"
@@ -235,9 +235,14 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 		return err
 	}
 
+	harvesterAuthMiddleware, err := harvesterauth.AuthMiddleware(s.RESTConfig, s.Context)
+	if err != nil {
+		return err
+	}
+
 	s.steve, err = steveserver.New(s.Context, s.RESTConfig, &steveserver.Options{
 		Controllers:     s.controllers,
-		AuthMiddleware:  steveauth.ExistingContext,
+		AuthMiddleware:  harvesterAuthMiddleware,
 		Router:          router.Routes,
 		AccessSetLookup: s.ASL,
 	})
@@ -248,9 +253,6 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 	// Serve APIs under /v1/harvester as the Rancher aggregation services, in addition to the default /v1
 	s.steve.APIServer.Parser = dynamicURLBuilderParse
 	apiroot.Register(s.steve.BaseSchemas, []string{"v1", "v1/harvester"}, "proxy:/apis")
-
-	authMiddleware := steveauth.ToMiddleware(steveauth.AuthenticatorFunc(steveauth.AlwaysAdmin))
-	s.Handler = authMiddleware(s.steve)
 
 	s.startHooks = []StartHook{
 		indexeres.Setup,

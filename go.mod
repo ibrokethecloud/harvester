@@ -1,6 +1,6 @@
 module github.com/harvester/harvester
 
-go 1.26.0
+go 1.27.4
 
 replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.7.0
@@ -17,9 +17,9 @@ replace (
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20200521150516-05eb9880269c
 	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
 	github.com/rancher/lasso => github.com/rancher/lasso v0.0.0-20241202185148-04649f379358
-	github.com/rancher/rancher => github.com/rancher/rancher v0.0.0-20250828140533-07a90f09a491
-	github.com/rancher/rancher/pkg/apis => github.com/rancher/rancher/pkg/apis v0.0.0-20250828140533-07a90f09a491
-	github.com/rancher/rancher/pkg/client => github.com/rancher/rancher/pkg/client v0.0.0-20250828140533-07a90f09a491
+	github.com/rancher/rancher => github.com/rancher/rancher v0.0.0-20261029130418-99ab89e90bf1
+	github.com/rancher/rancher/pkg/apis => github.com/rancher/rancher/pkg/apis v0.0.0-20261029130418-99ab89e90bf1
+	github.com/rancher/rancher/pkg/client => github.com/rancher/rancher/pkg/client v0.0.0-20261029130418-99ab89e90bf1
 	// handle rancher dependenices
 	go.qase.io/client => github.com/rancher/qase-go/client v0.0.0-20250627195016-142ff3dfec16
 
@@ -55,6 +55,9 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.34.2
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.34.2
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.34.2
+	github.com/harvester/harvester/cmd/harvester-auth => ./cmd/harvester-auth
+	github.com/crewjam/saml => github.com/rancher/saml v0.4.14-rancher3
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.13.2
 )
 
 require (
@@ -144,7 +147,7 @@ require (
 	kubevirt.io/containerized-data-importer v1.64.0
 	kubevirt.io/containerized-data-importer-api v1.64.0
 	kubevirt.io/kubevirt v1.9.0
-	sigs.k8s.io/cluster-api v1.9.5
+	sigs.k8s.io/cluster-api v1.13.2
 	sigs.k8s.io/controller-runtime v0.22.5
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
 	sigs.k8s.io/kind v0.30.0
