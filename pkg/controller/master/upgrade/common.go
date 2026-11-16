@@ -575,7 +575,7 @@ func preparePlan(upgrade *harvesterv1.Upgrade, concurrency int) *upgradev1.Plan 
 		},
 		Spec: upgradev1.PlanSpec{
 			Concurrency:           int64(concurrency),
-			JobActiveDeadlineSecs: defaultPrepareDeadlineSeconds,
+			JobActiveDeadlineSecs: ptr.To(int64(defaultPrepareDeadlineSeconds)),
 			Version:               planVersion,
 			NodeSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{

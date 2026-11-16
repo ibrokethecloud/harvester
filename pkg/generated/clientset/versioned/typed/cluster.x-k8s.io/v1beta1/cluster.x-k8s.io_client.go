@@ -23,7 +23,7 @@ import (
 
 	scheme "github.com/harvester/harvester/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
-	apiv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	apiv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 type ClusterV1beta1Interface interface {

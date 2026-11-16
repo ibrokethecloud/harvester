@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/rancher/rancher/pkg/auth/handler"
 	"github.com/rancher/rancher/pkg/auth/logout"
 	"github.com/rancher/rancher/pkg/auth/providers/publicapi"
 	"github.com/rancher/rancher/pkg/auth/requests"
@@ -50,9 +49,6 @@ func AuthMiddleware(config *rest.Config, ctx context.Context) (steveauth.Middlew
 		}
 
 		root := newRootMux(routes)
-
-		p := handler.NewFromAuthConfigInterface(scaledContext.Management.AuthConfigs(""))
-		p.RegisterOIDCProviderHandlers(root)
 
 		return root
 	}, nil

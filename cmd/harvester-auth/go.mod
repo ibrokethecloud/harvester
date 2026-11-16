@@ -34,6 +34,7 @@ replace (
 	k8s.io/kms => k8s.io/kms v0.36.5
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.36.5
 	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.36.5
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.36.5
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.36.5
 	k8s.io/kubectl => k8s.io/kubectl v0.36.5
@@ -50,7 +51,7 @@ replace (
 
 require (
 	github.com/rancher/rancher v0.0.0-00010101000000-000000000000
-	github.com/rancher/steve v0.11.1
+	github.com/rancher/steve v0.9.23
 	github.com/sirupsen/logrus v1.10.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v12.0.0+incompatible

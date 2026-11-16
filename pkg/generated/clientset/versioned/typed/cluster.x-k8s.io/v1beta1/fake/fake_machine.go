@@ -21,7 +21,7 @@ package fake
 import (
 	clusterxk8siov1beta1 "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/cluster.x-k8s.io/v1beta1"
 	gentype "k8s.io/client-go/gentype"
-	v1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	v1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // fakeMachines implements MachineInterface

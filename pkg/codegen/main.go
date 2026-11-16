@@ -32,6 +32,7 @@ import (
 
 	harvesterv1 "github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	kubeovnv1 "github.com/kubeovn/kube-ovn/pkg/apis/kubeovn/v1"
+	capi "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 func main() {
@@ -143,6 +144,14 @@ func main() {
 			upgradev1.SchemeGroupVersion.Group: {
 				Types: []interface{}{
 					upgradev1.Plan{},
+				},
+				GenerateTypes:   false,
+				GenerateClients: true,
+			},
+			capi.GroupVersion.Group: {
+				Types: []interface{}{
+					capi.Cluster{},
+					capi.Machine{},
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,
