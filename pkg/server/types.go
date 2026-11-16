@@ -55,7 +55,8 @@ type HarvesterServer struct {
 	startHooks     []StartHook
 	postStartHooks []PostStartHook
 
-	Handler http.Handler
+	Handler      http.Handler
+	ClientConfig clientcmd.ClientConfig
 }
 
 var (
@@ -100,7 +101,8 @@ func RancherRESTConfig(ctx context.Context, restConfig *rest.Config, options con
 func New(ctx context.Context, clientConfig clientcmd.ClientConfig, options config.Options) (*HarvesterServer, error) {
 	var err error
 	server := &HarvesterServer{
-		Context: ctx,
+		Context:      ctx,
+		ClientConfig: clientConfig,
 	}
 	server.RESTConfig, err = clientConfig.ClientConfig()
 	if err != nil {
@@ -235,7 +237,7 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 		return err
 	}
 
-	harvesterAuthMiddleware, err := harvesterauth.AuthMiddleware(s.RESTConfig, s.Context)
+	harvesterAuthMiddleware, err := harvesterauth.AuthMiddleware(s.RESTConfig, s.ClientConfig, s.Context, factory)
 	if err != nil {
 		return err
 	}

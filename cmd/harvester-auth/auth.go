@@ -6,25 +6,50 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/rancher/lasso/pkg/controller"
+	normanStoreProxy "github.com/rancher/norman/store/proxy"
 	"github.com/rancher/rancher/pkg/auth/logout"
+	"github.com/rancher/rancher/pkg/auth/providers/common"
 	"github.com/rancher/rancher/pkg/auth/providers/publicapi"
 	"github.com/rancher/rancher/pkg/auth/requests"
 	"github.com/rancher/rancher/pkg/auth/tokens"
 	rancherconfig "github.com/rancher/rancher/pkg/types/config"
 	"github.com/rancher/rancher/pkg/utils"
+	"github.com/rancher/rancher/pkg/wrangler"
 	steveauth "github.com/rancher/steve/pkg/auth"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-func AuthMiddleware(config *rest.Config, ctx context.Context) (steveauth.Middleware, error) {
+func AuthMiddleware(config *rest.Config, clientConfig clientcmd.ClientConfig, ctx context.Context, factory controller.SharedControllerFactory) (steveauth.Middleware, error) {
 
-	scaledContext, err := rancherconfig.NewScaledContext(*config, nil)
+	logrus.Info("starting auth middleware")
+	logrus.Infof("config: %+v", config)
+	scaledContext, err := rancherconfig.NewScaledContext(*config, &rancherconfig.ScaleContextOptions{
+		ControllerFactory: factory,
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	// setup wrangler context
+	wranglerContext, err := wrangler.NewPrimaryContext(ctx, clientConfig, config)
+	if err != nil {
+		return nil, err
+	}
+
+	scaledContext.Wrangler = wranglerContext
+	scaledContext.UserManager, err = common.NewUserManagerNoBindings(wranglerContext)
+	if err != nil {
+		return nil, err
+	}
+
+	scaledContext.ClientGetter, err = normanStoreProxy.NewClientGetterFromConfig(*config)
+	if err != nil {
+		return nil, err
+	}
 	v1PublicAPI, err := publicapi.NewV1Handler(ctx, scaledContext)
 	if err != nil {
 		return nil, err

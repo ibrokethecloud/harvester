@@ -37,6 +37,7 @@ func createCRDs(ctx context.Context, restConfig *rest.Config) error {
 			crd.NonNamespacedFromGV(rancherv3.SchemeGroupVersion, "Feature", rancherv3.Feature{}),
 			crd.NonNamespacedFromGV(upgradev1.SchemeGroupVersion, "Plan", upgradev1.Plan{}),
 			crd.NonNamespacedFromGV(loggingv1.GroupVersion, "Logging", loggingv1.Logging{}),
+			crd.NonNamespacedFromGV(rancherv3.SchemeGroupVersion, "AuthConfig", rancherv3.AuthConfig{}),
 		).
 		BatchCreateCRDsIfNotExisted(
 			crd.FromGV(harvesterv1.SchemeGroupVersion, "KeyPair", harvesterv1.KeyPair{}),
