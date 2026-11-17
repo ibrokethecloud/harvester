@@ -8,6 +8,7 @@ import (
 
 	"github.com/rancher/lasso/pkg/controller"
 	normanStoreProxy "github.com/rancher/norman/store/proxy"
+	"github.com/rancher/rancher/pkg/auth/api"
 	"github.com/rancher/rancher/pkg/auth/logout"
 	"github.com/rancher/rancher/pkg/auth/providers/common"
 	"github.com/rancher/rancher/pkg/auth/providers/publicapi"
@@ -62,6 +63,11 @@ func AuthMiddleware(config *rest.Config, clientConfig clientcmd.ClientConfig, ct
 	logrus.Infof("Configuring auth server API body limit to %v bytes", apiLimit)
 
 	logout := logout.NewHandler(ctx, tokens.NewManager(scaledContext.Wrangler))
+
+	otherAPIs, err := api.NewNormanServer(ctx, scaledContext, authToken)
+	if err != nil {
+		return nil, err
+	}
 
 	return func(next http.Handler) http.Handler {
 		routes := authRoutes{
