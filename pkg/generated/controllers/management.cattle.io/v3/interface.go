@@ -32,6 +32,8 @@ func init() {
 
 type Interface interface {
 	ManagedChart() ManagedChartController
+	Token() TokenController
+	User() UserController
 }
 
 func New(controllerFactory controller.SharedControllerFactory) Interface {
@@ -46,4 +48,12 @@ type version struct {
 
 func (v *version) ManagedChart() ManagedChartController {
 	return generic.NewController[*v3.ManagedChart, *v3.ManagedChartList](schema.GroupVersionKind{Group: "management.cattle.io", Version: "v3", Kind: "ManagedChart"}, "managedcharts", true, v.controllerFactory)
+}
+
+func (v *version) Token() TokenController {
+	return generic.NewNonNamespacedController[*v3.Token, *v3.TokenList](schema.GroupVersionKind{Group: "management.cattle.io", Version: "v3", Kind: "Token"}, "tokens", v.controllerFactory)
+}
+
+func (v *version) User() UserController {
+	return generic.NewNonNamespacedController[*v3.User, *v3.UserList](schema.GroupVersionKind{Group: "management.cattle.io", Version: "v3", Kind: "User"}, "users", v.controllerFactory)
 }

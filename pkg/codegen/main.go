@@ -190,6 +190,8 @@ func main() {
 			mgmtv3.SchemeGroupVersion.Group: {
 				Types: []interface{}{
 					mgmtv3.ManagedChart{},
+					mgmtv3.Token{},
+					mgmtv3.User{},
 				},
 				GenerateTypes:   false,
 				GenerateClients: true,
