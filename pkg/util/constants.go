@@ -247,6 +247,7 @@ const (
 
 	HarvesterInstallCordonedLabel               = prefix + "/install-cordoned"
 	HarvesterInstallCordonedProcessedAnnotation = prefix + "/install-cordoned-processed"
+	DefaultTokenTTL                             = "57600000" // time in milliseconds, equals 16 hours
 )
 
 var (

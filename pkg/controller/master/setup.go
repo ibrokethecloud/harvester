@@ -26,6 +26,7 @@ import (
 	"github.com/harvester/harvester/pkg/controller/master/storagenetwork"
 	"github.com/harvester/harvester/pkg/controller/master/supportbundle"
 	"github.com/harvester/harvester/pkg/controller/master/template"
+	"github.com/harvester/harvester/pkg/controller/master/token"
 	"github.com/harvester/harvester/pkg/controller/master/upgrade"
 	"github.com/harvester/harvester/pkg/controller/master/upgradelog"
 	"github.com/harvester/harvester/pkg/controller/master/virtualmachine"
@@ -71,6 +72,7 @@ var registerFuncs = []registerFunc{
 	vmimagedownloader.Register,
 	node.ConditionAnnotationRegister,
 	pvcbackup.Register,
+	token.Register,
 }
 
 func register(ctx context.Context, management *config.Management, options config.Options) error {
