@@ -6,7 +6,6 @@ import (
 	mgmtv3type "github.com/harvester/harvester/pkg/generated/clientset/versioned/typed/management.cattle.io/v3"
 	mgmtv3 "github.com/rancher/rancher/pkg/apis/management.cattle.io/v3"
 	"github.com/rancher/wrangler/v3/pkg/generic"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +34,7 @@ func (c TokenCache) List(selector labels.Selector) ([]*mgmtv3.Token, error) {
 	return result, err
 }
 
-func (c TokenCache) AddIndexer(_ string, _ generic.Indexer[*v1.Node]) {
+func (c TokenCache) AddIndexer(_ string, _ generic.Indexer[*mgmtv3.Token]) {
 	panic("implement me")
 }
 

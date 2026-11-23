@@ -1059,9 +1059,6 @@ github.com/rancher/norman/types/slice
 github.com/rancher/norman/types/values
 # github.com/rancher/rancher v0.0.0-20240618122559-b9ec494d4f6f => github.com/rancher/rancher v0.0.0-20250828140533-07a90f09a491
 ## explicit; go 1.24.0
-github.com/rancher/rancher/pkg/auth/settings
-github.com/rancher/rancher/pkg/buildconfig
-github.com/rancher/rancher/pkg/fleet
 github.com/rancher/rancher/pkg/generated/controllers/catalog.cattle.io
 github.com/rancher/rancher/pkg/generated/controllers/catalog.cattle.io/v1
 github.com/rancher/rancher/pkg/generated/controllers/fleet.cattle.io
@@ -1072,7 +1069,6 @@ github.com/rancher/rancher/pkg/generated/controllers/provisioning.cattle.io
 github.com/rancher/rancher/pkg/generated/controllers/provisioning.cattle.io/v1
 github.com/rancher/rancher/pkg/generated/controllers/rke.cattle.io
 github.com/rancher/rancher/pkg/generated/controllers/rke.cattle.io/v1
-github.com/rancher/rancher/pkg/settings
 # github.com/rancher/rancher/pkg/apis v0.0.0 => github.com/rancher/rancher/pkg/apis v0.0.0-20250828140533-07a90f09a491
 ## explicit; go 1.24.0
 github.com/rancher/rancher/pkg/apis/catalog.cattle.io
@@ -1208,6 +1204,7 @@ github.com/rancher/wrangler/v3/pkg/merr
 github.com/rancher/wrangler/v3/pkg/name
 github.com/rancher/wrangler/v3/pkg/objectset
 github.com/rancher/wrangler/v3/pkg/patch
+github.com/rancher/wrangler/v3/pkg/randomtoken
 github.com/rancher/wrangler/v3/pkg/ratelimit
 github.com/rancher/wrangler/v3/pkg/relatedresource
 github.com/rancher/wrangler/v3/pkg/schemas
