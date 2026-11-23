@@ -16,6 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/storage/names"
+	k8sTesting "k8s.io/client-go/testing"
 )
 
 func Test_GetTokenAuthFromRequest(t *testing.T) {
@@ -66,44 +68,53 @@ func Test_Login(t *testing.T) {
 	assert := require.New(t)
 	logrus.SetLevel(logrus.DebugLevel)
 	const userName = "user-pkhgx"
-	commonObjs := []runtime.Object{
-		&corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: pbkdf2.LocalUserPasswordsNamespace,
-			},
-		},
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      userName,
-				Namespace: pbkdf2.LocalUserPasswordsNamespace,
-				Annotations: map[string]string{
-					"cattle.io/password-hash": "pbkdf2sha3512",
-				},
-			},
-			Data: map[string][]byte{
-				"password": []byte("gthSMwMH6Q/JVnpaTk9naITMuQMMTfb7EEOXKdzueXg="),
-				"salt":     []byte("hvYsPN+w+kgM+Jf+lqgcW3yWslcd/aSjxR0kZg5Wjf8="),
-			},
-		},
-		&mgmtv3.User{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "user-pkhgx",
-			},
-			Username:    "admin",
-			DisplayName: "Admin User",
-			Description: "",
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pbkdf2.LocalUserPasswordsNamespace,
 		},
 	}
 
-	client := harvesterfake.NewSimpleClientset(commonObjs...)
+	userObj := &mgmtv3.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: userName,
+		},
+		Username:    "admin",
+		DisplayName: "Admin User",
+		Description: "",
+	}
+
+	client := harvesterfake.NewSimpleClientset(namespace, userObj)
+	client.PrependReactor(
+		"create", "*",
+		func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+			ret = action.(k8sTesting.CreateAction).GetObject()
+			meta, ok := ret.(metav1.Object)
+			if !ok {
+				return
+			}
+
+			if meta.GetName() == "" && meta.GetGenerateName() != "" {
+				meta.SetName(names.SimpleNameGenerator.GenerateName(meta.GetGenerateName()))
+			}
+
+			return
+		},
+	)
 	secretClient := fakeclients.SecretClient(client.CoreV1().Secrets)
 	secretCache := fakeclients.SecretCache(client.CoreV1().Secrets)
 	tokenClient := fakeclients.TokenClient(client.ManagementV3().Tokens)
 	tokenCache := fakeclients.TokenCache(client.ManagementV3().Tokens)
 	userCache := fakeclients.UserCache(client.ManagementV3().Users)
+	credManager := pbkdf2.New(secretCache, secretClient)
+
+	// setup user password
+	err := credManager.CreatePassword(userObj, "password1234")
+	assert.NoError(err)
+
+	// attempt login to verify http handler and token creation
 	l := &localAuthProvider{
 		ctx:         context.TODO(),
-		Pbkdf2:      pbkdf2.New(secretCache, secretClient),
+		Pbkdf2:      credManager,
 		TokenClient: tokenClient,
 		TokenCache:  tokenCache,
 		UserCache:   userCache,

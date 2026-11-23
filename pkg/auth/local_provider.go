@@ -94,12 +94,10 @@ func (l *localAuthProvider) Login(w http.ResponseWriter, r *http.Request) {
 		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "found more than one user for username"))
 		return
 	}
-	logrus.Debugf("Login attempt for user %v", matchingUserObjs[0])
 
 	userObj := matchingUserObjs[0]
 
-	logrus.Debugf("attempting to verify credentials")
-	err = l.VerifyPassword(userObj, userObj.Password)
+	err = l.VerifyPassword(userObj, loginObj.Password)
 	if err != nil {
 		logrus.Error(err)
 		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, ""))
