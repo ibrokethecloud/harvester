@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"fmt"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/harvester/harvester/pkg/api/readyz"
 	"github.com/harvester/harvester/pkg/api/supportbundle"
 	"github.com/harvester/harvester/pkg/api/uiinfo"
+	"github.com/harvester/harvester/pkg/auth"
 	"github.com/harvester/harvester/pkg/config"
 	harvesterServer "github.com/harvester/harvester/pkg/server/http"
 	"github.com/harvester/harvester/pkg/server/ui"
@@ -35,18 +37,20 @@ const (
 )
 
 type Router struct {
+	ctx        context.Context
 	scaled     *config.Scaled
 	restConfig *rest.Config
 	options    config.Options
 	k8sClient  kubernetes.Interface
 }
 
-func NewRouter(scaled *config.Scaled, restConfig *rest.Config, options config.Options) (*Router, error) {
+func NewRouter(ctx context.Context, scaled *config.Scaled, restConfig *rest.Config, options config.Options) (*Router, error) {
 	k8sClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
 	return &Router{
+		ctx:        ctx,
 		scaled:     scaled,
 		restConfig: restConfig,
 		options:    options,
@@ -59,32 +63,37 @@ func (r *Router) Routes(h router.Handlers) http.Handler {
 	m := mux.NewRouter()
 	m.UseEncodedPath()
 	m.StrictSlash(true)
+	authHandler := auth.LoginHandler(r.ctx, r.scaled.Management)
+	// route v1-public calls to the authHandler which serves the login and logout pages
+	m.PathPrefix("/v1-public").Handler(authHandler.Routes())
 	m.Use(urlbuilder.RedirectRewrite)
 	m.Use(recoveryMiddleware)
-
-	m.Path("/").HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	// authHandler Middleware will ensure auth is needed for all endpoints
+	protected := m.PathPrefix("/").Subrouter()
+	protected.Use(authHandler.Middleware)
+	protected.Path("/").HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		http.Redirect(rw, req, "/dashboard/", http.StatusFound)
 	})
 
 	// add a prefix based handler for forklift
 	forkliftProxyHandler := forkliftproxy.NewForkliftProxyHandler(r.scaled)
 
-	m.Path("/v1/harvester/providers/vsphere/{providerId}/{object}").Methods("GET").Handler(forkliftProxyHandler)
+	protected.Path("/v1/harvester/providers/vsphere/{providerId}/{object}").Methods("GET").Handler(forkliftProxyHandler)
 
 	// Those routes should be above /v1/harvester/{type}, otherwise, the response status code would be 404
 	kcGenerateHandler := harvesterServer.NewHandler(kubeconfig.NewGenerateHandler(r.scaled, r.options))
-	m.Path("/v1/harvester/kubeconfig").Methods("POST").Handler(verifyAuthMiddleware(kcGenerateHandler))
-	m.Path("/v1/harvester/kubeconfig").Methods("GET").Handler(verifyAuthMiddleware(kcGenerateHandler))
+	protected.Path("/v1/harvester/kubeconfig").Methods("POST").Handler(verifyAuthMiddleware(kcGenerateHandler))
+	protected.Path("/v1/harvester/kubeconfig").Methods("GET").Handler(verifyAuthMiddleware(kcGenerateHandler))
 
 	uiInfoHandler := harvesterServer.NewHandler(uiinfo.NewUIInfoHandler(r.scaled, r.options))
 	m.Path("/v1/harvester/ui-info").Methods("GET").Handler(uiInfoHandler)
 	m.PathPrefix("/v1/harvester/plugin-assets").Handler(ui.Vue.PluginServeAsset())
 
 	sbDownloadHandler := harvesterServer.NewHandler(supportbundle.NewDownloadHandler(r.scaled, r.options.Namespace))
-	m.Path("/v1/harvester/supportbundles/{bundleName}/download").Methods("GET").Handler(sbDownloadHandler)
+	protected.Path("/v1/harvester/supportbundles/{bundleName}/download").Methods("GET").Handler(sbDownloadHandler)
 
 	btHealthyHandler := harvesterServer.NewHandler(backuptarget.NewHealthyHandler(r.scaled))
-	m.Path("/v1/harvester/backuptarget/healthz").Methods("GET").Handler(btHealthyHandler)
+	protected.Path("/v1/harvester/backuptarget/healthz").Methods("GET").Handler(btHealthyHandler)
 
 	readyzHandlerv1 := harvesterServer.NewHandler(readyz.NewReadyzHandler(
 		r.scaled.CoreFactory.Core().V1().Pod().Cache(),
@@ -105,20 +114,20 @@ func (r *Router) Routes(h router.Handlers) http.Handler {
 		}
 		return false
 	}
-	m.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
-	m.Path("/v1/harvester/{type}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}").Queries("action", "{action}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{nameorns}").Queries("link", "{link}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{nameorns}").Queries("action", "{action}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{nameorns}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{namespace}/{name}").Queries("action", "{action}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{namespace}/{name}").Queries("link", "{link}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{namespace}/{name}").Handler(h.K8sResource)
-	m.Path("/v1/harvester/{type}/{namespace}/{name}/{link}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
+	protected.Path("/v1/harvester/{type}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}").Queries("action", "{action}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{nameorns}").Queries("link", "{link}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{nameorns}").Queries("action", "{action}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{nameorns}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{namespace}/{name}").Queries("action", "{action}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{namespace}/{name}").Queries("link", "{link}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{namespace}/{name}").Handler(h.K8sResource)
+	protected.Path("/v1/harvester/{type}/{namespace}/{name}/{link}").Handler(h.K8sResource)
 
 	vueUI := ui.Vue
-	m.Handle("/dashboard/", vueUI.IndexFile())
-	m.PathPrefix("/dashboard/").Handler(vueUI.IndexFileOnNotFound())
+	protected.Handle("/dashboard/", vueUI.IndexFile())
+	protected.PathPrefix("/dashboard/").Handler(vueUI.IndexFileOnNotFound())
 
 	m.NotFoundHandler = router.Routes(h)
 

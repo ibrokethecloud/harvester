@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 const (
@@ -38,7 +40,7 @@ const (
 )
 
 // implementation of the local authentication provider
-type localAuthProvider struct {
+type LocalAuthProvider struct {
 	ctx context.Context
 	*pbkdf2.Pbkdf2
 	TokenCache  rancherv3.TokenCache
@@ -46,8 +48,8 @@ type localAuthProvider struct {
 	UserCache   rancherv3.UserCache
 }
 
-func newLocalProvider(ctx context.Context, scaled *config.Management) *localAuthProvider {
-	return &localAuthProvider{
+func newLocalProvider(ctx context.Context, scaled *config.Management) *LocalAuthProvider {
+	return &LocalAuthProvider{
 		ctx:         ctx,
 		Pbkdf2:      pbkdf2.New(scaled.CoreFactory.Core().V1().Secret().Cache(), scaled.CoreFactory.Core().V1().Secret()),
 		TokenCache:  scaled.RancherManagementFactory.Management().V3().Token().Cache(),
@@ -56,7 +58,7 @@ func newLocalProvider(ctx context.Context, scaled *config.Management) *localAuth
 }
 
 // Login validates the password and generates a token associated with the user session
-func (l *localAuthProvider) Login(w http.ResponseWriter, r *http.Request) {
+func (l *LocalAuthProvider) Login(w http.ResponseWriter, r *http.Request) {
 	bytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.Errorf("login: Error reading request body: %s", err)
@@ -156,7 +158,7 @@ func (l *localAuthProvider) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout uses the token header to verify session and perform logout by deleting the token object
-func (l *localAuthProvider) Logout(w http.ResponseWriter, r *http.Request) {
+func (l *LocalAuthProvider) Logout(w http.ResponseWriter, r *http.Request) {
 	tokenHeader := GetTokenAuthFromRequest(r)
 	tokenName, _ := GetTokenKeyValue(tokenHeader)
 
@@ -181,26 +183,29 @@ func (l *localAuthProvider) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // Update password allows users to update their local password
-func (l *localAuthProvider) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+func (l *LocalAuthProvider) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (l *localAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request) {
+func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	tokenHeader := GetTokenAuthFromRequest(r)
 	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
 	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
 	if tokenValue == "" || tokenName == "" {
-		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "missing or invalid token"))
+		logrus.Error("missing token")
+		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
 		return
 	}
 	// fetch tokenName from cache to verify
 	tokenObj, err := l.TokenClient.Get(tokenName, metav1.GetOptions{})
 	if err != nil {
-		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "invalid token"))
+		logrus.Error("invalid token")
+		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
 		return
 	}
 	if tokenObj.Token != tokenValue {
-		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "invalid token"))
+		logrus.Error("invalid token")
+		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
 		return
 	}
 	// check if token is expired
@@ -211,22 +216,30 @@ func (l *localAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if tokenExpiryTime.Before(time.Now()) {
-			util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "token expired"))
+			logrus.Error("token expired")
+			http.Redirect(w, r, "/v1-public/login", http.StatusFound)
 			return
 		}
 	}
 
 	w.WriteHeader(http.StatusOK)
+	next.ServeHTTP(w, r)
+}
+
+func (l *LocalAuthProvider) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l.VerifyToken(w, r, next)
+	})
 }
 
 // LoginHandler sets up the wiring for the various local login handler endpoints
-func LoginHandler(ctx context.Context, scaled *config.Management) http.Handler {
-	l := newLocalProvider(ctx, scaled)
-	return l.setup()
+func LoginHandler(ctx context.Context, scaled *config.Management) *LocalAuthProvider {
+	return newLocalProvider(ctx, scaled)
+
 }
 
 // setup is a wrapper function defined to make unit tests easier
-func (l *localAuthProvider) setup() http.Handler {
+func (l *LocalAuthProvider) Routes() http.Handler {
 	r := http.NewServeMux()
 	r.HandleFunc("POST /v1-public/login", l.Login)
 	r.HandleFunc("POST /v1-public/logout", l.Logout)
@@ -264,7 +277,7 @@ func toPrincipal(principalType, displayName, loginName, id string) mgmtv3.Princi
 }
 
 // createToken returns the token object and it's unhashed token key, which is stored hashed
-func (l *localAuthProvider) createToken(k8sToken *mgmtv3.Token) (*mgmtv3.Token, string, error) {
+func (l *LocalAuthProvider) createToken(k8sToken *mgmtv3.Token) (*mgmtv3.Token, string, error) {
 	key, err := randomtoken.Generate()
 	if err != nil {
 		logrus.Errorf("Failed to generate token key: %v", err)
@@ -324,4 +337,42 @@ func GetTokenAuthFromRequest(req *http.Request) string {
 func GetTokenKeyValue(tokenHeader string) (string, string) {
 	parts := strings.SplitN(tokenHeader, ":", 2)
 	return parts[0], parts[1]
+}
+
+// verifies token is valid and matches a user and defaults to admin user
+func (l *LocalAuthProvider) Authenticate(r *http.Request) (user.Info, bool, error) {
+	tokenHeader := GetTokenAuthFromRequest(r)
+	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
+	user := &user.DefaultInfo{}
+	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
+	if tokenValue == "" || tokenName == "" {
+		return user, false, fmt.Errorf("missing token or value")
+	}
+	// fetch tokenName from cache to verify
+	tokenObj, err := l.TokenClient.Get(tokenName, metav1.GetOptions{})
+	if err != nil {
+		return user, false, fmt.Errorf("token not found")
+	}
+	if tokenObj.Token != tokenValue {
+		return user, false, fmt.Errorf("invalid token")
+	}
+	// check if token is expired
+	if tokenObj.ExpiresAt != "" {
+		tokenExpiryTime, err := time.Parse(time.RFC3339, tokenObj.ExpiresAt)
+		if err != nil {
+			return user, false, fmt.Errorf("invalid expiry")
+		}
+		if tokenExpiryTime.Before(time.Now()) {
+			return user, false, fmt.Errorf("token expired")
+		}
+	}
+
+	// find user reference from token
+	user.Name = "admin"
+	user.UID = "admin"
+	user.Groups = []string{
+		"system:masters",
+		"system:authenticated",
+	}
+	return user, true, nil
 }

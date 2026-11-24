@@ -97,7 +97,7 @@ func Test_Login(t *testing.T) {
 	assert.NoError(err)
 
 	rr := httptest.NewRecorder()
-	l.setup().ServeHTTP(rr, req)
+	l.Routes().ServeHTTP(rr, req)
 	// verify request was successful
 	assert.Equal(http.StatusOK, rr.Code)
 
@@ -122,7 +122,7 @@ func Test_Login(t *testing.T) {
 }
 
 // clientWrapper sets up the fakeclient with a custom reactor for create actions
-func clientWrapper(objects []runtime.Object) *localAuthProvider {
+func clientWrapper(objects []runtime.Object) *LocalAuthProvider {
 	client := harvesterfake.NewSimpleClientset(objects...)
 	client.PrependReactor(
 		"create", "*",
@@ -148,7 +148,7 @@ func clientWrapper(objects []runtime.Object) *localAuthProvider {
 	credManager := pbkdf2.New(secretCache, secretClient)
 
 	// attempt login to verify http handler and token creation
-	return &localAuthProvider{
+	return &LocalAuthProvider{
 		ctx:         context.TODO(),
 		Pbkdf2:      credManager,
 		TokenClient: tokenClient,
@@ -173,7 +173,7 @@ func Test_Logout(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: CookieName, Value: "token-1:key"})
 	assert.NoError(err)
 	rr := httptest.NewRecorder()
-	l.setup().ServeHTTP(rr, req)
+	l.Routes().ServeHTTP(rr, req)
 	assert.Equal(http.StatusOK, rr.Code)
 	_, err = l.TokenCache.Get("token-1")
 	assert.True(apierrors.IsNotFound(err))
@@ -193,9 +193,10 @@ func Test_Verify(t *testing.T) {
 	l := clientWrapper([]runtime.Object{tokenObj})
 	req, err := http.NewRequest(http.MethodGet, "/v1", nil)
 	assert.NoError(err)
+	empty := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	req.AddCookie(&http.Cookie{Name: CookieName, Value: "token-1:key"})
 	rr := httptest.NewRecorder()
-	l.VerifyToken(rr, req)
+	l.VerifyToken(rr, req, empty)
 	t.Log(rr.Body.String())
 	assert.Equal(http.StatusOK, rr.Code)
 }

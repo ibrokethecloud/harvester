@@ -230,7 +230,7 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 		return err
 	}
 
-	router, err := NewRouter(scaled, s.RESTConfig, options)
+	router, err := NewRouter(s.Context, scaled, s.RESTConfig, options)
 	if err != nil {
 		return err
 	}
