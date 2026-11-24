@@ -181,6 +181,19 @@ func (l *LocalAuthProvider) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logrus.Debug("Deleted Token")
+	tokenCookie := &http.Cookie{
+		Name:     CookieName,
+		Value:    "",
+		Secure:   true,
+		Path:     "/",
+		HttpOnly: true,
+		// Lax is the default in most browsers; setting it
+		// explicitly is a good security measure.
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	}
+	http.SetCookie(w, tokenCookie)
+	w.WriteHeader(http.StatusOK)
 }
 
 // Update password allows users to update their local password
@@ -223,7 +236,6 @@ func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
 	next.ServeHTTP(w, r)
 }
 
