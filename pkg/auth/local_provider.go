@@ -26,7 +26,7 @@ import (
 
 const (
 	Name            = "local"
-	TTLMillis       = int64(57600000) //16 * time.Hour * time.Second * time.Millisecond
+	TTLMillis       = 57600000 //16 * time.Hour * time.Second * time.Millisecond
 	ResponseType    = "cookie"
 	Description     = "UI Session"
 	CookieName      = "R_SESS"
@@ -119,6 +119,7 @@ func (l *localAuthProvider) Login(w http.ResponseWriter, r *http.Request) {
 		UserPrincipal:   userPrincipal,
 		GroupPrincipals: groupPrincipals,
 		IsDerived:       false,
+		ExpiresAt:       metav1.Now().Add(TTLMillis * time.Millisecond).UTC().Format(time.RFC3339),
 		TTLMillis:       TTLMillis,
 		UserID:          userObj.Name,
 		AuthProvider:    Name, // local provider name
@@ -189,34 +190,33 @@ func (l *localAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request) 
 	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
 	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
 	if tokenValue == "" || tokenName == "" {
-		http.Error(w, "missing or invalid token", http.StatusUnauthorized)
+		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "missing or invalid token"))
 		return
 	}
 	// fetch tokenName from cache to verify
 	tokenObj, err := l.TokenClient.Get(tokenName, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "invalid token"))
 		return
 	}
 	if tokenObj.Token != tokenValue {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "invalid token"))
 		return
 	}
 	// check if token is expired
-	tokenExpiryTime, err := time.Parse(time.RFC3339, tokenObj.ExpiresAt)
-	if err != nil {
-		http.Error(w, "unable to parse token expiry", http.StatusInternalServerError)
-		return
+	if tokenObj.ExpiresAt != "" {
+		tokenExpiryTime, err := time.Parse(time.RFC3339, tokenObj.ExpiresAt)
+		if err != nil {
+			http.Error(w, "unable to parse token expiry", http.StatusInternalServerError)
+			return
+		}
+		if tokenExpiryTime.Before(time.Now()) {
+			util.ReturnAPIError(w, apierror.NewAPIError(validation.Unauthorized, "token expired"))
+			return
+		}
 	}
-	if tokenExpiryTime.Before(time.Now()) {
-		http.Error(w, "token expired", http.StatusUnauthorized)
-		return
-	}
+
 	w.WriteHeader(http.StatusOK)
-}
-
-func (l *localAuthProvider) DeleteToken(w http.ResponseWriter, r *http.Request) {
-
 }
 
 // LoginHandler sets up the wiring for the various local login handler endpoints
@@ -231,15 +231,6 @@ func (l *localAuthProvider) setup() http.Handler {
 	r.HandleFunc("POST /v1-public/login", l.Login)
 	r.HandleFunc("POST /v1-public/logout", l.Logout)
 	return r
-}
-
-func getUser(obj any) *mgmtv3.User {
-	u, ok := obj.(*mgmtv3.User)
-	if !ok {
-		logrus.Debug("not a user object")
-		return nil
-	}
-	return u
 }
 
 func getLocalPrincipalID(user *mgmtv3.User) string {

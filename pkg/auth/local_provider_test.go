@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/harvester/harvester/pkg/auth/pbkdf2"
 	harvesterfake "github.com/harvester/harvester/pkg/generated/clientset/versioned/fake"
@@ -14,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/storage/names"
@@ -63,6 +65,7 @@ func Test_GetTokenAuthFromRequest(t *testing.T) {
 	}
 }
 
+// Test_Login verifies login functionality and ensures password match and token generation is correct
 func Test_Login(t *testing.T) {
 
 	assert := require.New(t)
@@ -83,7 +86,44 @@ func Test_Login(t *testing.T) {
 		Description: "",
 	}
 
-	client := harvesterfake.NewSimpleClientset(namespace, userObj)
+	// attempt login to verify http handler and token creation
+	l := clientWrapper([]runtime.Object{namespace, userObj})
+
+	// setup user password
+	err := l.CreatePassword(userObj, "password1234")
+	assert.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/v1-public/login", bytes.NewReader([]byte(`{"configName":"local","type":"localProvider","description":"UI session","responseType":"cookie","username":"admin","password":"password1234"}`)))
+	assert.NoError(err)
+
+	rr := httptest.NewRecorder()
+	l.setup().ServeHTTP(rr, req)
+	// verify request was successful
+	assert.Equal(http.StatusOK, rr.Code)
+
+	// extract token from cookie and verify backend object
+	var token, tokenValue string
+	cookies := rr.Result().Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == CookieName {
+			assert.NotEmpty(cookie.Value)
+			token, tokenValue = GetTokenKeyValue(cookie.Value)
+		}
+
+	}
+	assert.NotEmpty(token)
+	assert.NotEmpty(tokenValue)
+
+	// check token CRD exists
+	tokenObj, err := l.TokenCache.Get(token)
+	assert.NoError(err)
+	assert.Equal(tokenValue, tokenObj.Token)
+
+}
+
+// clientWrapper sets up the fakeclient with a custom reactor for create actions
+func clientWrapper(objects []runtime.Object) *localAuthProvider {
+	client := harvesterfake.NewSimpleClientset(objects...)
 	client.PrependReactor(
 		"create", "*",
 		func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -98,8 +138,8 @@ func Test_Login(t *testing.T) {
 			}
 
 			return
-		},
-	)
+		})
+
 	secretClient := fakeclients.SecretClient(client.CoreV1().Secrets)
 	secretCache := fakeclients.SecretCache(client.CoreV1().Secrets)
 	tokenClient := fakeclients.TokenClient(client.ManagementV3().Tokens)
@@ -107,12 +147,8 @@ func Test_Login(t *testing.T) {
 	userCache := fakeclients.UserCache(client.ManagementV3().Users)
 	credManager := pbkdf2.New(secretCache, secretClient)
 
-	// setup user password
-	err := credManager.CreatePassword(userObj, "password1234")
-	assert.NoError(err)
-
 	// attempt login to verify http handler and token creation
-	l := &localAuthProvider{
+	return &localAuthProvider{
 		ctx:         context.TODO(),
 		Pbkdf2:      credManager,
 		TokenClient: tokenClient,
@@ -120,14 +156,46 @@ func Test_Login(t *testing.T) {
 		UserCache:   userCache,
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "/v1-public/login", bytes.NewReader([]byte(`{"configName":"local","type":"localProvider","description":"UI session","responseType":"cookie","username":"admin","password":"password1234"}`)))
-	assert.NoError(err)
+}
 
+// Test_Logout verifies logout functionality and verifies token deletion
+func Test_Logout(t *testing.T) {
+	assert := require.New(t)
+	logrus.SetLevel(logrus.DebugLevel)
+	tokenObj := &mgmtv3.Token{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "token-1",
+		},
+		Token: "key",
+	}
+	l := clientWrapper([]runtime.Object{tokenObj})
+	req, err := http.NewRequest(http.MethodPost, "/v1-public/logout", nil)
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: "token-1:key"})
+	assert.NoError(err)
 	rr := httptest.NewRecorder()
 	l.setup().ServeHTTP(rr, req)
-	// verify request was successful
 	assert.Equal(http.StatusOK, rr.Code)
+	_, err = l.TokenCache.Get("token-1")
+	assert.True(apierrors.IsNotFound(err))
+}
 
-	t.Log(rr.Header())
-
+// Test_Verify checks token verification
+func Test_Verify(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+	assert := require.New(t)
+	tokenObj := &mgmtv3.Token{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "token-1",
+		},
+		Token:     "key",
+		ExpiresAt: metav1.Now().Add(TTLMillis * time.Millisecond).UTC().Format(time.RFC3339),
+	}
+	l := clientWrapper([]runtime.Object{tokenObj})
+	req, err := http.NewRequest(http.MethodGet, "/v1", nil)
+	assert.NoError(err)
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: "token-1:key"})
+	rr := httptest.NewRecorder()
+	l.VerifyToken(rr, req)
+	t.Log(rr.Body.String())
+	assert.Equal(http.StatusOK, rr.Code)
 }
