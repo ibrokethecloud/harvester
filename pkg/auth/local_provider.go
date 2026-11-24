@@ -54,6 +54,7 @@ func newLocalProvider(ctx context.Context, scaled *config.Management) *LocalAuth
 		Pbkdf2:      pbkdf2.New(scaled.CoreFactory.Core().V1().Secret().Cache(), scaled.CoreFactory.Core().V1().Secret()),
 		TokenCache:  scaled.RancherManagementFactory.Management().V3().Token().Cache(),
 		TokenClient: scaled.RancherManagementFactory.Management().V3().Token(),
+		UserCache:   scaled.RancherManagementFactory.Management().V3().User().Cache(),
 	}
 }
 
@@ -336,6 +337,9 @@ func GetTokenAuthFromRequest(req *http.Request) string {
 
 func GetTokenKeyValue(tokenHeader string) (string, string) {
 	parts := strings.SplitN(tokenHeader, ":", 2)
+	if len(parts) < 2 {
+		return "", ""
+	}
 	return parts[0], parts[1]
 }
 
