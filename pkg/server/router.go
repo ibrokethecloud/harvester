@@ -66,6 +66,7 @@ func (r *Router) Routes(h router.Handlers) http.Handler {
 	authHandler := auth.LoginHandler(r.ctx, r.scaled.Management)
 	// route v1-public calls to the authHandler which serves the login and logout pages
 	m.PathPrefix("/v1-public").Handler(authHandler.Routes())
+	m.Path("/v1/harvester/cluster/ready").HandlerFunc(clusterReadyHandler)
 	m.Use(urlbuilder.RedirectRewrite)
 	m.Use(recoveryMiddleware)
 	// authHandler Middleware will ensure auth is needed for all endpoints
@@ -114,7 +115,7 @@ func (r *Router) Routes(h router.Handlers) http.Handler {
 		}
 		return false
 	}
-	protected.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
+	m.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
 	protected.Path("/v1/harvester/{type}").Handler(h.K8sResource)
 	protected.Path("/v1/harvester/{type}").Queries("action", "{action}").Handler(h.K8sResource)
 	protected.Path("/v1/harvester/{type}/{nameorns}").Queries("link", "{link}").Handler(h.K8sResource)
@@ -233,4 +234,12 @@ func verifyAuthMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// clusterReadyHandler is unauthenticated check for readiness
+// this is used by the installer to mark the cluster as ready
+// and replaces the call to /v1/harvester/cluster/local
+func clusterReadyHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ready")) // nolint: errcheck
 }

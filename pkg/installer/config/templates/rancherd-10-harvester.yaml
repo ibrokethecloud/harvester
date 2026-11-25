@@ -12,6 +12,10 @@ resources:
   kind: Namespace
   metadata:
     name: cattle-fleet-system
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: cattle-fleet-local-system    
 - apiVersion: helm.cattle.io/v1
   kind: HelmChart
   metadata:
@@ -36,6 +40,9 @@ resources:
     chart: fleet
     version: v0.16.2
     helmVersion: v3
+    values:
+      bootstrap:
+        agentNamespace: cattle-fleet-local-system
 - apiVersion: v1
   kind: ServiceAccount
   metadata:

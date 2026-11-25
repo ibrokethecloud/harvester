@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/harvester/harvester/pkg/auth/pbkdf2"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,5 +20,8 @@ func addPublicNamespace(apply apply.Apply) error {
 		ApplyObjects(
 			&v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{Name: publicNamespace},
+			},
+			&v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: pbkdf2.LocalUserPasswordsNamespace},
 			})
 }

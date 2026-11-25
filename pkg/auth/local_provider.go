@@ -204,22 +204,23 @@ func (l *LocalAuthProvider) UpdatePassword(w http.ResponseWriter, r *http.Reques
 func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	tokenHeader := GetTokenAuthFromRequest(r)
 	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
+	logrus.Debugf("incoming request for verify token: %s with headers %v", r.URL.String(), r.Header)
 	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
 	if tokenValue == "" || tokenName == "" {
 		logrus.Error("missing token")
-		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
+		http.Redirect(w, r, "/v1-public/login", http.StatusUnauthorized)
 		return
 	}
 	// fetch tokenName from cache to verify
 	tokenObj, err := l.TokenClient.Get(tokenName, metav1.GetOptions{})
 	if err != nil {
 		logrus.Error("invalid token")
-		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
+		http.Redirect(w, r, "/v1-public/login", http.StatusUnauthorized)
 		return
 	}
 	if tokenObj.Token != tokenValue {
 		logrus.Error("invalid token")
-		http.Redirect(w, r, "/v1-public/login", http.StatusFound)
+		http.Redirect(w, r, "/v1-public/login", http.StatusUnauthorized)
 		return
 	}
 	// check if token is expired
@@ -231,7 +232,7 @@ func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, 
 		}
 		if tokenExpiryTime.Before(time.Now()) {
 			logrus.Error("token expired")
-			http.Redirect(w, r, "/v1-public/login", http.StatusFound)
+			http.Redirect(w, r, "/v1-public/login", http.StatusUnauthorized)
 			return
 		}
 	}

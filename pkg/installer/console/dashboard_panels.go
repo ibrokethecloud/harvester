@@ -526,7 +526,8 @@ func getHarvesterStatus() string {
 		return wrapColor(statusNotReady, colorYellow)
 	}
 
-	harvesterAPIReady := isAPIReady(current.managementURL, "/v1/harvester/cluster/local")
+	// changed from "/v1/harvester/cluster/local" to "/v1/harvester/cluster/ready"
+	harvesterAPIReady := isAPIReady(current.managementURL, "/v1/harvester/cluster/ready")
 	if harvesterAPIReady {
 		return wrapColor(statusReady, colorGreen)
 	}
