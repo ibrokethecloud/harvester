@@ -115,7 +115,7 @@ func (r *Router) Routes(h router.Handlers) http.Handler {
 		}
 		return false
 	}
-	m.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
+	protected.Path("/v1/harvester").MatcherFunc(matchV1Harvester).Handler(h.APIRoot)
 	protected.Path("/v1/harvester/{type}").Handler(h.K8sResource)
 	protected.Path("/v1/harvester/{type}").Queries("action", "{action}").Handler(h.K8sResource)
 	protected.Path("/v1/harvester/{type}/{nameorns}").Queries("link", "{link}").Handler(h.K8sResource)

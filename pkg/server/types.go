@@ -24,7 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -254,7 +253,12 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 	s.steve.APIServer.Parser = dynamicURLBuilderParse
 	apiroot.Register(s.steve.BaseSchemas, []string{"v1", "v1/harvester"}, "proxy:/apis")
 
-	authMiddleware := steveauth.ToMiddleware(steveauth.AuthenticatorFunc(DebugAlwaysAdmin))
+	// currently this is needed to ensure local access works
+	// in future we can change this to steveauth.Impersonation
+	// the steveauth.Middleware check is called after our call to VerifyToken
+	// VerifyToken will need to set Impersonation info in the request
+	// to ensure the validation chain works, or we can just remove the Middleware check
+	authMiddleware := steveauth.ToMiddleware(steveauth.AuthenticatorFunc(steveauth.AlwaysAdmin))
 	s.Handler = authMiddleware(s.steve)
 
 	s.startHooks = []StartHook{
@@ -307,18 +311,6 @@ func dynamicURLBuilderParse(apiOp *types.APIRequest, urlParser parse.URLParser) 
 		}
 	}
 	return parse.Parse(apiOp, urlParser)
-}
-
-func DebugAlwaysAdmin(req *http.Request) (user.Info, bool, error) {
-	logrus.Infof("incoming request headers: %v", req.Header)
-	return &user.DefaultInfo{
-		Name: "admin",
-		UID:  "admin",
-		Groups: []string{
-			"system:masters",
-			"system:authenticated",
-		},
-	}, true, nil
 }
 
 func (s *HarvesterServer) startAggregation(options config.Options) {

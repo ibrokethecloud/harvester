@@ -211,7 +211,7 @@ func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, 
 
 	tokenHeader := GetTokenAuthFromRequest(r)
 	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
-	logrus.Debugf("incoming request for verify token: %s with headers %v and remoteAddr %s", r.URL.String(), r.Header, r.RemoteAddr)
+	// logrus.Debugf("incoming request for verify token: %s with headers %v and remoteAddr %s", r.URL.String(), r.Header, r.RemoteAddr)
 	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
 	if tokenValue == "" || tokenName == "" {
 		logrus.Error("missing token")
