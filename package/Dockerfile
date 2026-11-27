@@ -34,15 +34,27 @@ ENV TINI_URL_amd64=https://github.com/krallin/tini/releases/download/${TINI_VERS
 
 RUN curl -sLf ${!TINI_URL} > /usr/bin/tini && echo "${!TINI_URL_sha256}  /usr/bin/tini" | sha256sum -c - && chmod +x /usr/bin/tini
 
-RUN mkdir -p /usr/share/harvester/harvester && \
+# Locally built UI tarballs staged by scripts/package (dashboard.tar.gz, plugin.tar.gz).
+# Each one that is present replaces the download from releases.rancher.com. They are
+# bind-mounted (BuildKit) rather than copied so they don't end up in an image layer.
+RUN --mount=type=bind,source=ui-tarballs,target=/tmp/ui-tarballs \
+    mkdir -p /usr/share/harvester/harvester && \
     cd /usr/share/harvester/harvester && \
-    curl -sL https://releases.rancher.com/harvester-ui/dashboard/${HARVESTER_UI_VERSION}.tar.gz | tar xvzf - --strip-components=2 && \
+    if [ -f /tmp/ui-tarballs/dashboard.tar.gz ]; then \
+      tar xvzf /tmp/ui-tarballs/dashboard.tar.gz --strip-components=2; \
+    else \
+      curl -sL https://releases.rancher.com/harvester-ui/dashboard/${HARVESTER_UI_VERSION}.tar.gz | tar xvzf - --strip-components=2; \
+    fi && \
     mkdir -p /usr/share/harvester/harvester/api-ui && \
     cd /usr/share/harvester/harvester/api-ui && \
     curl -sL https://releases.rancher.com/api-ui/${HARVESTER_API_UI_VERSION}.tar.gz | tar xvzf - --strip-components=1 && \
     mkdir -p /usr/share/harvester/harvester/v1/harvester/plugin-assets && \
     cd /usr/share/harvester/harvester/v1/harvester/plugin-assets && \
-    curl -sL https://releases.rancher.com/harvester-ui/plugin/harvester-${HARVESTER_UI_PLUGIN_BUNDLED_VERSION}.tar.gz | tar xvzf - --strip-components=1 && \
+    if [ -f /tmp/ui-tarballs/plugin.tar.gz ]; then \
+      tar xvzf /tmp/ui-tarballs/plugin.tar.gz --strip-components=1; \
+    else \
+      curl -sL https://releases.rancher.com/harvester-ui/plugin/harvester-${HARVESTER_UI_PLUGIN_BUNDLED_VERSION}.tar.gz | tar xvzf - --strip-components=1; \
+    fi && \
     cd /var/lib/harvester/harvester
 
 COPY entrypoint.sh harvester /usr/bin/

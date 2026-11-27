@@ -29,6 +29,45 @@ if [[ "${MK_PRIME_BUILD:-}" == "true" ]]; then
   SERVER_FLAVOR=prime
 fi
 
+# Stage optional locally built UI tarballs into the build context. The directory
+# is always recreated so a previous build's tarballs are never picked up.
+# HARVESTER_UI_TARBALL:        dashboard tarball (harvester-ui-extension ./scripts/build-embedded)
+# HARVESTER_UI_PLUGIN_TARBALL: plugin tarball (harvester-ui-extension ./scripts/ci-build-pkg.sh harvester)
+UI_TARBALLS_DIR=ui-tarballs
+rm -rf "${UI_TARBALLS_DIR}"
+mkdir -p "${UI_TARBALLS_DIR}"
+touch "${UI_TARBALLS_DIR}/.keep"
+
+stage_ui_tarball() {
+  local src=$1 dest=$2 var=$3
+  # Relative paths are resolved against the repo root, where make is run.
+  [[ "${src}" = /* ]] || src="${TOP_DIR}/${src}"
+  if [ ! -f "${src}" ]; then
+    echo "${var}: file not found: ${src}" >&2
+    exit 1
+  fi
+  cp "${src}" "${UI_TARBALLS_DIR}/${dest}"
+  echo "Bundling ${var}=${src}"
+}
+
+if [ -n "${HARVESTER_UI_TARBALL}" ]; then
+  stage_ui_tarball "${HARVESTER_UI_TARBALL}" dashboard.tar.gz HARVESTER_UI_TARBALL
+fi
+if [ -n "${HARVESTER_UI_PLUGIN_TARBALL}" ]; then
+  stage_ui_tarball "${HARVESTER_UI_PLUGIN_TARBALL}" plugin.tar.gz HARVESTER_UI_PLUGIN_TARBALL
+  # The bundled plugin version is reported to Rancher via ui-plugin-bundled-version and has to
+  # match the plugin's file names, so derive it from harvester-<version>.tar.gz if not given.
+  if [ -z "${HARVESTER_UI_PLUGIN_BUNDLED_VERSION}" ]; then
+    plugin_file=$(basename "${HARVESTER_UI_PLUGIN_TARBALL}")
+    if [[ "${plugin_file}" =~ ^harvester-(.+)\.tar\.gz$ ]]; then
+      HARVESTER_UI_PLUGIN_BUNDLED_VERSION=${BASH_REMATCH[1]}
+      echo "Derived HARVESTER_UI_PLUGIN_BUNDLED_VERSION=${HARVESTER_UI_PLUGIN_BUNDLED_VERSION}"
+    else
+      echo "Warning: cannot derive the plugin version from ${plugin_file}; set HARVESTER_UI_PLUGIN_BUNDLED_VERSION" >&2
+    fi
+  fi
+fi
+
 BUILD_ARGS="--build-arg VERSION=${VERSION} --build-arg ARCH=${ARCH} --build-arg SERVER_FLAVOR=${SERVER_FLAVOR}"
 if [ -n "${HARVESTER_UI_VERSION}" ]; then
   BUILD_ARGS="${BUILD_ARGS} --build-arg HARVESTER_UI_VERSION=${HARVESTER_UI_VERSION}"

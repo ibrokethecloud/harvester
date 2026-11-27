@@ -65,6 +65,9 @@ endef
 CODECOV_TOKEN             ?=
 HARVESTER_UI_VERSION      ?=
 HARVESTER_UI_PLUGIN_BUNDLED_VERSION ?=
+# Optional paths to locally built UI tarballs; when set they are bundled instead of downloading from releases.rancher.com
+HARVESTER_UI_TARBALL      ?=
+HARVESTER_UI_PLUGIN_TARBALL ?=
 RKE2_IMAGE_REPO           ?= https://github.com/rancher/rke2/releases/download/
 USE_LOCAL_IMAGES          ?=
 REPO                      ?=
@@ -86,7 +89,7 @@ MK_IMAGE_CACHE_MAX_ITEMS  ?= 5
 MK_IMAGE_CACHE_VERIFY     ?=
 
 export MK_DOCKER_PROGRESS MK_DOCKER_PULL MK_DOCKER_CLI_CONFIG MK_REPO_ID MK_ISO_BUILDER_IMAGE MK_PRIME_BUILD MK_HARVESTER_PRIME_REGISTRY MK_RANCHER_PRIME_REGISTRY MK_MONITORING_REGISTRY MK_SUSE_STORAGE_REGISTRY
-export HARVESTER_UI_VERSION HARVESTER_UI_PLUGIN_BUNDLED_VERSION
+export HARVESTER_UI_VERSION HARVESTER_UI_PLUGIN_BUNDLED_VERSION HARVESTER_UI_TARBALL HARVESTER_UI_PLUGIN_TARBALL
 export RKE2_IMAGE_REPO USE_LOCAL_IMAGES REPO PUSH DRONE_BRANCH DRONE_TAG
 export CODECOV_TOKEN
 export DISABLE_BUILD_NET_INSTALL_ISO
@@ -282,6 +285,7 @@ clean:
 	$(BANNER)
 	@rm -rf $(ROOT)/bin
 	@rm -f $(ROOT)/package/harvester $(ROOT)/package/harvester-webhook
+	@rm -rf $(ROOT)/package/ui-tarballs
 	@rm -f $(ROOT)/package/upgrade/upgrade-helper $(ROOT)/package/upgrade/harvester-installer
 	@rm -rf $(ROOT)/package/upgrade/addons
 	@rm -rf $(ROOT)/dist/prepare-addons
