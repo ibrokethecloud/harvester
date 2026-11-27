@@ -27,16 +27,17 @@ import (
 )
 
 const (
-	Name            = "local"
-	TTLMillis       = 57600000 //16 * time.Hour * time.Second * time.Millisecond
-	ResponseType    = "cookie"
-	Description     = "UI Session"
-	CookieName      = "R_SESS"
-	UserIDLabel     = "authn.management.cattle.io/token-userId"
-	TokenKindLabel  = "authn.management.cattle.io/kind"
-	AuthHeaderName  = "Authorization"
-	AuthValuePrefix = "Bearer"
-	BasicAuthPrefix = "Basic"
+	Name                   = "local"
+	TTLMillis              = 57600000 //16 * time.Hour * time.Second * time.Millisecond
+	ResponseType           = "cookie"
+	Description            = "UI Session"
+	CookieName             = "R_SESS"
+	UserIDLabel            = "authn.management.cattle.io/token-userId"
+	TokenKindLabel         = "authn.management.cattle.io/kind"
+	AuthHeaderName         = "Authorization"
+	AuthValuePrefix        = "Bearer"
+	BasicAuthPrefix        = "Basic"
+	ClusterAgentRemoteAddr = "pipe"
 )
 
 // implementation of the local authentication provider
@@ -202,9 +203,15 @@ func (l *LocalAuthProvider) UpdatePassword(w http.ResponseWriter, r *http.Reques
 }
 
 func (l *LocalAuthProvider) VerifyToken(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	// clusterAgent requests are over an internal pipe, skip token check
+	if r.RemoteAddr == ClusterAgentRemoteAddr {
+		next.ServeHTTP(w, r)
+		return
+	}
+
 	tokenHeader := GetTokenAuthFromRequest(r)
 	tokenName, tokenValue := GetTokenKeyValue(tokenHeader)
-	logrus.Debugf("incoming request for verify token: %s with headers %v", r.URL.String(), r.Header)
+	logrus.Debugf("incoming request for verify token: %s with headers %v and remoteAddr %s", r.URL.String(), r.Header, r.RemoteAddr)
 	// no tokenName or tokenValue present, request is unauthorised so we redirect back to login page
 	if tokenValue == "" || tokenName == "" {
 		logrus.Error("missing token")

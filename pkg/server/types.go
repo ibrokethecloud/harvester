@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/dynamiclistener/server"
 	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/steve/pkg/accesscontrol"
+	"github.com/rancher/steve/pkg/aggregation"
 	steveauth "github.com/rancher/steve/pkg/auth"
 	steveserver "github.com/rancher/steve/pkg/server"
 	"github.com/rancher/wrangler/v3/pkg/generic"
@@ -183,6 +184,8 @@ func (s *HarvesterServer) ListenAndServe(listenerCfg *dynamiclistener.Config, op
 		listenOpts.TLSListenerConfig = *listenerCfg
 	}
 
+	s.steve.StartAggregation(s.Context)
+	s.startAggregation(opts)
 	if err := server.ListenAndServe(s.Context, opts.HTTPSListenPort, opts.HTTPListenPort, s.Handler, listenOpts); err != nil {
 		return err
 	}
@@ -237,10 +240,11 @@ func (s *HarvesterServer) generateSteveServer(options config.Options) error {
 	}
 
 	s.steve, err = steveserver.New(s.Context, s.RESTConfig, &steveserver.Options{
-		Controllers:     s.controllers,
-		AuthMiddleware:  steveauth.ExistingContext,
-		Router:          router.Routes,
-		AccessSetLookup: s.ASL,
+		Controllers:                s.controllers,
+		AuthMiddleware:             steveauth.ExistingContext,
+		Router:                     router.Routes,
+		AccessSetLookup:            s.ASL,
+		AggregationSecretNamespace: "cattle-system",
 	})
 	if err != nil {
 		return err
@@ -315,4 +319,12 @@ func DebugAlwaysAdmin(req *http.Request) (user.Info, bool, error) {
 			"system:authenticated",
 		},
 	}, true, nil
+}
+
+func (s *HarvesterServer) startAggregation(options config.Options) {
+	aggregation.Watch(s.Context,
+		s.Scaled().Management.CoreFactory.Core().V1().Secret(),
+		options.Namespace,
+		data.AggregationSecretName,
+		s.steve)
 }
