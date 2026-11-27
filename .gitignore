@@ -11,6 +11,7 @@ api.test
 .nocalhost
 package/harvester
 package/harvester-webhook
+package/ui-tarballs
 package/upgrade/upgrade-helper
 package/upgrade/addons
 package/upgrade/harvester-installer
