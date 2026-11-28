@@ -197,6 +197,9 @@ func ConvertToCOS(config *HarvesterConfig) (*yipSchema.YipConfig, error) {
 	// disable multipath for longhorn
 	disableLonghornMultipathing(&initramfs)
 
+	// setup registry mirrors for rke2
+	setupRegistryMirrors(&initramfs)
+
 	// Write a persistent sysctl drop-in whose value matches the install's IPv6 choice.
 	// For dual-stack, IPv6 is enabled (disable_ipv6=0); for IPv4-only it is disabled (disable_ipv6=1).
 	// IPFamilies is set by the installer UI for all modes (create, join, install).
@@ -1019,6 +1022,24 @@ WantedBy=sysinit.target`)
 	stage.Files = append(stage.Files, yipSchema.File{
 		Path:        "/etc/systemd/system/multipathd.service",
 		Content:     multipathDirectives,
+		Encoding:    "base64",
+		Permissions: 0644,
+		Owner:       0,
+		Group:       0,
+	})
+}
+
+// setupRegistryMirrors add registry mirror config needed by spegel
+// based on instructions https://docs.rke2.io/install/registry_mirror#enabling-registry-mirroring
+// need via cloudinit as on boot rke2 needs to be able to pull images from other cluster members
+// once harvester is booted this gets replaced via the setting
+func setupRegistryMirrors(stage *yipSchema.Stage) {
+	registries := []byte(`mirrors:
+  "*":`)
+
+	stage.Files = append(stage.Files, yipSchema.File{
+		Path:        "/etc/rancher/rke2/registries.yaml",
+		Content:     base64.StdEncoding.EncodeToString(registries),
 		Encoding:    "base64",
 		Permissions: 0644,
 		Owner:       0,

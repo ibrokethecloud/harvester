@@ -397,9 +397,14 @@ do_preload()
         # Preload images after the installing node reboots and RKE2 starts
         defer_preload_images
     else
-        # Preload all images now
-        preload_rancherd_images
-        preload_rke2_images
+        if [ "$HARVESTER_MODE" = "join" ]; then
+            echo "only preloading rancherd images"
+            preload_rancherd_images
+        else
+            echo "preloading all images"
+            preload_rancherd_images
+            preload_rke2_images
+        fi
     fi
 
     for i in ${BIND_MOUNTS[@]}; do

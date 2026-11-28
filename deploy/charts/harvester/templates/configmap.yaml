@@ -82,6 +82,8 @@ data:
     cluster-cidr: {{ .Values.promote.clusterPodCIDR }}
     service-cidr: {{ .Values.promote.clusterServiceCIDR }}
     cluster-dns: {{ .Values.promote.clusterDNS }}
+    embedded-registry: true
+    supervisor-metrics: true
     tls-san:
       - $VIP
     audit-policy-file: /etc/rancher/rke2/config.yaml.d/92-harvester-kube-audit-policy.yaml

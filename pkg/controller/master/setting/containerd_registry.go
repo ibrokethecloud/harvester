@@ -29,14 +29,10 @@ const (
 )
 
 func (h *Handler) syncContainerdRegistry(setting *harvesterv1.Setting) error {
-	if setting.Value == "" {
-		if err := h.clearContainerdRegistrySecret(); err != nil {
-			return err
-		}
-		return h.copyContainerdRegistryToRancher(nil)
+	registryFromSetting, err := generateRegistry(setting)
+	if err != nil {
+		return err
 	}
-
-	registryFromSetting := &containerd.Registry{}
 	if err := json.Unmarshal([]byte(setting.Value), registryFromSetting); err != nil {
 		return err
 	}
@@ -95,6 +91,20 @@ func (h *Handler) syncContainerdRegistry(setting *harvesterv1.Setting) error {
 	}
 
 	return nil
+}
+
+func generateRegistry(setting *harvesterv1.Setting) (*containerd.Registry, error) {
+	defaultRegistry := &containerd.Registry{
+		Mirrors: map[string]containerd.Mirror{
+			"*": containerd.Mirror{},
+		},
+	}
+
+	if setting.Value == "" {
+		return defaultRegistry, nil
+	}
+
+	return defaultRegistry, json.Unmarshal([]byte(setting.Value), defaultRegistry)
 }
 
 func (h *Handler) clearContainerdRegistrySecret() error {
